@@ -296,7 +296,7 @@ export function useBluetooth(): BluetoothHookReturn {
       await readVehicleData();
       
       if (isPollingRef.current) {
-        pollingIntervalRef.current = window.setTimeout(poll, 1000);
+        pollingIntervalRef.current = window.setTimeout(poll, 400);
       }
     };
 

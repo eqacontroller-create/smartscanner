@@ -9,7 +9,6 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
   const rpm = value ?? 0;
   
   const { needleRotation, segments, tickMarks } = useMemo(() => {
-    // Gauge goes from -135deg to 135deg (270deg total arc)
     const minAngle = -135;
     const maxAngle = 135;
     const angleRange = maxAngle - minAngle;
@@ -17,7 +16,6 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
     const rotation = minAngle + (rpm / maxRPM) * angleRange;
     const clampedRotation = Math.min(Math.max(rotation, minAngle), maxAngle);
 
-    // Create tick marks
     const ticks = [];
     const majorTickCount = 8;
     for (let i = 0; i <= majorTickCount; i++) {
@@ -31,7 +29,6 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
       });
     }
 
-    // Create arc segments for visual effect
     const segs = [];
     const segmentCount = 30;
     for (let i = 0; i < segmentCount; i++) {
@@ -49,6 +46,11 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
     };
   }, [rpm, maxRPM]);
 
+  // Radius percentages for positioning elements
+  const tickRadius = 0.38; // 38% from center
+  const segmentRadius = 0.32; // 32% from center
+  const needleLength = 0.30; // 30% of container
+
   return (
     <div className="relative w-56 h-56 xs:w-64 xs:h-64 sm:w-72 sm:h-72 md:w-80 md:h-80">
       {/* Outer ring */}
@@ -56,80 +58,96 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
         {/* Inner shadow ring */}
         <div className="absolute inset-2 xs:inset-3 sm:inset-4 rounded-full bg-gradient-to-b from-secondary/50 to-transparent" />
         
-        {/* Tick marks */}
-        {tickMarks.map((tick, index) => (
-          <div
-            key={index}
-            className="absolute left-1/2 top-1/2 origin-center"
-            style={{
-              transform: `rotate(${tick.angle}deg) translateY(-85px) xs:translateY(-95px) sm:translateY(-105px) md:translateY(-110px)`,
-              width: '2px',
-              marginLeft: '-1px'
-            }}
-          >
+        {/* Tick marks with numbers */}
+        {tickMarks.map((tick, index) => {
+          const angleRad = (tick.angle - 90) * (Math.PI / 180);
+          const x = 50 + tickRadius * 100 * Math.cos(angleRad);
+          const y = 50 + tickRadius * 100 * Math.sin(angleRad);
+          
+          return (
             <div
-              className={`w-0.5 h-3 xs:h-3.5 sm:h-4 ${
-                tick.isRedZone ? 'bg-destructive' : 'bg-muted-foreground'
-              }`}
-            />
-            <div
-              className={`text-[9px] xs:text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-1 -ml-2 ${
-                tick.isRedZone ? 'text-destructive' : 'text-muted-foreground'
-              }`}
-              style={{ transform: `rotate(${-tick.angle}deg)` }}
+              key={index}
+              className="absolute flex flex-col items-center"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
             >
-              {tick.label}
+              {/* Tick line */}
+              <div
+                className={`w-0.5 h-2.5 xs:h-3 sm:h-3.5 rounded-full ${
+                  tick.isRedZone ? 'bg-destructive' : 'bg-muted-foreground'
+                }`}
+                style={{ transform: `rotate(${tick.angle}deg)` }}
+              />
+              {/* Number label */}
+              <span
+                className={`text-[10px] xs:text-xs sm:text-sm font-bold mt-0.5 ${
+                  tick.isRedZone ? 'text-destructive' : 'text-muted-foreground'
+                }`}
+              >
+                {tick.label}
+              </span>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Arc segments */}
-        {segments.map((seg, index) => (
-          <div
-            key={index}
-            className="absolute left-1/2 top-1/2 origin-center"
-            style={{ transform: `rotate(${seg.angle}deg)` }}
-          >
+        {segments.map((seg, index) => {
+          const angleRad = (seg.angle - 90) * (Math.PI / 180);
+          const x = 50 + segmentRadius * 100 * Math.cos(angleRad);
+          const y = 50 + segmentRadius * 100 * Math.sin(angleRad);
+          
+          return (
             <div
-              className={`w-0.5 xs:w-1 h-4 xs:h-5 sm:h-6 -ml-0.5 rounded-full transition-all duration-150 ${
-                seg.isActive
-                  ? seg.isRedZone
-                    ? 'bg-destructive shadow-[0_0_10px_hsl(var(--destructive))]'
-                    : 'bg-primary shadow-[0_0_10px_hsl(var(--primary))]'
-                  : 'bg-secondary/30'
-              }`}
-              style={{ transform: 'translateY(-70px) xs:translateY(-80px) sm:translateY(-85px) md:translateY(-90px)' }}
-            />
-          </div>
-        ))}
+              key={index}
+              className="absolute"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                transform: `translate(-50%, -50%) rotate(${seg.angle}deg)`
+              }}
+            >
+              <div
+                className={`w-0.5 xs:w-1 h-3.5 xs:h-4 sm:h-5 rounded-full transition-colors duration-100 ${
+                  seg.isActive
+                    ? seg.isRedZone
+                      ? 'bg-destructive shadow-[0_0_8px_hsl(var(--destructive))]'
+                      : 'bg-primary shadow-[0_0_8px_hsl(var(--primary))]'
+                    : 'bg-secondary/30'
+                }`}
+              />
+            </div>
+          );
+        })}
 
         {/* Needle */}
         <div
-          className="absolute left-1/2 top-1/2 origin-center transition-transform duration-300 ease-out"
-          style={{ transform: `rotate(${needleRotation}deg)` }}
+          className="absolute left-1/2 top-1/2 origin-center transition-transform duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+          style={{ 
+            transform: `translate(-50%, -50%) rotate(${needleRotation}deg)`,
+            width: '4px',
+            height: '100%'
+          }}
         >
-          <div className="relative">
+          <div className="relative h-full flex flex-col items-center">
             {/* Needle body */}
             <div
-              className="w-0.5 xs:w-1 bg-gradient-to-t from-gauge-needle to-destructive rounded-full shadow-[0_0_15px_hsl(var(--gauge-needle))]"
+              className="w-0.5 xs:w-1 bg-gradient-to-t from-gauge-needle to-destructive rounded-full shadow-[0_0_12px_hsl(var(--gauge-needle))]"
               style={{
-                height: '70px',
-                transform: 'translateX(-50%) translateY(-65px)',
-                marginLeft: '50%'
+                height: `${needleLength * 100}%`,
+                marginTop: '8%'
               }}
-            />
-            {/* Needle cap */}
-            <div
-              className="absolute left-1/2 top-1/2 w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 -ml-2 xs:-ml-2.5 sm:-ml-3 -mt-2 xs:-mt-2.5 sm:-mt-3 rounded-full bg-gradient-to-br from-secondary to-muted border-2 border-gauge-border"
             />
           </div>
         </div>
 
         {/* Center cap */}
-        <div className="absolute left-1/2 top-1/2 w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 -ml-2.5 xs:-ml-3 sm:-ml-3.5 md:-ml-4 -mt-2.5 xs:-mt-3 sm:-mt-3.5 md:-mt-4 rounded-full bg-gradient-to-br from-muted to-secondary border border-border" />
+        <div className="absolute left-1/2 top-1/2 w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-muted to-secondary border border-border transform -translate-x-1/2 -translate-y-1/2" />
 
         {/* RPM Label */}
-        <div className="absolute bottom-10 xs:bottom-12 sm:bottom-14 md:bottom-16 left-1/2 -translate-x-1/2 text-center">
+        <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 text-center">
           <span className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground tracking-widest">x1000 RPM</span>
         </div>
       </div>

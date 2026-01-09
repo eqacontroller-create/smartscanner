@@ -32,7 +32,7 @@ export function VehicleStats({ speed, temperature, isReading }: VehicleStatsProp
             <span className="text-xs sm:text-sm font-medium text-muted-foreground">Velocidade</span>
           </div>
           <div className="flex items-baseline gap-0.5 sm:gap-1">
-            <span className="text-2xl sm:text-3xl font-bold text-foreground">
+            <span className="text-2xl sm:text-3xl font-bold text-foreground value-transition">
               {isReading && speed !== null ? speed : '--'}
             </span>
             <span className="text-xs sm:text-sm text-muted-foreground">km/h</span>
@@ -48,7 +48,7 @@ export function VehicleStats({ speed, temperature, isReading }: VehicleStatsProp
             <span className="text-xs sm:text-sm font-medium text-muted-foreground">Temp. Motor</span>
           </div>
           <div className="flex items-baseline gap-0.5 sm:gap-1">
-            <span className={`text-2xl sm:text-3xl font-bold ${getTemperatureColor(temperature)}`}>
+            <span className={`text-2xl sm:text-3xl font-bold value-transition ${getTemperatureColor(temperature)}`}>
               {isReading && temperature !== null ? temperature : '--'}
             </span>
             <span className="text-xs sm:text-sm text-muted-foreground">°C</span>
