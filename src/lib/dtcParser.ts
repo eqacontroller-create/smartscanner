@@ -29,6 +29,62 @@ const DTC_TYPE_MAP: Record<string, string> = {
   'F': 'U3',
 };
 
+// Headers CAN conhecidos que NÃO são DTCs (ECU response addresses)
+const CAN_HEADERS = new Set([
+  '7E8', '7E9', '7EA', '7EB', '7EC', '7ED', '7EE', '7EF', // Respostas ECU padrão
+  '7E0', '7E1', '7E2', '7E3', '7E4', '7E5', '7E6', '7E7', // Requests ECU
+  '7DF', // Broadcast address
+  '7F0', '7F1', '7F2', '7F3', '7F4', '7F5', '7F6', '7F7', // Extended addresses
+  '7F8', '7F9', '7FA', '7FB', '7FC', '7FD', '7FE', '7FF',
+]);
+
+// Valida se um código DTC é válido (não é header CAN ou código inválido)
+function isValidDTCCode(code: string): boolean {
+  if (!code || code.length < 5) return false;
+  
+  // Verificar formato: Letra (P/C/B/U) + dígito (0-3) + 3 hex
+  if (!/^[PCBU][0-3][0-9A-F]{3}$/i.test(code)) return false;
+  
+  // Extrair a parte numérica do código
+  const numericPart = code.substring(1);
+  
+  // Verificar se parece com um header CAN (7Ex, 7Fx patterns)
+  const rawEquivalent = code[0] === 'P' ? code.substring(2) :
+                        code[0] === 'C' ? '4' + code.substring(2) :
+                        code[0] === 'B' ? '8' + code.substring(2) :
+                        'C' + code.substring(2);
+                        
+  // Se o raw começa com 7E ou 7F, provavelmente é header
+  if (rawEquivalent.startsWith('7E') || rawEquivalent.startsWith('7F')) {
+    return false;
+  }
+  
+  // Verificar padrões específicos que indicam headers ou ruído
+  // P7E8 = 7E8x (header), P7EA = 7EAx (header), etc.
+  if (/^[78][0-9A-F]{3}$/.test(numericPart)) {
+    console.log(`[DTC Parser] Rejeitando código suspeito (parece header): ${code}`);
+    return false;
+  }
+  
+  // Verificar se é código 0000 disfarçado
+  if (numericPart === '0000') return false;
+  
+  return true;
+}
+
+// Valida raw hex para não ser um header CAN
+function isNotCANHeader(rawHex: string): boolean {
+  const upper = rawHex.toUpperCase();
+  
+  // Verificar diretamente se é um header conhecido
+  if (CAN_HEADERS.has(upper.substring(0, 3))) return false;
+  
+  // Verificar padrão 7Exx ou 7Fxx
+  if (/^7[EF][0-9A-F]/i.test(upper)) return false;
+  
+  return true;
+}
+
 // Extrai e concatena dados de respostas multi-frame ISO-TP
 // Formato: 
 // - Single frame: 0X [data]
@@ -171,24 +227,44 @@ export function parseUDSResponse(response: string): ParsedDTC[] {
   }
   
   const dtcs: ParsedDTC[] = [];
+  const seenCodes = new Set<string>();
   
   // Cada DTC no UDS: 3 bytes DTC + 1 byte status = 4 bytes = 8 hex chars
   for (let i = 0; i + 8 <= dtcData.length; i += 8) {
-    const dtcBytes = dtcData.substring(i, i + 6); // 3 bytes = 6 chars
+    const dtcBytes = dtcData.substring(i, i + 6).toUpperCase(); // 3 bytes = 6 chars
     const statusByte = dtcData.substring(i + 6, i + 8); // 1 byte status
     
-    if (dtcBytes === '000000') continue;
+    // Ignorar códigos vazios
+    if (dtcBytes === '000000' || /^0+$/.test(dtcBytes)) continue;
+    
+    // NOVO: Verificar se não é um header CAN disfarçado
+    if (!isNotCANHeader(dtcBytes.substring(0, 3))) {
+      console.log(`[DTC Parser UDS] Ignorando header CAN: ${dtcBytes}`);
+      continue;
+    }
     
     // Converter bytes para código DTC
     // Formato UDS: [High][Mid][Low] onde High determina a letra
-    const firstNibble = dtcBytes[0].toUpperCase();
+    const firstNibble = dtcBytes[0];
     const prefix = DTC_TYPE_MAP[firstNibble] || 'P0';
-    const suffix = dtcBytes.substring(1, 4).toUpperCase();
+    const suffix = dtcBytes.substring(1, 4);
     
     // Validar que o código parece válido
     if (!/^[0-9A-F]+$/.test(suffix)) continue;
     
     const code = prefix + suffix;
+    
+    // NOVO: Validar formato do código DTC
+    if (!isValidDTCCode(code)) {
+      console.log(`[DTC Parser UDS] Ignorando código inválido: ${code} (raw: ${dtcBytes})`);
+      continue;
+    }
+    
+    // NOVO: Evitar duplicatas
+    if (seenCodes.has(code)) {
+      continue;
+    }
+    seenCodes.add(code);
     
     dtcs.push({
       code,
@@ -252,13 +328,20 @@ export function parseDTCResponse(response: string): ParsedDTC[] {
   }
 
   const dtcs: ParsedDTC[] = [];
+  const seenCodes = new Set<string>();
 
   // Cada DTC tem 4 caracteres hexadecimais (2 bytes)
   for (let i = 0; i + 4 <= rawDTCs.length; i += 4) {
-    const rawCode = rawDTCs.substring(i, i + 4);
+    const rawCode = rawDTCs.substring(i, i + 4).toUpperCase();
     
-    // Ignorar códigos vazios
+    // Ignorar códigos vazios ou padding
     if (rawCode === '0000' || /^0+$/.test(rawCode)) {
+      continue;
+    }
+    
+    // NOVO: Verificar se não é um header CAN
+    if (!isNotCANHeader(rawCode)) {
+      console.log(`[DTC Parser] Ignorando header CAN: ${rawCode}`);
       continue;
     }
 
@@ -267,6 +350,18 @@ export function parseDTCResponse(response: string): ParsedDTC[] {
     const suffix = rawCode.substring(1);
     
     const code = prefix + suffix;
+    
+    // NOVO: Validar formato do código DTC
+    if (!isValidDTCCode(code)) {
+      console.log(`[DTC Parser] Ignorando código inválido: ${code} (raw: ${rawCode})`);
+      continue;
+    }
+    
+    // NOVO: Evitar duplicatas
+    if (seenCodes.has(code)) {
+      continue;
+    }
+    seenCodes.add(code);
     
     dtcs.push({
       code,
