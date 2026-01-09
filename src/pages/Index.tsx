@@ -28,6 +28,7 @@ const Index = () => {
     rpm,
     speed,
     temperature,
+    voltage,
     error,
     logs,
     isPolling,
@@ -57,6 +58,7 @@ const Index = () => {
       rpm,
       speed,
       temperature,
+      voltage,
       isConnected: status === 'ready' || status === 'reading',
       isPolling,
     },
@@ -74,23 +76,23 @@ const Index = () => {
   const isReady = status === 'ready';
   const isReading = status === 'reading';
 
-  // Protocolo de Boas-vindas ao conectar (inclui lembretes de manutenção)
+  // Protocolo de Boas-vindas ao conectar (inclui lembretes de manutenção e voltagem real)
   useEffect(() => {
     if (status === 'ready' && !hasWelcomedRef.current && jarvisSettings.welcomeEnabled) {
       hasWelcomedRef.current = true;
       
+      // Aguardar 4 segundos para dar tempo de ler a voltagem
       const timer = setTimeout(() => {
         const temp = temperature !== null ? temperature : 'desconhecida';
-        let motorStatus: string;
         
-        if (temperature === null) {
-          motorStatus = 'Aguardando leitura de temperatura';
-        } else if (temperature < 60) {
-          motorStatus = 'Motor frio, injeção ajustada';
-        } else if (temperature < 90) {
-          motorStatus = 'Motor em aquecimento';
+        // Status da bateria baseado na voltagem real
+        let batteryStatus: string;
+        if (voltage === null) {
+          batteryStatus = 'Aguardando leitura da bateria';
+        } else if (voltage < 12.5) {
+          batteryStatus = `Atenção, tensão da bateria baixa em ${voltage} volts. Verifique o alternador`;
         } else {
-          motorStatus = 'Motor na temperatura ideal de operação';
+          batteryStatus = `Tensão da bateria estável em ${voltage} volts. Alternador operando`;
         }
         
         let maintenanceWarning = '';
@@ -113,8 +115,8 @@ const Index = () => {
           }
         }
         
-        speak(`Sistema Ford conectado. Temperatura do motor em ${temp} graus. ${motorStatus}. Tensão da bateria estável.${maintenanceWarning} Pronto para partir, piloto.`);
-      }, 2000);
+        speak(`Sistema Ford conectado. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning} Pronto para rodar.`);
+      }, 4000);
       
       return () => clearTimeout(timer);
     }
@@ -123,7 +125,7 @@ const Index = () => {
     if (status === 'disconnected') {
       hasWelcomedRef.current = false;
     }
-  }, [status, temperature, speak, jarvisSettings]);
+  }, [status, temperature, voltage, speak, jarvisSettings]);
 
   // Monitor de "Pé Pesado" - Proteção do Motor Sigma
   useEffect(() => {
@@ -313,6 +315,7 @@ const Index = () => {
               <VehicleStats 
                 speed={speed} 
                 temperature={temperature} 
+                voltage={voltage}
                 isReading={isReading} 
               />
 
