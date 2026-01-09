@@ -19,10 +19,12 @@ import { DTCModal } from './DTCModal';
 import { OBDLimitations } from './OBDLimitations';
 import { ScanProgress, type ScanStep } from './ScanProgress';
 import { ScanHistory } from './ScanHistory';
+import { DTCAlertBanner } from './DTCAlertBanner';
 import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/lib/dtcParser';
 import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
 import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
-import { saveScanResult } from '@/lib/scanHistory';
+import { saveScanResult, getRecentScans, compareScanResults } from '@/lib/scanHistory';
+import { generateVoiceAlert, getDTCSeverity } from '@/lib/dtcNotifications';
 import { useToast } from '@/hooks/use-toast';
 
 type ScanState = 'idle' | 'scanning' | 'clearing' | 'clear' | 'errors';
@@ -33,6 +35,7 @@ interface DTCScannerProps {
   addLog: (message: string) => void;
   stopPolling: () => void;
   isPolling: boolean;
+  onSpeakAlert?: (message: string) => void;
 }
 
 const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
@@ -51,7 +54,7 @@ const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
   { id: 'process', label: 'Processando resultados', status: 'pending' },
 ];
 
-export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling }: DTCScannerProps) {
+export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling, onSpeakAlert }: DTCScannerProps) {
   const { toast } = useToast();
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [dtcs, setDtcs] = useState<ParsedDTC[]>([]);
@@ -64,6 +67,7 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const [isClearing, setIsClearing] = useState(false);
   const [scanStartTime, setScanStartTime] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
+  const [scanComparison, setScanComparison] = useState<{ new: string[]; resolved: string[]; persistent: string[] } | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -582,6 +586,58 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         await saveScanResult(uniqueDTCs, detectedVIN, modulesCount, scanDuration);
         addLog('💾 Scan salvo no histórico');
         setHistoryKey(prev => prev + 1); // Atualizar histórico
+        
+        // === NOVO: Comparar com scan anterior e notificar ===
+        const previousScans = await getRecentScans(2);
+        
+        if (previousScans.length >= 2) {
+          const currentScan = previousScans[0];
+          const previousScan = previousScans[1];
+          
+          const comparison = compareScanResults(previousScan, currentScan);
+          setScanComparison(comparison);
+          
+          // Notificar sobre novos erros
+          if (comparison.new.length > 0) {
+            const hasCritical = comparison.new.some(code => getDTCSeverity(code) === 'critical');
+            
+            toast({
+              title: `⚠️ ${comparison.new.length} Novo(s) Erro(s) Detectado(s)!`,
+              description: comparison.new.slice(0, 5).join(', ') + (comparison.new.length > 5 ? ` +${comparison.new.length - 5}` : ''),
+              variant: hasCritical ? 'destructive' : 'default',
+              duration: 10000,
+            });
+            
+            // Alerta de voz via Jarvis
+            if (onSpeakAlert) {
+              const voiceMessage = generateVoiceAlert(comparison.new, []);
+              if (voiceMessage) {
+                onSpeakAlert(voiceMessage);
+              }
+            }
+            
+            addLog(`🔔 Comparação: +${comparison.new.length} novo(s), -${comparison.resolved.length} resolvido(s)`);
+          }
+          
+          // Notificar sobre erros resolvidos (separado para não sobrescrever)
+          if (comparison.resolved.length > 0 && comparison.new.length === 0) {
+            toast({
+              title: `✅ ${comparison.resolved.length} Erro(s) Resolvido(s)!`,
+              description: comparison.resolved.slice(0, 5).join(', '),
+              duration: 8000,
+            });
+            
+            // Alerta de voz positivo
+            if (onSpeakAlert) {
+              const voiceMessage = generateVoiceAlert([], comparison.resolved);
+              if (voiceMessage) {
+                onSpeakAlert(voiceMessage);
+              }
+            }
+          }
+        } else {
+          setScanComparison(null);
+        }
       } catch (e) {
         addLog('⚠️ Erro ao salvar histórico');
       }
@@ -622,6 +678,7 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const handleReset = () => {
     setScanState('idle');
     setDtcs([]);
+    setScanComparison(null);
   };
 
   return (
@@ -739,6 +796,11 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
 
       {scanState === 'scanning' && (
         <ScanProgress steps={scanSteps} elapsedTime={elapsedTime} />
+      )}
+
+      {/* Banner de comparação com scan anterior */}
+      {(scanState === 'clear' || scanState === 'errors') && scanComparison && (
+        <DTCAlertBanner comparison={scanComparison} />
       )}
 
       {scanState === 'clear' && <AllClearShield />}
