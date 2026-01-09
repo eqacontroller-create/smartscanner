@@ -4,6 +4,7 @@ import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
+import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
 import { Button } from '@/components/ui/button';
@@ -154,6 +155,13 @@ const Index = () => {
 
             {/* Mechanic IA Tab */}
             <TabsContent value="mechanic" className="space-y-6 mt-6">
+              {/* Vehicle VIN Reader */}
+              <VehicleVIN
+                sendCommand={sendRawCommand}
+                isConnected={isReady || isReading}
+                addLog={addLog}
+              />
+              
               <DTCScanner 
                 sendCommand={sendRawCommand}
                 isConnected={isReady || isReading}
