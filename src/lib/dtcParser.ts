@@ -31,6 +31,15 @@ export function parseDTCResponse(response: string): ParsedDTC[] {
     .replace(/[\r\n>\s]/g, '')
     .toUpperCase();
 
+  // Tratar respostas especiais
+  if (cleanResponse.includes('NODATA') || cleanResponse.includes('NO DATA')) {
+    return [];
+  }
+  
+  if (cleanResponse.includes('UNABLE') || cleanResponse.includes('ERROR')) {
+    return [];
+  }
+
   // Verificar se é resposta válida de DTCs (começa com 43)
   if (!cleanResponse.startsWith('43')) {
     return [];

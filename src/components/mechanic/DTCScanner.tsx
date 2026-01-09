@@ -5,17 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AllClearShield } from './AllClearShield';
 import { DTCList } from './DTCList';
 import { DTCModal } from './DTCModal';
+import { OBDLimitations } from './OBDLimitations';
 import { parseDTCResponse, isNoErrorsResponse, type ParsedDTC } from '@/lib/dtcParser';
 
 type ScanState = 'idle' | 'scanning' | 'clear' | 'errors';
 
 interface DTCScannerProps {
-  sendCommand: (command: string) => Promise<string>;
+  sendCommand: (command: string, timeout?: number) => Promise<string>;
   isConnected: boolean;
   addLog: (message: string) => void;
+  stopPolling: () => void;
+  isPolling: boolean;
 }
 
-export function DTCScanner({ sendCommand, isConnected, addLog }: DTCScannerProps) {
+export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling }: DTCScannerProps) {
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [dtcs, setDtcs] = useState<ParsedDTC[]>([]);
   const [selectedDTC, setSelectedDTC] = useState<ParsedDTC | null>(null);
@@ -24,16 +27,32 @@ export function DTCScanner({ sendCommand, isConnected, addLog }: DTCScannerProps
   const handleScan = async () => {
     if (!isConnected) return;
 
+    // Parar polling de RPM se estiver ativo para evitar conflitos
+    if (isPolling) {
+      addLog('⏸️ Pausando leitura de RPM para scan de DTCs...');
+      stopPolling();
+      // Aguardar para garantir que parou
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
     setScanState('scanning');
     setDtcs([]);
     addLog('🔍 Iniciando scan de falhas (comando 03)...');
 
     try {
-      const response = await sendCommand('03');
+      // Usar timeout maior para DTCs (10 segundos)
+      const response = await sendCommand('03', 10000);
       addLog(`📥 Resposta DTCs: ${response.replace(/[\r\n]/g, ' ')}`);
 
-      if (isNoErrorsResponse(response)) {
-        addLog('✅ Nenhum código de erro encontrado');
+      // Verificar respostas de erro
+      if (response.includes('UNABLE') || response.includes('ERROR') || response === 'TIMEOUT') {
+        addLog('❌ Falha na comunicação com a ECU');
+        setScanState('idle');
+        return;
+      }
+
+      if (isNoErrorsResponse(response) || response.includes('NODATA') || response.includes('NO DATA')) {
+        addLog('✅ Nenhum código de erro do MOTOR encontrado');
         setScanState('clear');
         return;
       }
@@ -41,7 +60,7 @@ export function DTCScanner({ sendCommand, isConnected, addLog }: DTCScannerProps
       const parsedDTCs = parseDTCResponse(response);
       
       if (parsedDTCs.length === 0) {
-        addLog('✅ Nenhum código de erro encontrado');
+        addLog('✅ Nenhum código de erro do MOTOR encontrado');
         setScanState('clear');
       } else {
         addLog(`⚠️ ${parsedDTCs.length} código(s) encontrado(s): ${parsedDTCs.map(d => d.code).join(', ')}`);
@@ -125,6 +144,9 @@ export function DTCScanner({ sendCommand, isConnected, addLog }: DTCScannerProps
       {scanState === 'errors' && (
         <DTCList dtcs={dtcs} onSelectDTC={handleSelectDTC} />
       )}
+
+      {/* Limitações do OBD-II */}
+      {(scanState === 'clear' || scanState === 'errors') && <OBDLimitations />}
 
       {/* Modal */}
       <DTCModal 

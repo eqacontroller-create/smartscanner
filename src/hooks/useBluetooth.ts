@@ -273,8 +273,8 @@ export function useBluetooth(): BluetoothHookReturn {
     poll();
   }, [status, readRPMOnce]);
 
-  const sendRawCommand = async (command: string): Promise<string> => {
-    return sendCommand(command, 5000);
+  const sendRawCommand = async (command: string, timeout: number = 10000): Promise<string> => {
+    return sendCommand(command, timeout);
   };
 
   return {
