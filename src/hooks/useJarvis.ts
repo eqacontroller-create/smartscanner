@@ -1,4 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
+import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
+
+interface UseJarvisOptions {
+  settings?: JarvisSettings;
+}
 
 interface UseJarvisReturn {
   speak: (text: string) => void;
@@ -8,7 +13,8 @@ interface UseJarvisReturn {
   isSupported: boolean;
 }
 
-export function useJarvis(): UseJarvisReturn {
+export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
+  const { settings = defaultJarvisSettings } = options;
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -25,20 +31,29 @@ export function useJarvis(): UseJarvisReturn {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.9; // Velocidade ligeiramente mais lenta para clareza
-    utterance.pitch = 0.95; // Tom ligeiramente mais grave, estilo Jarvis
-    utterance.volume = 1;
+    utterance.rate = settings.rate;
+    utterance.pitch = settings.pitch;
+    utterance.volume = settings.volume;
 
-    // Tentar encontrar uma voz em português brasileiro
+    // Usar voz selecionada ou encontrar uma em português brasileiro
     const voices = window.speechSynthesis.getVoices();
-    const ptBRVoice = voices.find(voice => 
-      voice.lang === 'pt-BR' || 
-      voice.lang.startsWith('pt-BR') ||
-      voice.lang === 'pt_BR'
-    );
     
-    if (ptBRVoice) {
-      utterance.voice = ptBRVoice;
+    if (settings.selectedVoiceURI) {
+      const selectedVoice = voices.find(voice => voice.voiceURI === settings.selectedVoiceURI);
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+    } else {
+      // Auto-selecionar voz pt-BR
+      const ptBRVoice = voices.find(voice => 
+        voice.lang === 'pt-BR' || 
+        voice.lang.startsWith('pt-BR') ||
+        voice.lang === 'pt_BR'
+      );
+      
+      if (ptBRVoice) {
+        utterance.voice = ptBRVoice;
+      }
     }
 
     utterance.onstart = () => setIsSpeaking(true);
@@ -50,7 +65,7 @@ export function useJarvis(): UseJarvisReturn {
 
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
-  }, [isSupported]);
+  }, [isSupported, settings.rate, settings.pitch, settings.volume, settings.selectedVoiceURI]);
 
   const stopSpeaking = useCallback(() => {
     if (isSupported) {

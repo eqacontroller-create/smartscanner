@@ -1,9 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBluetooth } from '@/hooks/useBluetooth';
 import { useJarvis } from '@/hooks/useJarvis';
+import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
+import { JarvisSettingsButton } from '@/components/dashboard/JarvisSettingsButton';
+import { JarvisSettingsSheet } from '@/components/dashboard/JarvisSettingsSheet';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
@@ -34,7 +37,17 @@ const Index = () => {
     isSupported
   } = useBluetooth();
 
-  const { speak, testAudio, isSpeaking, isSupported: isJarvisSupported } = useJarvis();
+  const {
+    settings: jarvisSettings,
+    updateSetting,
+    resetToDefaults,
+    availableVoices,
+    portugueseVoices,
+  } = useJarvisSettings();
+
+  const { speak, testAudio, isSpeaking, isSupported: isJarvisSupported } = useJarvis({ settings: jarvisSettings });
+  
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Ref para controlar cooldown do alerta de pé pesado
   const lastHighRpmAlertRef = useRef<number>(0);
@@ -46,7 +59,7 @@ const Index = () => {
 
   // Protocolo de Boas-vindas ao conectar
   useEffect(() => {
-    if (status === 'ready' && !hasWelcomedRef.current) {
+    if (status === 'ready' && !hasWelcomedRef.current && jarvisSettings.welcomeEnabled) {
       hasWelcomedRef.current = true;
       
       const timer = setTimeout(() => {
@@ -73,10 +86,12 @@ const Index = () => {
     if (status === 'disconnected') {
       hasWelcomedRef.current = false;
     }
-  }, [status, temperature, speak]);
+  }, [status, temperature, speak, jarvisSettings.welcomeEnabled]);
 
   // Monitor de "Pé Pesado" - Proteção do Motor Sigma
   useEffect(() => {
+    if (!jarvisSettings.highRpmAlertEnabled) return;
+    
     const now = Date.now();
     const cooldown = 15000; // 15 segundos entre alertas
     
@@ -90,7 +105,7 @@ const Index = () => {
       lastHighRpmAlertRef.current = now;
       speak('Cuidado. O motor ainda está frio. Evite altas rotações para proteger o motor Sigma.');
     }
-  }, [rpm, temperature, speak]);
+  }, [rpm, temperature, speak, jarvisSettings.highRpmAlertEnabled]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-y">
@@ -108,6 +123,10 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
+              <JarvisSettingsButton 
+                onClick={() => setIsSettingsOpen(true)} 
+                disabled={!isJarvisSupported} 
+              />
               <JarvisTestButton 
                 onTest={testAudio} 
                 isSpeaking={isSpeaking} 
@@ -266,6 +285,19 @@ const Index = () => {
           </p>
         </div>
       </footer>
+
+      {/* Jarvis Settings Sheet */}
+      <JarvisSettingsSheet
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        settings={jarvisSettings}
+        onUpdateSetting={updateSetting}
+        onResetToDefaults={resetToDefaults}
+        onTestVoice={testAudio}
+        availableVoices={availableVoices}
+        portugueseVoices={portugueseVoices}
+        isSpeaking={isSpeaking}
+      />
     </div>
   );
 };
