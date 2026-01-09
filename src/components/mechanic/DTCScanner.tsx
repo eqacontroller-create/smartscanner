@@ -654,6 +654,8 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         dtc={selectedDTC}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        sendCommand={sendCommand}
+        addLog={addLog}
       />
     </div>
   );
