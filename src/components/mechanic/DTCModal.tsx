@@ -1,4 +1,5 @@
-import { X, Wrench, AlertTriangle, Lightbulb, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Wrench, AlertTriangle, Lightbulb, Loader2, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import type { ParsedDTC } from '@/lib/dtcParser';
 import { getDTCInfo, getDefaultDTCInfo, type DTCInfo } from '@/lib/dtcDatabase';
 
@@ -23,13 +25,51 @@ const severityConfig = {
 };
 
 export function DTCModal({ dtc, isOpen, onClose }: DTCModalProps) {
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && dtc) {
+      fetchAIExplanation(dtc.code);
+    } else {
+      setAiExplanation(null);
+      setAiError(null);
+    }
+  }, [isOpen, dtc?.code]);
+
+  const fetchAIExplanation = async (code: string) => {
+    setIsLoadingAI(true);
+    setAiError(null);
+    
+    try {
+      const info = getDTCInfo(code) || getDefaultDTCInfo(code);
+      
+      const { data, error } = await supabase.functions.invoke('explain-dtc', {
+        body: { dtcCode: code, dtcDescription: info.description }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      setAiExplanation(data.explanation);
+    } catch (err) {
+      console.error('AI explanation error:', err);
+      setAiError(err instanceof Error ? err.message : 'Erro ao consultar IA');
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
   if (!dtc) return null;
 
   const info: DTCInfo = getDTCInfo(dtc.code) || getDefaultDTCInfo(dtc.code);
   const severity = severityConfig[info.severity];
-
-  // Simular explicação de IA (preparado para integração real)
-  const aiExplanation = generateAIExplanation(dtc.code, info);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -82,24 +122,31 @@ export function DTCModal({ dtc, isOpen, onClose }: DTCModalProps) {
             </ul>
           </div>
 
-          {/* Explicação IA */}
+          {/* Explicação IA Real */}
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
             <h4 className="text-sm font-medium text-primary mb-2 flex items-center gap-2">
-              🤖 Análise IA para Ford Focus
+              <Sparkles className="h-4 w-4" />
+              Análise do Mecânico IA
             </h4>
-            <p className="text-sm text-foreground leading-relaxed">
-              {aiExplanation}
-            </p>
             
-            {/* Banner para configurar API */}
-            <div className="mt-4 p-3 bg-muted/50 rounded-md border border-border">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Settings className="h-3 w-3" />
-                <span>
-                  Configure sua API Key da OpenAI nas configurações para obter explicações personalizadas em tempo real.
-                </span>
+            {isLoadingAI && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Consultando IA...
               </div>
-            </div>
+            )}
+            
+            {aiError && (
+              <div className="text-sm text-destructive">
+                {aiError}
+              </div>
+            )}
+            
+            {aiExplanation && !isLoadingAI && (
+              <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {aiExplanation}
+              </div>
+            )}
           </div>
         </div>
 
@@ -111,17 +158,4 @@ export function DTCModal({ dtc, isOpen, onClose }: DTCModalProps) {
       </DialogContent>
     </Dialog>
   );
-}
-
-// Função de simulação de IA - será substituída por chamada real à API
-function generateAIExplanation(code: string, info: DTCInfo): string {
-  const explanations: Record<string, string> = {
-    'P0300': 'No Ford Focus, falhas múltiplas de ignição geralmente indicam problemas com as bobinas de ignição ou velas. Recomendo verificar primeiro as velas de ignição - o Focus 2.0 Duratec costuma precisar de troca a cada 60.000 km. Se as velas estiverem boas, verifique as bobinas individuais, pois é comum falharem após 100.000 km.',
-    'P0171': 'Este código de mistura pobre no Ford Focus frequentemente está relacionado a vazamentos de vácuo no coletor de admissão ou mangueiras. Verifique especialmente a mangueira do freio a vácuo e as juntas do coletor. Outra causa comum é o sensor MAF sujo - uma limpeza com spray específico pode resolver.',
-    'P0420': 'No Ford Focus, antes de substituir o catalisador, verifique se não há vazamentos de escape e se os sensores de O2 estão funcionando. Muitas vezes, o problema é simplesmente um sensor traseiro envelhecido, que é muito mais barato de substituir.',
-    'P0442': 'Vazamentos pequenos no sistema EVAP do Focus geralmente são causados por tampa do tanque mal fechada ou ressecada. Verifique se a tampa fecha com "cliques" audíveis. Se persistir, verifique as mangueiras de vapor próximas ao tanque.',
-  };
-
-  return explanations[code] || 
-    `Para o Ford Focus, este código (${code}) indica: ${info.description.toLowerCase()} As causas mais comuns incluem ${info.causes.slice(0, 2).join(' e ').toLowerCase()}. Recomendo levar a um mecânico especializado em Ford para diagnóstico preciso com equipamento profissional.`;
 }
