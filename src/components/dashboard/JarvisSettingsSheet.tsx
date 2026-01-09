@@ -1,8 +1,9 @@
-import { Volume2, RotateCcw, Bell, Mic2 } from 'lucide-react';
+import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Sheet,
   SheetContent,
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { JarvisSettings } from '@/types/jarvisSettings';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface JarvisSettingsSheetProps {
   open: boolean;
@@ -61,8 +63,8 @@ export function JarvisSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader>
+      <SheetContent className="p-0 flex flex-col h-full">
+        <SheetHeader className="px-6 pt-6 pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Mic2 className="h-5 w-5 text-primary" />
             Configurações do Jarvis
@@ -72,50 +74,222 @@ export function JarvisSettingsSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6 py-6">
-          {/* Seção de Alertas */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Bell className="h-4 w-4 text-primary" />
-              Alertas de Voz
-            </div>
-            
-            <div className="space-y-4 pl-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="welcome-alert" className="text-sm font-medium">
-                    Boas-vindas ao conectar
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Mensagem automática ao iniciar conexão
-                  </p>
-                </div>
-                <Switch
-                  id="welcome-alert"
-                  checked={settings.welcomeEnabled}
-                  onCheckedChange={(checked) => onUpdateSetting('welcomeEnabled', checked)}
-                />
+        <ScrollArea className="flex-1 px-6">
+          <div className="space-y-6 pb-6">
+            {/* Seção de Alertas Básicos */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Bell className="h-4 w-4 text-primary" />
+                Alertas Básicos
               </div>
-
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="rpm-alert" className="text-sm font-medium">
-                    Alerta de motor frio
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Avisa quando acelerar com motor frio
-                  </p>
+              
+              <div className="space-y-4 pl-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="welcome-alert" className="text-sm font-medium">
+                      Boas-vindas ao conectar
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Mensagem automática ao iniciar conexão
+                    </p>
+                  </div>
+                  <Switch
+                    id="welcome-alert"
+                    checked={settings.welcomeEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('welcomeEnabled', checked)}
+                  />
                 </div>
-                <Switch
-                  id="rpm-alert"
-                  checked={settings.highRpmAlertEnabled}
-                  onCheckedChange={(checked) => onUpdateSetting('highRpmAlertEnabled', checked)}
-                />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="rpm-alert" className="text-sm font-medium">
+                      Alerta de motor frio
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Avisa quando acelerar com motor frio
+                    </p>
+                  </div>
+                  <Switch
+                    id="rpm-alert"
+                    checked={settings.highRpmAlertEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('highRpmAlertEnabled', checked)}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
+
+            {/* Seção de Alertas de Segurança */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Thermometer className="h-4 w-4 text-destructive" />
+                Alertas de Segurança
+              </div>
+              
+              <div className="space-y-4 pl-6">
+                {/* Temperatura Alta */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="temp-alert" className="text-sm font-medium">
+                        Temperatura alta do motor
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Alerta de superaquecimento
+                      </p>
+                    </div>
+                    <Switch
+                      id="temp-alert"
+                      checked={settings.highTempAlertEnabled}
+                      onCheckedChange={(checked) => onUpdateSetting('highTempAlertEnabled', checked)}
+                    />
+                  </div>
+                  {settings.highTempAlertEnabled && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">Limite de temperatura</Label>
+                        <span className="text-xs font-medium">{settings.highTempThreshold}°C</span>
+                      </div>
+                      <Slider
+                        value={[settings.highTempThreshold]}
+                        onValueChange={([value]) => onUpdateSetting('highTempThreshold', value)}
+                        min={80}
+                        max={120}
+                        step={5}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Velocidade */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="speed-alert" className="text-sm font-medium flex items-center gap-1.5">
+                        <Gauge className="h-3.5 w-3.5" />
+                        Velocidade acima do limite
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Avisa quando ultrapassar o limite
+                      </p>
+                    </div>
+                    <Switch
+                      id="speed-alert"
+                      checked={settings.speedAlertEnabled}
+                      onCheckedChange={(checked) => onUpdateSetting('speedAlertEnabled', checked)}
+                    />
+                  </div>
+                  {settings.speedAlertEnabled && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">Limite de velocidade</Label>
+                        <span className="text-xs font-medium">{settings.speedLimit} km/h</span>
+                      </div>
+                      <Slider
+                        value={[settings.speedLimit]}
+                        onValueChange={([value]) => onUpdateSetting('speedLimit', value)}
+                        min={60}
+                        max={180}
+                        step={10}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Seção de Manutenção */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Wrench className="h-4 w-4 text-warning" />
+                Lembretes de Manutenção
+              </div>
+              
+              <div className="space-y-4 pl-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="maintenance-alert" className="text-sm font-medium">
+                      Ativar lembretes
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Avisos baseados na quilometragem
+                    </p>
+                  </div>
+                  <Switch
+                    id="maintenance-alert"
+                    checked={settings.maintenanceAlertEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('maintenanceAlertEnabled', checked)}
+                  />
+                </div>
+
+                {settings.maintenanceAlertEnabled && (
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-mileage" className="text-xs text-muted-foreground">
+                        Quilometragem atual (km)
+                      </Label>
+                      <Input
+                        id="current-mileage"
+                        type="number"
+                        value={settings.currentMileage || ''}
+                        onChange={(e) => onUpdateSetting('currentMileage', Number(e.target.value) || 0)}
+                        placeholder="Ex: 85000"
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="next-oil" className="text-xs text-muted-foreground">
+                        Próxima troca de óleo (km)
+                      </Label>
+                      <Input
+                        id="next-oil"
+                        type="number"
+                        value={settings.nextOilChange || ''}
+                        onChange={(e) => onUpdateSetting('nextOilChange', Number(e.target.value) || 0)}
+                        placeholder="Ex: 90000"
+                        className="h-9"
+                      />
+                      {settings.currentMileage > 0 && settings.nextOilChange > 0 && (
+                        <p className={`text-xs ${settings.nextOilChange - settings.currentMileage <= 0 ? 'text-destructive font-medium' : settings.nextOilChange - settings.currentMileage <= 1000 ? 'text-warning' : 'text-muted-foreground'}`}>
+                          {settings.nextOilChange - settings.currentMileage <= 0 
+                            ? '⚠️ Troca de óleo atrasada!' 
+                            : `Faltam ${(settings.nextOilChange - settings.currentMileage).toLocaleString('pt-BR')} km`}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="next-inspection" className="text-xs text-muted-foreground">
+                        Próxima revisão (km)
+                      </Label>
+                      <Input
+                        id="next-inspection"
+                        type="number"
+                        value={settings.nextInspection || ''}
+                        onChange={(e) => onUpdateSetting('nextInspection', Number(e.target.value) || 0)}
+                        placeholder="Ex: 100000"
+                        className="h-9"
+                      />
+                      {settings.currentMileage > 0 && settings.nextInspection > 0 && (
+                        <p className={`text-xs ${settings.nextInspection - settings.currentMileage <= 0 ? 'text-destructive font-medium' : settings.nextInspection - settings.currentMileage <= 2000 ? 'text-warning' : 'text-muted-foreground'}`}>
+                          {settings.nextInspection - settings.currentMileage <= 0 
+                            ? '⚠️ Revisão atrasada!' 
+                            : `Faltam ${(settings.nextInspection - settings.currentMileage).toLocaleString('pt-BR')} km`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
 
           {/* Seção de Configurações de Voz */}
           <div className="space-y-4">
@@ -219,7 +393,11 @@ export function JarvisSettingsSheet({
 
           <Separator />
 
-          {/* Botões de Ação */}
+          </div>
+        </ScrollArea>
+
+        {/* Botões de Ação - Fixed at bottom */}
+        <div className="border-t p-4 mt-auto">
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               variant="outline"

@@ -2,6 +2,14 @@ export interface JarvisSettings {
   // Alertas
   welcomeEnabled: boolean;
   highRpmAlertEnabled: boolean;
+  highTempAlertEnabled: boolean;
+  highTempThreshold: number;        // Limite em Celsius (padrão: 100)
+  speedAlertEnabled: boolean;
+  speedLimit: number;               // Limite em km/h (padrão: 120)
+  maintenanceAlertEnabled: boolean;
+  currentMileage: number;           // Quilometragem atual (entrada manual)
+  nextOilChange: number;            // Próxima troca de óleo (km)
+  nextInspection: number;           // Próxima revisão (km)
   
   // Configurações de Voz
   volume: number;       // 0.0 a 1.0
@@ -13,8 +21,16 @@ export interface JarvisSettings {
 export const defaultJarvisSettings: JarvisSettings = {
   welcomeEnabled: true,
   highRpmAlertEnabled: true,
+  highTempAlertEnabled: true,
+  highTempThreshold: 100,
+  speedAlertEnabled: true,
+  speedLimit: 120,
+  maintenanceAlertEnabled: true,
+  currentMileage: 0,
+  nextOilChange: 15000,
+  nextInspection: 30000,
   volume: 1.0,
   rate: 0.9,
   pitch: 0.95,
-  selectedVoiceURI: null, // Auto-seleciona pt-BR
+  selectedVoiceURI: null,
 };
