@@ -1,6 +1,9 @@
+import { useEffect, useRef } from 'react';
 import { useBluetooth } from '@/hooks/useBluetooth';
+import { useJarvis } from '@/hooks/useJarvis';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
+import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
@@ -31,8 +34,63 @@ const Index = () => {
     isSupported
   } = useBluetooth();
 
+  const { speak, testAudio, isSpeaking, isSupported: isJarvisSupported } = useJarvis();
+  
+  // Ref para controlar cooldown do alerta de pé pesado
+  const lastHighRpmAlertRef = useRef<number>(0);
+  // Ref para controlar se já deu boas-vindas nesta conexão
+  const hasWelcomedRef = useRef<boolean>(false);
+
   const isReady = status === 'ready';
   const isReading = status === 'reading';
+
+  // Protocolo de Boas-vindas ao conectar
+  useEffect(() => {
+    if (status === 'ready' && !hasWelcomedRef.current) {
+      hasWelcomedRef.current = true;
+      
+      const timer = setTimeout(() => {
+        const temp = temperature !== null ? temperature : 'desconhecida';
+        let motorStatus: string;
+        
+        if (temperature === null) {
+          motorStatus = 'Aguardando leitura de temperatura';
+        } else if (temperature < 60) {
+          motorStatus = 'Motor frio, injeção ajustada';
+        } else if (temperature < 90) {
+          motorStatus = 'Motor em aquecimento';
+        } else {
+          motorStatus = 'Motor na temperatura ideal de operação';
+        }
+        
+        speak(`Sistema Ford conectado. Temperatura do motor em ${temp} graus. ${motorStatus}. Tensão da bateria estável. Pronto para partir, piloto.`);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+    
+    // Reset welcome flag quando desconectar
+    if (status === 'disconnected') {
+      hasWelcomedRef.current = false;
+    }
+  }, [status, temperature, speak]);
+
+  // Monitor de "Pé Pesado" - Proteção do Motor Sigma
+  useEffect(() => {
+    const now = Date.now();
+    const cooldown = 15000; // 15 segundos entre alertas
+    
+    if (
+      temperature !== null && 
+      temperature < 60 && 
+      rpm !== null && 
+      rpm > 2500 &&
+      now - lastHighRpmAlertRef.current > cooldown
+    ) {
+      lastHighRpmAlertRef.current = now;
+      speak('Cuidado. O motor ainda está frio. Evite altas rotações para proteger o motor Sigma.');
+    }
+  }, [rpm, temperature, speak]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-y">
@@ -49,11 +107,17 @@ const Index = () => {
                 <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Diagnóstico Automotivo via Bluetooth</p>
               </div>
             </div>
-            <StatusIndicator status={status} />
+            <div className="flex items-center gap-1 sm:gap-2">
+              <JarvisTestButton 
+                onTest={testAudio} 
+                isSpeaking={isSpeaking} 
+                isSupported={isJarvisSupported} 
+              />
+              <StatusIndicator status={status} />
+            </div>
           </div>
         </div>
       </header>
-
       {/* Main Content */}
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 safe-area-x">
         <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
