@@ -14,6 +14,8 @@ export interface JarvisSettings {
   // IA Conversacional
   aiModeEnabled: boolean;           // Ativar modo IA conversacional
   aiResponseLength: 'short' | 'medium' | 'detailed';  // Tamanho das respostas
+  continuousListening: boolean;     // Modo escuta contínua
+  wakeWord: string;                 // Palavra de ativação (padrão: "jarvis")
   
   // Configurações de Voz
   volume: number;       // 0.0 a 1.0
@@ -35,6 +37,8 @@ export const defaultJarvisSettings: JarvisSettings = {
   nextInspection: 30000,
   aiModeEnabled: true,
   aiResponseLength: 'short',
+  continuousListening: false,
+  wakeWord: 'jarvis',
   volume: 1.0,
   rate: 0.9,
   pitch: 0.95,
