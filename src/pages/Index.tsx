@@ -49,15 +49,17 @@ const Index = () => {
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  // Ref para controlar cooldown do alerta de pé pesado
+  // Refs para controlar cooldowns dos alertas
   const lastHighRpmAlertRef = useRef<number>(0);
+  const lastHighTempAlertRef = useRef<number>(0);
+  const lastSpeedAlertRef = useRef<number>(0);
   // Ref para controlar se já deu boas-vindas nesta conexão
   const hasWelcomedRef = useRef<boolean>(false);
 
   const isReady = status === 'ready';
   const isReading = status === 'reading';
 
-  // Protocolo de Boas-vindas ao conectar
+  // Protocolo de Boas-vindas ao conectar (inclui lembretes de manutenção)
   useEffect(() => {
     if (status === 'ready' && !hasWelcomedRef.current && jarvisSettings.welcomeEnabled) {
       hasWelcomedRef.current = true;
@@ -76,7 +78,27 @@ const Index = () => {
           motorStatus = 'Motor na temperatura ideal de operação';
         }
         
-        speak(`Sistema Ford conectado. Temperatura do motor em ${temp} graus. ${motorStatus}. Tensão da bateria estável. Pronto para partir, piloto.`);
+        let maintenanceWarning = '';
+        
+        // Verificar lembretes de manutenção
+        if (jarvisSettings.maintenanceAlertEnabled && jarvisSettings.currentMileage > 0) {
+          const kmToOilChange = jarvisSettings.nextOilChange - jarvisSettings.currentMileage;
+          const kmToInspection = jarvisSettings.nextInspection - jarvisSettings.currentMileage;
+          
+          if (kmToOilChange <= 0) {
+            maintenanceWarning += ' Atenção: quilometragem da troca de óleo ultrapassada. Agende a manutenção.';
+          } else if (kmToOilChange <= 1000) {
+            maintenanceWarning += ` Lembrete: troca de óleo em ${kmToOilChange} quilômetros.`;
+          }
+          
+          if (kmToInspection <= 0) {
+            maintenanceWarning += ' Atenção: quilometragem da revisão ultrapassada. Agende a manutenção.';
+          } else if (kmToInspection <= 2000) {
+            maintenanceWarning += ` Revisão programada em ${kmToInspection} quilômetros.`;
+          }
+        }
+        
+        speak(`Sistema Ford conectado. Temperatura do motor em ${temp} graus. ${motorStatus}. Tensão da bateria estável.${maintenanceWarning} Pronto para partir, piloto.`);
       }, 2000);
       
       return () => clearTimeout(timer);
@@ -86,7 +108,7 @@ const Index = () => {
     if (status === 'disconnected') {
       hasWelcomedRef.current = false;
     }
-  }, [status, temperature, speak, jarvisSettings.welcomeEnabled]);
+  }, [status, temperature, speak, jarvisSettings]);
 
   // Monitor de "Pé Pesado" - Proteção do Motor Sigma
   useEffect(() => {
@@ -106,6 +128,40 @@ const Index = () => {
       speak('Cuidado. O motor ainda está frio. Evite altas rotações para proteger o motor Sigma.');
     }
   }, [rpm, temperature, speak, jarvisSettings.highRpmAlertEnabled]);
+
+  // Monitor de Temperatura Alta - Alerta de Superaquecimento
+  useEffect(() => {
+    if (!jarvisSettings.highTempAlertEnabled) return;
+    
+    const now = Date.now();
+    const cooldown = 60000; // 60 segundos entre alertas
+    
+    if (
+      temperature !== null && 
+      temperature > jarvisSettings.highTempThreshold &&
+      now - lastHighTempAlertRef.current > cooldown
+    ) {
+      lastHighTempAlertRef.current = now;
+      speak(`Atenção! Temperatura do motor em ${temperature} graus. Risco de superaquecimento. Reduza a velocidade ou pare o veículo.`);
+    }
+  }, [temperature, speak, jarvisSettings.highTempAlertEnabled, jarvisSettings.highTempThreshold]);
+
+  // Monitor de Velocidade - Alerta acima do limite
+  useEffect(() => {
+    if (!jarvisSettings.speedAlertEnabled) return;
+    
+    const now = Date.now();
+    const cooldown = 30000; // 30 segundos entre alertas
+    
+    if (
+      speed !== null && 
+      speed > jarvisSettings.speedLimit &&
+      now - lastSpeedAlertRef.current > cooldown
+    ) {
+      lastSpeedAlertRef.current = now;
+      speak(`Velocidade acima do limite configurado. Você está a ${speed} quilômetros por hora.`);
+    }
+  }, [speed, speak, jarvisSettings.speedAlertEnabled, jarvisSettings.speedLimit]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-y">
