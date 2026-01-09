@@ -14,7 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dtc_findings: {
+        Row: {
+          created_at: string
+          dtc_code: string
+          id: string
+          module_id: string | null
+          module_name: string | null
+          raw_code: string | null
+          scan_id: string
+          status_byte: string | null
+        }
+        Insert: {
+          created_at?: string
+          dtc_code: string
+          id?: string
+          module_id?: string | null
+          module_name?: string | null
+          raw_code?: string | null
+          scan_id: string
+          status_byte?: string | null
+        }
+        Update: {
+          created_at?: string
+          dtc_code?: string
+          id?: string
+          module_id?: string | null
+          module_name?: string | null
+          raw_code?: string | null
+          scan_id?: string
+          status_byte?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dtc_findings_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "dtc_scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dtc_scans: {
+        Row: {
+          created_at: string
+          id: string
+          modules_scanned: number
+          notes: string | null
+          scan_date: string
+          scan_duration_ms: number | null
+          total_dtcs: number
+          vehicle_id: string | null
+          vin: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          modules_scanned?: number
+          notes?: string | null
+          scan_date?: string
+          scan_duration_ms?: number | null
+          total_dtcs?: number
+          vehicle_id?: string | null
+          vin?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          modules_scanned?: number
+          notes?: string | null
+          scan_date?: string
+          scan_duration_ms?: number | null
+          total_dtcs?: number
+          vehicle_id?: string | null
+          vin?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dtc_scans_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          country: string | null
+          created_at: string
+          id: string
+          manufacturer: string | null
+          manufacturer_group: string | null
+          model_year: string | null
+          updated_at: string
+          vin: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          manufacturer?: string | null
+          manufacturer_group?: string | null
+          model_year?: string | null
+          updated_at?: string
+          vin: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          manufacturer?: string | null
+          manufacturer_group?: string | null
+          model_year?: string | null
+          updated_at?: string
+          vin?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
