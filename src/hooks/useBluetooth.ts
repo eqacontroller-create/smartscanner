@@ -16,6 +16,8 @@ interface BluetoothHookReturn {
   disconnect: () => void;
   startPolling: () => void;
   stopPolling: () => void;
+  sendRawCommand: (command: string) => Promise<string>;
+  addLog: (message: string) => void;
   isSupported: boolean;
 }
 
@@ -271,6 +273,10 @@ export function useBluetooth(): BluetoothHookReturn {
     poll();
   }, [status, readRPMOnce]);
 
+  const sendRawCommand = async (command: string): Promise<string> => {
+    return sendCommand(command, 5000);
+  };
+
   return {
     status,
     rpm,
@@ -281,6 +287,8 @@ export function useBluetooth(): BluetoothHookReturn {
     disconnect,
     startPolling,
     stopPolling,
+    sendRawCommand,
+    addLog,
     isSupported
   };
 }
