@@ -6,7 +6,7 @@ import { RPMCard } from '@/components/dashboard/RPMCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Gauge, Car, AlertTriangle } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle } from 'lucide-react';
 
 const Index = () => {
   const {
@@ -14,9 +14,11 @@ const Index = () => {
     rpm,
     error,
     logs,
+    isPolling,
     connect,
     disconnect,
-    readRPM,
+    startPolling,
+    stopPolling,
     isSupported
   } = useBluetooth();
 
@@ -89,16 +91,27 @@ const Index = () => {
           <div className="flex flex-col items-center gap-6">
             <RPMGauge value={rpm} />
             
-            {/* Read RPM Button */}
+            {/* Polling Toggle Button */}
             {(isReady || isReading) && (
               <Button
                 size="lg"
-                onClick={readRPM}
-                disabled={isReading}
-                className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={isPolling ? stopPolling : startPolling}
+                className={`gap-2 ${isPolling 
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
+                  : 'bg-accent text-accent-foreground hover:bg-accent/90'
+                }`}
               >
-                <Gauge className="h-5 w-5" />
-                {isReading ? 'Lendo...' : 'Ler RPM'}
+                {isPolling ? (
+                  <>
+                    <Square className="h-5 w-5" />
+                    Parar Leitura
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-5 w-5" />
+                    Iniciar Leitura
+                  </>
+                )}
               </Button>
             )}
           </div>

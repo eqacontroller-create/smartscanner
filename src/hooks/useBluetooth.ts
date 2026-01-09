@@ -11,9 +11,11 @@ interface BluetoothHookReturn {
   rpm: number | null;
   error: string | null;
   logs: string[];
+  isPolling: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
-  readRPM: () => Promise<void>;
+  startPolling: () => void;
+  stopPolling: () => void;
   isSupported: boolean;
 }
 
@@ -24,12 +26,15 @@ export function useBluetooth(): BluetoothHookReturn {
   const [rpm, setRPM] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
+  const [isPolling, setIsPolling] = useState(false);
 
   const deviceRef = useRef<BluetoothDevice | null>(null);
   const writeCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
   const notifyCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
   const responseBufferRef = useRef<string>('');
   const responseResolverRef = useRef<((value: string) => void) | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
+  const isPollingRef = useRef(false);
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 
@@ -193,7 +198,18 @@ export function useBluetooth(): BluetoothHookReturn {
     }
   }, [isSupported, handleNotification, sendCommand]);
 
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    isPollingRef.current = false;
+    setIsPolling(false);
+    addLogRef.current('⏹ Leitura contínua parada');
+  }, []);
+
   const disconnect = useCallback(() => {
+    stopPolling();
     if (deviceRef.current?.gatt?.connected) {
       deviceRef.current.gatt.disconnect();
     }
@@ -204,22 +220,14 @@ export function useBluetooth(): BluetoothHookReturn {
     setStatus('disconnected');
     setRPM(null);
     addLogRef.current('🔌 Desconectado manualmente');
-  }, []);
+  }, [stopPolling]);
 
-  const readRPM = useCallback(async () => {
-    if (status !== 'ready') {
-      addLogRef.current('⚠️ Scanner não está pronto');
-      return;
-    }
+  const readRPMOnce = useCallback(async (): Promise<boolean> => {
+    if (!writeCharRef.current) return false;
 
     try {
-      setStatus('reading');
-      addLogRef.current('📊 Lendo RPM (010C)...');
-      
-      const response = await sendCommand('010C', 5000);
-      
+      const response = await sendCommand('010C', 3000);
       const cleanResponse = response.replace(/[\r\n>\s]/g, '').toUpperCase();
-      addLogRef.current(`📊 Resposta: ${cleanResponse}`);
       
       const match = cleanResponse.match(/410C([0-9A-F]{2})([0-9A-F]{2})/);
       
@@ -228,32 +236,51 @@ export function useBluetooth(): BluetoothHookReturn {
         const B = parseInt(match[2], 16);
         const rpmValue = ((A * 256) + B) / 4;
         setRPM(Math.round(rpmValue));
-        addLogRef.current(`✅ RPM: ${Math.round(rpmValue)}`);
-      } else if (response === 'TIMEOUT') {
-        addLogRef.current('⚠️ Timeout ao ler RPM');
+        return true;
       } else if (cleanResponse.includes('NODATA') || cleanResponse.includes('NO DATA')) {
-        addLogRef.current('⚠️ Sem dados (motor desligado?)');
         setRPM(0);
-      } else {
-        addLogRef.current(`⚠️ Resposta não reconhecida`);
+        return true;
       }
-
-      setStatus('ready');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao ler RPM';
-      addLogRef.current(`❌ Erro: ${message}`);
-      setStatus('ready');
+      return false;
+    } catch {
+      return false;
     }
-  }, [status, sendCommand]);
+  }, [sendCommand]);
+
+  const startPolling = useCallback(() => {
+    if (status !== 'ready' || isPollingRef.current) {
+      addLogRef.current('⚠️ Não é possível iniciar leitura');
+      return;
+    }
+
+    isPollingRef.current = true;
+    setIsPolling(true);
+    setStatus('reading');
+    addLogRef.current('▶ Iniciando leitura contínua...');
+
+    const poll = async () => {
+      if (!isPollingRef.current) return;
+      
+      await readRPMOnce();
+      
+      if (isPollingRef.current) {
+        pollingIntervalRef.current = window.setTimeout(poll, 500);
+      }
+    };
+
+    poll();
+  }, [status, readRPMOnce]);
 
   return {
     status,
     rpm,
     error,
     logs,
+    isPolling,
     connect,
     disconnect,
-    readRPM,
+    startPolling,
+    stopPolling,
     isSupported
   };
 }
