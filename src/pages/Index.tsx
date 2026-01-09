@@ -20,7 +20,8 @@ import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Gauge, Wrench, Activity } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle, Gauge, Wrench, Activity, HelpCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Index = () => {
   const {
@@ -224,6 +225,12 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
+              {/* Botão de Ajuda */}
+              <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
+                <Link to="/ajuda">
+                  <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Link>
+              </Button>
               {/* Botão de voz do Jarvis AI */}
               {jarvisSettings.aiModeEnabled && (
                 <JarvisVoiceButton
