@@ -1,4 +1,4 @@
-import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench } from 'lucide-react';
+import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -284,6 +284,58 @@ export function JarvisSettingsSheet({
                         </p>
                       )}
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Seção de IA Conversacional */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Brain className="h-4 w-4 text-accent" />
+                IA Conversacional
+              </div>
+              
+              <div className="space-y-4 pl-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="ai-mode" className="text-sm font-medium">
+                      Ativar modo IA
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Converse naturalmente com o Jarvis
+                    </p>
+                  </div>
+                  <Switch
+                    id="ai-mode"
+                    checked={settings.aiModeEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('aiModeEnabled', checked)}
+                  />
+                </div>
+
+                {settings.aiModeEnabled && (
+                  <div className="space-y-3">
+                    <Label className="text-xs text-muted-foreground">Tamanho das respostas</Label>
+                    <Select
+                      value={settings.aiResponseLength}
+                      onValueChange={(value: 'short' | 'medium' | 'detailed') => 
+                        onUpdateSetting('aiResponseLength', value)
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="short">Curta (1-2 frases)</SelectItem>
+                        <SelectItem value="medium">Média (2-3 frases)</SelectItem>
+                        <SelectItem value="detailed">Detalhada (3-4 frases)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      💡 Dica: Pergunte "Como está o carro?" ou "Posso acelerar?"
+                    </p>
                   </div>
                 )}
               </div>
