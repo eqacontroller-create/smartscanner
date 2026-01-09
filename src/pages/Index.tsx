@@ -148,6 +148,8 @@ const Index = () => {
                 sendCommand={sendRawCommand}
                 isConnected={isReady || isReading}
                 addLog={addLog}
+                stopPolling={stopPolling}
+                isPolling={isPolling}
               />
               
               {/* Log Panel also visible in mechanic tab */}
