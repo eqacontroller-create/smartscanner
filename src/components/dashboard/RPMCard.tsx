@@ -23,7 +23,7 @@ export function RPMCard({ value, isReading }: RPMCardProps) {
             </div>
           </div>
           <div className="text-right">
-            <p className={`text-4xl font-bold tracking-tight ${isReading ? 'animate-pulse' : ''} ${value !== null ? 'text-primary neon-glow' : 'text-muted-foreground'}`}>
+            <p className={`text-4xl font-bold tracking-tight value-transition ${value !== null ? 'text-primary neon-glow' : 'text-muted-foreground'}`}>
               {displayValue}
             </p>
             <p className="text-sm text-muted-foreground">RPM</p>
