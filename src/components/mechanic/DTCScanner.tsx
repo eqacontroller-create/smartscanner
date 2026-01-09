@@ -150,7 +150,7 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     }
   };
 
-  // Limpar códigos de erro (comando 04)
+  // Limpar códigos de erro (OBD-II Modo 04 + UDS 14)
   const handleClearDTCs = async () => {
     if (!isConnected) return;
     
@@ -158,18 +158,70 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     addLog('🗑️ Iniciando limpeza de códigos de erro...');
     
     try {
+      // Parar polling se ativo para evitar conflito
+      if (isPolling) {
+        stopPolling();
+        await delay(500);
+      }
+      
       // Resetar para modo broadcast primeiro
       await sendCommand('AT SH 7DF', 2000);
       await sendCommand('AT CRA', 2000);
+      await delay(200);
       
-      // Comando 04 = Clear/Reset Emission-Related DTCs
-      addLog('📤 Enviando comando 04 (Clear DTCs)...');
-      const response = await sendCommand('04', 5000);
-      addLog(`📥 Resposta: "${response}"`);
+      let obd2Success = false;
+      let udsSuccess = false;
       
-      // Verificar se foi aceito (resposta 44 = sucesso)
-      if (response.includes('44')) {
-        addLog('✅ Códigos de erro limpos com sucesso!');
+      // === MÉTODO 1: OBD-II Modo 04 (códigos de emissão) ===
+      addLog('📤 Enviando OBD-II Clear (04)...');
+      try {
+        const obd2Response = await sendCommand('04', 5000);
+        addLog(`📥 OBD-II: "${obd2Response.substring(0, 50)}"`);
+        
+        if (obd2Response.includes('44')) {
+          obd2Success = true;
+          addLog('✅ Códigos OBD-II limpos com sucesso');
+        } else if (obd2Response.includes('NODATA') || obd2Response.includes('NO DATA')) {
+          obd2Success = true;
+          addLog('ℹ️ Nenhum código OBD-II para limpar');
+        }
+      } catch (e) {
+        addLog(`⚠️ OBD-II Clear falhou: ${e}`);
+      }
+      
+      await delay(300);
+      
+      // === MÉTODO 2: UDS Clear DTC (14 FF FF FF = todos os grupos) ===
+      addLog('📤 Enviando UDS Clear (14 FF FF FF)...');
+      try {
+        // Iniciar sessão diagnóstica primeiro
+        await startDiagnosticSession();
+        await delay(200);
+        
+        const udsResponse = await sendCommand('14 FF FF FF', 5000);
+        addLog(`📥 UDS: "${udsResponse.substring(0, 50)}"`);
+        
+        if (udsResponse.includes('54')) {
+          udsSuccess = true;
+          addLog('✅ Códigos UDS limpos com sucesso');
+        } else if (udsResponse.includes('NODATA') || udsResponse.includes('NO DATA')) {
+          udsSuccess = true;
+          addLog('ℹ️ Nenhum código UDS para limpar');
+        } else if (udsResponse.includes('7F')) {
+          addLog('⚠️ ECU rejeitou comando UDS (pode não suportar)');
+        }
+      } catch (e) {
+        addLog(`⚠️ UDS Clear falhou: ${e}`);
+      }
+      
+      // Resetar comunicação
+      await delay(200);
+      await sendCommand('AT SH 7DF', 2000);
+      await sendCommand('AT CRA', 2000);
+      
+      // Resultado
+      if (obd2Success || udsSuccess) {
+        addLog('✅ Limpeza concluída!');
         toast({
           title: "Códigos limpos!",
           description: "Os códigos de erro foram apagados. A luz do motor pode levar alguns ciclos para apagar.",
@@ -178,17 +230,31 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         // Limpar estado e mostrar tela limpa
         setDtcs([]);
         setScanState('clear');
-      } else if (response.includes('NODATA') || response.includes('NO DATA')) {
-        addLog('⚠️ Nenhum código para limpar');
-        toast({
-          title: "Nenhum código",
-          description: "Não havia códigos de erro para limpar.",
-        });
-        setDtcs([]);
-        setScanState('clear');
+        
+        // Fazer scan de verificação após 2 segundos
+        addLog('🔄 Aguarde... verificando se os códigos foram limpos');
+        await delay(2000);
+        
+        // Quick verification scan
+        addLog('📤 Verificando códigos restantes (03)...');
+        const verifyResponse = await sendCommand('03', 5000);
+        
+        if (isNoErrorsResponse(verifyResponse)) {
+          addLog('✅ Verificação: Nenhum código restante');
+        } else {
+          const remaining = parseDTCResponse(verifyResponse);
+          if (remaining.length > 0) {
+            addLog(`⚠️ Verificação: ${remaining.length} código(s) persistente(s)`);
+            toast({
+              title: "Alguns códigos persistem",
+              description: `${remaining.length} código(s) não puderam ser limpos. Pode haver uma falha ativa.`,
+              variant: "default",
+            });
+          }
+        }
+        
       } else {
-        addLog('⚠️ Resposta inesperada, verificando...');
-        // Mesmo com resposta diferente, considerar sucesso se não houve erro
+        addLog('⚠️ Resposta não confirmada, verifique com um novo scan');
         toast({
           title: "Comando enviado",
           description: "O comando foi enviado. Faça um novo scan para verificar.",
@@ -492,28 +558,43 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       updateStep('process', 'running');
       setCurrentModule('');
       
+      // NOVO: Deduplicação global final - garantir códigos únicos
+      const uniqueDTCs: ParsedDTC[] = [];
+      const seenCodes = new Set<string>();
+      
+      for (const dtc of allDTCs) {
+        if (!seenCodes.has(dtc.code)) {
+          seenCodes.add(dtc.code);
+          uniqueDTCs.push(dtc);
+        }
+      }
+      
+      if (uniqueDTCs.length !== allDTCs.length) {
+        addLog(`🔄 Removidas ${allDTCs.length - uniqueDTCs.length} duplicata(s)`);
+      }
+      
       // Calcular duração do scan
       const scanDuration = Date.now() - scanStartTime;
       const modulesCount = KNOWN_ECU_MODULES.length + alternativeModules.length;
       
       // Salvar resultado no histórico
       try {
-        await saveScanResult(allDTCs, detectedVIN, modulesCount, scanDuration);
+        await saveScanResult(uniqueDTCs, detectedVIN, modulesCount, scanDuration);
         addLog('💾 Scan salvo no histórico');
         setHistoryKey(prev => prev + 1); // Atualizar histórico
       } catch (e) {
         addLog('⚠️ Erro ao salvar histórico');
       }
       
-      if (allDTCs.length === 0) {
+      if (uniqueDTCs.length === 0) {
         addLog('✅ Nenhum código de erro encontrado');
         updateStep('process', 'done');
         setScanState('clear');
       } else {
-        const uniqueModules = new Set(allDTCs.map(d => d.module?.id)).size;
-        addLog(`⚠️ Total: ${allDTCs.length} DTC(s) em ${uniqueModules} módulo(s)`);
+        const uniqueModules = new Set(uniqueDTCs.map(d => d.module?.id)).size;
+        addLog(`⚠️ Total: ${uniqueDTCs.length} DTC(s) em ${uniqueModules} módulo(s)`);
         updateStep('process', 'done');
-        setDtcs(allDTCs);
+        setDtcs(uniqueDTCs);
         setScanState('errors');
       }
     } catch (error) {
