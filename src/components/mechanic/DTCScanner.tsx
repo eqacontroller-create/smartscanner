@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AllClearShield } from './AllClearShield';
@@ -8,7 +8,8 @@ import { DTCModal } from './DTCModal';
 import { OBDLimitations } from './OBDLimitations';
 import { ScanProgress, type ScanStep } from './ScanProgress';
 import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/lib/dtcParser';
-import { KNOWN_ECU_MODULES, ALTERNATIVE_ECU_ADDRESSES, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
+import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
+import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
 
 type ScanState = 'idle' | 'scanning' | 'clear' | 'errors';
 
@@ -20,9 +21,10 @@ interface DTCScannerProps {
   isPolling: boolean;
 }
 
-const createInitialSteps = (): ScanStep[] => [
+const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
   { id: 'bluetooth', label: 'Verificando conexão Bluetooth', status: 'pending' },
   { id: 'pause', label: 'Pausando leitura de dados', status: 'pending' },
+  ...(hasVIN ? [] : [{ id: 'vin', label: 'Detectando fabricante pelo VIN', status: 'pending' as const }]),
   { id: 'config', label: 'Configurando ELM327', status: 'pending' },
   { id: 'protocol', label: 'Verificando protocolo CAN', status: 'pending' },
   ...KNOWN_ECU_MODULES.map(m => ({
@@ -30,7 +32,7 @@ const createInitialSteps = (): ScanStep[] => [
     label: `Escaneando ${m.shortName} (${m.name})`,
     status: 'pending' as const,
   })),
-  { id: 'alternative', label: 'Escaneando endereços alternativos', status: 'pending' },
+  { id: 'alternative', label: 'Escaneando endereços específicos do fabricante', status: 'pending' },
   { id: 'reset', label: 'Resetando comunicação', status: 'pending' },
   { id: 'process', label: 'Processando resultados', status: 'pending' },
 ];
@@ -40,9 +42,10 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const [dtcs, setDtcs] = useState<ParsedDTC[]>([]);
   const [selectedDTC, setSelectedDTC] = useState<ParsedDTC | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [scanSteps, setScanSteps] = useState<ScanStep[]>(createInitialSteps());
+  const [scanSteps, setScanSteps] = useState<ScanStep[]>(createInitialSteps(false));
   const [elapsedTime, setElapsedTime] = useState(0);
   const [currentModule, setCurrentModule] = useState<string>('');
+  const [detectedVIN, setDetectedVIN] = useState<VINInfo | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -100,6 +103,32 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       await sendCommand('3E 00', 1000);
     } catch {
       // Ignorar erros do tester present
+    }
+  };
+
+  // Detectar VIN e fabricante
+  const detectManufacturer = async (): Promise<ManufacturerGroup> => {
+    try {
+      addLog('🚗 Detectando fabricante pelo VIN...');
+      
+      const response = await sendCommand('09 02', 8000);
+      const vin = parseVINResponse(response);
+      
+      if (vin) {
+        const decoded = decodeVIN(vin);
+        if (decoded) {
+          setDetectedVIN(decoded);
+          addLog(`✅ VIN: ${vin}`);
+          addLog(`🏭 Fabricante: ${decoded.manufacturer} (${decoded.manufacturerGroup})`);
+          return decoded.manufacturerGroup;
+        }
+      }
+      
+      addLog('⚠️ VIN não disponível, usando endereços genéricos');
+      return 'Other';
+    } catch {
+      addLog('⚠️ Falha ao ler VIN, usando endereços genéricos');
+      return 'Other';
     }
   };
 
@@ -216,11 +245,14 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     if (!isConnected) return;
 
     // Reset states
-    setScanSteps(createInitialSteps());
+    const hasExistingVIN = detectedVIN !== null;
+    setScanSteps(createInitialSteps(hasExistingVIN));
     setElapsedTime(0);
     setScanState('scanning');
     setDtcs([]);
     setCurrentModule('');
+    
+    let manufacturerGroup: ManufacturerGroup = detectedVIN?.manufacturerGroup || 'Other';
 
     // Start timer
     const startTime = Date.now();
@@ -245,6 +277,16 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         await delay(1000);
       }
       updateStep('pause', 'done');
+
+      // Step 2.5: Detectar VIN se ainda não temos
+      if (!detectedVIN) {
+        updateStep('vin', 'running');
+        setCurrentModule('Lendo VIN...');
+        manufacturerGroup = await detectManufacturer();
+        updateStep('vin', 'done');
+      } else {
+        addLog(`🏭 Usando fabricante detectado: ${detectedVIN.manufacturer} (${manufacturerGroup})`);
+      }
 
       // Step 3: Configurar ELM327 para scan avançado
       updateStep('config', 'running');
@@ -306,15 +348,20 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         await delay(300);
       }
 
-      // Step 6: Escanear endereços alternativos de fabricantes
+      // Step 6: Escanear endereços específicos do fabricante
       updateStep('alternative', 'running');
-      addLog('🔍 Escaneando endereços alternativos...');
-      setCurrentModule('Endereços alternativos');
       
-      // Escanear apenas alguns módulos alternativos principais
-      const priorityAlternatives = ALTERNATIVE_ECU_ADDRESSES.slice(0, 6);
+      // Obter endereços específicos para o fabricante detectado
+      const alternativeModules = getAlternativeAddressesForManufacturer(manufacturerGroup);
       
-      for (const altModule of priorityAlternatives) {
+      if (alternativeModules.length > 0) {
+        addLog(`🔍 Escaneando ${alternativeModules.length} endereços específicos para ${manufacturerGroup}...`);
+        setCurrentModule(`Endereços ${manufacturerGroup}`);
+      } else {
+        addLog('ℹ️ Sem endereços alternativos para este fabricante');
+      }
+      
+      for (const altModule of alternativeModules) {
         addLog(`📡 Tentando ${altModule.shortName}...`);
         
         try {
@@ -414,9 +461,22 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {detectedVIN && (
+            <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 text-sm">
+                <Car className="h-4 w-4 text-primary" />
+                <span className="font-medium">{detectedVIN.manufacturer}</span>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground">{detectedVIN.modelYear}</span>
+                <span className="text-muted-foreground">•</span>
+                <span className="font-mono text-xs text-muted-foreground">{detectedVIN.vin}</span>
+              </div>
+            </div>
+          )}
+          
           <p className="text-sm text-muted-foreground mb-4">
-            Scan avançado multi-protocolo (OBD-II + UDS) com sessão diagnóstica e 
-            endereços alternativos para máxima compatibilidade.
+            Scan avançado multi-protocolo (OBD-II + UDS) com detecção automática do fabricante 
+            para usar endereços CAN otimizados.
           </p>
 
           <div className="flex gap-3">
