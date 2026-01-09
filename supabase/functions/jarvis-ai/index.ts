@@ -9,6 +9,7 @@ interface VehicleContext {
   rpm: number | null;
   speed: number | null;
   temperature: number | null;
+  voltage: number | null;
   isConnected: boolean;
   isPolling: boolean;
 }
@@ -51,11 +52,12 @@ PERSONALIDADE E ESTILO:
 - Não seja robótico - fale como humano
 
 CAPACIDADES:
-- Informar dados do veículo em tempo real (RPM, velocidade, temperatura)
+- Informar dados do veículo em tempo real (RPM, velocidade, temperatura, voltagem da bateria)
 - Explicar situações do motor e dar conselhos
 - Responder perguntas sobre o carro e condução
-- Alertar sobre problemas potenciais
+- Alertar sobre problemas potenciais (bateria baixa, superaquecimento, etc)
 - Dar dicas de economia de combustível e manutenção
+- Analisar estado do sistema elétrico (alternador, bateria)
 
 REGRAS IMPORTANTES:
 - Se não tiver dados (valores null), diga que ainda não há leitura disponível
@@ -158,6 +160,24 @@ function buildVehicleStatus(ctx: VehicleContext): string {
     }
   } else {
     lines.push(`- Temperatura: Sem leitura`);
+  }
+  
+  // Voltagem da Bateria - Sistema Elétrico
+  if (ctx.voltage !== null) {
+    lines.push(`- Voltagem da bateria: ${ctx.voltage}V`);
+    if (ctx.voltage < 12.0) {
+      lines.push(`  (⚠️ CRÍTICO: Bateria muito baixa! Risco de pane elétrica)`);
+    } else if (ctx.voltage < 12.5) {
+      lines.push(`  (⚠️ ATENÇÃO: Bateria baixa, verificar alternador)`);
+    } else if (ctx.voltage > 15.0) {
+      lines.push(`  (⚠️ ATENÇÃO: Sobrecarga - possível problema no regulador de tensão)`);
+    } else if (ctx.voltage >= 13.5 && ctx.voltage <= 14.5) {
+      lines.push(`  (✓ Ideal - alternador carregando corretamente)`);
+    } else {
+      lines.push(`  (Normal - sistema elétrico operando)`);
+    }
+  } else {
+    lines.push(`- Voltagem: Sem leitura`);
   }
   
   return lines.join('\n');
