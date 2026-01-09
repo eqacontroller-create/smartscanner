@@ -9,6 +9,8 @@ interface VehicleContext {
   speed: number | null;
   temperature: number | null;
   voltage: number | null;
+  fuelLevel: number | null;
+  engineLoad: number | null;
   isConnected: boolean;
   isPolling: boolean;
 }
@@ -83,11 +85,16 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
   const vehicleContextRef = useRef(vehicleContext);
   const isProcessingRef = useRef(false);
   const wakeWordCooldownRef = useRef(false);
+  const settingsRef = useRef(settings);
   
-  // Atualizar ref do contexto quando mudar
+  // Atualizar refs quando mudarem
   useEffect(() => {
     vehicleContextRef.current = vehicleContext;
   }, [vehicleContext]);
+  
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // Hook de síntese de voz (TTS)
   const { speak, isSpeaking, isSupported: isTTSSupported } = useJarvis({ settings });
@@ -148,14 +155,14 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
 
   // Callback quando reconhecimento detecta fala
   const handleVoiceResult = useCallback((transcript: string) => {
-    if (!transcript.trim() || !settings.aiModeEnabled) return;
+    if (!transcript.trim() || !settingsRef.current.aiModeEnabled) return;
     
     // Modo contínuo: verificar wake word
-    if (isContinuousMode && settings.continuousListening) {
+    if (isContinuousMode && settingsRef.current.continuousListening) {
       // Ignorar durante cooldown (evitar capturar própria fala)
       if (wakeWordCooldownRef.current) return;
       
-      const { detected, command } = detectWakeWord(transcript, settings.wakeWord);
+      const { detected, command } = detectWakeWord(transcript, settingsRef.current.wakeWord);
       
       if (detected) {
         setIsWakeWordDetected(true);
@@ -174,7 +181,7 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
       // Modo normal: processar diretamente
       processWithAI(transcript);
     }
-  }, [processWithAI, settings.aiModeEnabled, settings.continuousListening, settings.wakeWord, isContinuousMode, speak]);
+  }, [processWithAI, isContinuousMode, speak]);
 
   // Hook de reconhecimento de voz (STT)
   const { 
