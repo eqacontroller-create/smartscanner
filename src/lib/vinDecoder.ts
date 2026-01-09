@@ -1,6 +1,8 @@
 // Decodificador de VIN (Vehicle Identification Number)
 // O VIN tem 17 caracteres e contém informações sobre fabricante, modelo, ano, etc.
 
+export type ManufacturerGroup = 'VAG' | 'GM' | 'Ford' | 'Toyota' | 'Honda' | 'Hyundai' | 'Nissan' | 'FCA' | 'BMW' | 'Mercedes' | 'Other';
+
 export interface VINInfo {
   vin: string;
   manufacturer: string;
@@ -8,6 +10,7 @@ export interface VINInfo {
   modelYear: string;
   plantCode: string;
   serialNumber: string;
+  manufacturerGroup: ManufacturerGroup;
 }
 
 // Mapa de WMI (World Manufacturer Identifier) - primeiros 3 caracteres
@@ -232,6 +235,9 @@ export function decodeVIN(vin: string): VINInfo | null {
   // Número serial (posições 12-17)
   const serialNumber = upperVIN.length >= 17 ? upperVIN.substring(11, 17) : '';
   
+  // Determinar grupo do fabricante para endereços CAN
+  const manufacturerGroup = getManufacturerGroup(wmiInfo.manufacturer);
+  
   return {
     vin: upperVIN,
     manufacturer: wmiInfo.manufacturer,
@@ -239,7 +245,81 @@ export function decodeVIN(vin: string): VINInfo | null {
     modelYear,
     plantCode,
     serialNumber,
+    manufacturerGroup,
   };
+}
+
+// Mapear fabricante para grupo (para endereços CAN alternativos)
+export function getManufacturerGroup(manufacturer: string): ManufacturerGroup {
+  const upper = manufacturer.toUpperCase();
+  
+  // VAG Group (Volkswagen, Audi, Seat, Skoda, Porsche, Lamborghini)
+  if (upper.includes('VOLKSWAGEN') || upper.includes('VW') ||
+      upper.includes('AUDI') || upper.includes('SEAT') ||
+      upper.includes('SKODA') || upper.includes('PORSCHE') ||
+      upper.includes('LAMBORGHINI')) {
+    return 'VAG';
+  }
+  
+  // GM Group (Chevrolet, GMC, Buick, Cadillac, Opel, Vauxhall)
+  if (upper.includes('CHEVROLET') || upper.includes('GMC') ||
+      upper.includes('BUICK') || upper.includes('CADILLAC') ||
+      upper.includes('OPEL') || upper.includes('VAUXHALL') ||
+      upper.includes('OLDSMOBILE') || upper.includes('PONTIAC')) {
+    return 'GM';
+  }
+  
+  // Ford Group (Ford, Lincoln, Mercury)
+  if (upper.includes('FORD') || upper.includes('LINCOLN') ||
+      upper.includes('MERCURY')) {
+    return 'Ford';
+  }
+  
+  // Toyota Group (Toyota, Lexus, Scion)
+  if (upper.includes('TOYOTA') || upper.includes('LEXUS') ||
+      upper.includes('SCION')) {
+    return 'Toyota';
+  }
+  
+  // Honda Group (Honda, Acura)
+  if (upper.includes('HONDA') || upper.includes('ACURA')) {
+    return 'Honda';
+  }
+  
+  // Hyundai-Kia Group
+  if (upper.includes('HYUNDAI') || upper.includes('KIA') ||
+      upper.includes('GENESIS')) {
+    return 'Hyundai';
+  }
+  
+  // Nissan Group (Nissan, Infiniti, Datsun)
+  if (upper.includes('NISSAN') || upper.includes('INFINITI') ||
+      upper.includes('DATSUN') || upper.includes('RENAULT')) {
+    return 'Nissan';
+  }
+  
+  // FCA/Stellantis (Fiat, Chrysler, Jeep, Dodge, Ram, Alfa Romeo, Maserati, Peugeot, Citroën)
+  if (upper.includes('FIAT') || upper.includes('CHRYSLER') ||
+      upper.includes('JEEP') || upper.includes('DODGE') ||
+      upper.includes('RAM') || upper.includes('ALFA') ||
+      upper.includes('MASERATI') || upper.includes('PEUGEOT') ||
+      upper.includes('CITRO')) {
+    return 'FCA';
+  }
+  
+  // BMW Group (BMW, Mini, Rolls-Royce)
+  if (upper.includes('BMW') || upper.includes('MINI') ||
+      upper.includes('ROLLS')) {
+    return 'BMW';
+  }
+  
+  // Mercedes Group (Mercedes, Smart, Maybach)
+  if (upper.includes('MERCEDES') || upper.includes('SMART') ||
+      upper.includes('MAYBACH')) {
+    return 'Mercedes';
+  }
+  
+  return 'Other';
 }
 
 function getManufacturerByFirstChar(char: string): string {
