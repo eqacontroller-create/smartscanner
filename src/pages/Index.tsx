@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useBluetooth } from '@/hooks/useBluetooth';
 import { useJarvis } from '@/hooks/useJarvis';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
+import { useJarvisAI } from '@/hooks/useJarvisAI';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
 import { JarvisSettingsButton } from '@/components/dashboard/JarvisSettingsButton';
 import { JarvisSettingsSheet } from '@/components/dashboard/JarvisSettingsSheet';
+import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
@@ -46,6 +48,18 @@ const Index = () => {
   } = useJarvisSettings();
 
   const { speak, testAudio, isSpeaking, isSupported: isJarvisSupported } = useJarvis({ settings: jarvisSettings });
+  
+  // Hook de IA conversacional
+  const jarvisAI = useJarvisAI({
+    settings: jarvisSettings,
+    vehicleContext: {
+      rpm,
+      speed,
+      temperature,
+      isConnected: status === 'ready' || status === 'reading',
+      isPolling,
+    },
+  });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
@@ -179,6 +193,17 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
+              {/* Botão de voz do Jarvis AI */}
+              {jarvisSettings.aiModeEnabled && (
+                <JarvisVoiceButton
+                  isListening={jarvisAI.isListening}
+                  isProcessing={jarvisAI.isProcessing}
+                  isSpeaking={jarvisAI.isSpeaking}
+                  isSupported={jarvisAI.isSupported}
+                  error={jarvisAI.error}
+                  onToggle={jarvisAI.toggleListening}
+                />
+              )}
               <JarvisSettingsButton 
                 onClick={() => setIsSettingsOpen(true)} 
                 disabled={!isJarvisSupported} 

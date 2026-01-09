@@ -11,6 +11,10 @@ export interface JarvisSettings {
   nextOilChange: number;            // Próxima troca de óleo (km)
   nextInspection: number;           // Próxima revisão (km)
   
+  // IA Conversacional
+  aiModeEnabled: boolean;           // Ativar modo IA conversacional
+  aiResponseLength: 'short' | 'medium' | 'detailed';  // Tamanho das respostas
+  
   // Configurações de Voz
   volume: number;       // 0.0 a 1.0
   rate: number;         // 0.5 a 2.0 (velocidade)
@@ -29,6 +33,8 @@ export const defaultJarvisSettings: JarvisSettings = {
   currentMileage: 0,
   nextOilChange: 15000,
   nextInspection: 30000,
+  aiModeEnabled: true,
+  aiResponseLength: 'short',
   volume: 1.0,
   rate: 0.9,
   pitch: 0.95,

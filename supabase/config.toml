@@ -1,1 +1,7 @@
 project_id = "kegvkuzuiuswxhhttdxz"
+
+[functions.explain-dtc]
+verify_jwt = false
+
+[functions.jarvis-ai]
+verify_jwt = false
