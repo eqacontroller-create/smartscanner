@@ -83,38 +83,38 @@ export function VehicleVIN({ sendCommand, isConnected, addLog }: VehicleVINProps
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Car className="h-5 w-5 text-primary" />
+      <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Car className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
           Identificação do Veículo
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
         {!vinInfo && !error && (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Leia o VIN (Vehicle Identification Number) para identificar automaticamente o fabricante, país de origem e ano do modelo.
             </p>
             <Button
               onClick={readVIN}
               disabled={!isConnected || isReading}
-              className="gap-2"
+              className="gap-2 min-h-[44px] touch-target"
             >
               {isReading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Lendo VIN...
+                  <span className="text-sm sm:text-base">Lendo VIN...</span>
                 </>
               ) : (
                 <>
                   <Car className="h-4 w-4" />
-                  Ler VIN
+                  <span className="text-sm sm:text-base">Ler VIN</span>
                 </>
               )}
             </Button>
             
             {!isConnected && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Conecte-se ao scanner OBD-II primeiro.
               </p>
             )}
@@ -123,66 +123,66 @@ export function VehicleVIN({ sendCommand, isConnected, addLog }: VehicleVINProps
 
         {error && (
           <div className="space-y-3">
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-              <p className="text-sm text-destructive">{error}</p>
+            <div className="p-2.5 sm:p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-xs sm:text-sm text-destructive">{error}</p>
             </div>
-            <Button variant="outline" onClick={handleReset} className="gap-2">
+            <Button variant="outline" onClick={handleReset} className="gap-2 min-h-[44px] touch-target">
               <RefreshCw className="h-4 w-4" />
-              Tentar Novamente
+              <span className="text-sm sm:text-base">Tentar Novamente</span>
             </Button>
           </div>
         )}
 
         {vinInfo && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* VIN Display */}
-            <div className="p-3 rounded-lg bg-muted/50 border">
-              <p className="text-xs text-muted-foreground mb-1">VIN</p>
-              <p className="font-mono text-lg font-semibold tracking-wider">
+            <div className="p-2.5 sm:p-3 rounded-lg bg-muted/50 border">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">VIN</p>
+              <p className="font-mono text-sm sm:text-lg font-semibold tracking-wider break-all">
                 {vinInfo.vin}
               </p>
             </div>
 
             {/* Vehicle Info Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <Factory className="h-4 w-4 text-primary" />
-                  <p className="text-xs text-muted-foreground">Fabricante</p>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                  <Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Fabricante</p>
                 </div>
-                <p className="font-semibold">{vinInfo.manufacturer}</p>
+                <p className="font-semibold text-xs sm:text-sm truncate">{vinInfo.manufacturer}</p>
               </div>
 
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <p className="text-xs text-muted-foreground">País</p>
+              <div className="p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                  <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">País</p>
                 </div>
-                <p className="font-semibold">{vinInfo.country}</p>
+                <p className="font-semibold text-xs sm:text-sm truncate">{vinInfo.country}</p>
               </div>
 
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <p className="text-xs text-muted-foreground">Ano Modelo</p>
+              <div className="p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                  <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Ano Modelo</p>
                 </div>
-                <p className="font-semibold">{vinInfo.modelYear}</p>
+                <p className="font-semibold text-xs sm:text-sm">{vinInfo.modelYear}</p>
               </div>
 
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <Hash className="h-4 w-4 text-primary" />
-                  <p className="text-xs text-muted-foreground">Nº Série</p>
+              <div className="p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                  <Hash className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Nº Série</p>
                 </div>
-                <p className="font-mono font-semibold">
+                <p className="font-mono font-semibold text-xs sm:text-sm truncate">
                   {vinInfo.serialNumber || vinInfo.plantCode}
                 </p>
               </div>
             </div>
 
-            <Button variant="outline" onClick={handleReset} className="gap-2 w-full">
+            <Button variant="outline" onClick={handleReset} className="gap-2 w-full min-h-[44px] touch-target">
               <RefreshCw className="h-4 w-4" />
-              Ler Novamente
+              <span className="text-sm sm:text-base">Ler Novamente</span>
             </Button>
           </div>
         )}

@@ -38,11 +38,11 @@ const UPDATE_INTERVAL = 500; // 500ms entre leituras
 
 const getIconForPID = (pid: string) => {
   switch (pid.toUpperCase()) {
-    case '0C': return <Gauge className="h-4 w-4" />;
+    case '0C': return <Gauge className="h-3.5 w-3.5 sm:h-4 sm:w-4" />;
     case '05':
-    case '0F': return <Thermometer className="h-4 w-4" />;
-    case '0D': return <Activity className="h-4 w-4" />;
-    default: return <Zap className="h-4 w-4" />;
+    case '0F': return <Thermometer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />;
+    case '0D': return <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />;
+    default: return <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />;
   }
 };
 
@@ -174,46 +174,48 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Activity className="h-5 w-5 text-primary" />
-            Dados ao Vivo
+      <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <span className="truncate">Dados ao Vivo</span>
           </CardTitle>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {isMonitoring && (
-              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />
-                {updateRate} leituras/ciclo
+              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-[10px] sm:text-xs px-1.5 sm:px-2">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">{updateRate} leituras/ciclo</span>
+                <span className="xs:hidden">{updateRate}</span>
               </Badge>
             )}
             
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" disabled={isMonitoring}>
+                <Button variant="ghost" size="icon" disabled={isMonitoring} className="h-8 w-8 sm:h-9 sm:w-9 touch-target">
                   <Settings2 className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent>
+              <SheetContent side="bottom" className="h-[80vh] sm:h-auto sm:max-h-[85vh]">
                 <SheetHeader>
                   <SheetTitle>Selecionar Sensores</SheetTitle>
                   <SheetDescription>
                     Escolha quais sensores monitorar em tempo real
                   </SheetDescription>
                 </SheetHeader>
-                <div className="mt-6 space-y-4">
+                <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4 overflow-y-auto max-h-[60vh] sm:max-h-[50vh]">
                   {LIVE_DATA_PIDS.map(pid => (
-                    <div key={pid.pid} className="flex items-center space-x-3">
+                    <div key={pid.pid} className="flex items-center space-x-3 touch-target py-1">
                       <Checkbox
                         id={pid.pid}
                         checked={selectedPIDs.includes(pid.pid)}
                         onCheckedChange={() => togglePID(pid.pid)}
+                        className="h-5 w-5"
                       />
                       <Label htmlFor={pid.pid} className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2">
                           {getIconForPID(pid.pid)}
-                          <span>{pid.shortName}</span>
+                          <span className="text-sm sm:text-base">{pid.shortName}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {pid.name} ({pid.unit})
@@ -228,23 +230,24 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
         {/* Controles */}
         <div className="flex gap-2">
           {!isMonitoring ? (
             <Button
               onClick={handleStartMonitoring}
               disabled={!isConnected || selectedPIDs.length === 0}
-              className="gap-2"
+              className="gap-2 min-h-[44px] touch-target text-sm sm:text-base"
             >
               <Play className="h-4 w-4" />
-              Iniciar Monitoramento
+              <span className="hidden xs:inline">Iniciar Monitoramento</span>
+              <span className="xs:hidden">Iniciar</span>
             </Button>
           ) : (
             <Button
               onClick={handleStopMonitoring}
               variant="destructive"
-              className="gap-2"
+              className="gap-2 min-h-[44px] touch-target text-sm sm:text-base"
             >
               <Square className="h-4 w-4" />
               Parar
@@ -253,14 +256,14 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
         </div>
 
         {!isConnected && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Conecte-se ao scanner OBD-II primeiro.
           </p>
         )}
 
         {/* Valores atuais */}
         {(isMonitoring || Object.keys(currentValues).length > 0) && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {selectedPIDs.map(pid => {
               const pidInfo = getPIDInfo(pid);
               const value = currentValues[pid];
@@ -273,14 +276,14 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
                   className="bg-muted/30"
                   style={{ borderLeftColor: getColorForPID(pid), borderLeftWidth: 3 }}
                 >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <CardContent className="p-2 sm:p-3">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">
                       {getIconForPID(pid)}
-                      {pidInfo.shortName}
+                      <span className="truncate">{pidInfo.shortName}</span>
                     </div>
-                    <p className="text-2xl font-bold tabular-nums">
+                    <p className="text-xl sm:text-2xl font-bold tabular-nums">
                       {value !== undefined ? value : '--'}
-                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                      <span className="text-[10px] sm:text-sm font-normal text-muted-foreground ml-0.5 sm:ml-1">
                         {pidInfo.unit}
                       </span>
                     </p>
@@ -294,25 +297,25 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
         {/* Gráfico */}
         {chartData.length > 1 && (
           <Card className="bg-muted/20">
-            <CardContent className="p-4">
-              <div className="h-48">
+            <CardContent className="p-2 sm:p-4">
+              <div className="h-36 sm:h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <XAxis 
                       dataKey="time" 
-                      tick={{ fontSize: 10 }}
+                      tick={{ fontSize: 9 }}
                       tickFormatter={(value) => `${value}s`}
                     />
                     <YAxis 
-                      tick={{ fontSize: 10 }}
-                      width={40}
+                      tick={{ fontSize: 9 }}
+                      width={32}
                     />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'hsl(var(--popover))', 
                         border: '1px solid hsl(var(--border))',
                         borderRadius: 8,
-                        fontSize: 12,
+                        fontSize: 11,
                       }}
                       labelFormatter={(value) => `Tempo: ${value}s`}
                       formatter={(value: number, name: string) => {
@@ -336,13 +339,13 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
               </div>
               
               {/* Legenda */}
-              <div className="flex flex-wrap gap-3 mt-3 justify-center">
+              <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 sm:mt-3 justify-center">
                 {selectedPIDs.map(pid => {
                   const pidInfo = getPIDInfo(pid);
                   return (
-                    <div key={pid} className="flex items-center gap-1.5 text-xs">
+                    <div key={pid} className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                       <div 
-                        className="w-3 h-3 rounded-full" 
+                        className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" 
                         style={{ backgroundColor: getColorForPID(pid) }}
                       />
                       <span className="text-muted-foreground">{pidInfo?.shortName}</span>
@@ -355,9 +358,9 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
         )}
 
         {selectedPIDs.length === 0 && (
-          <div className="text-center py-6 text-muted-foreground">
-            <Settings2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Selecione os sensores para monitorar</p>
+          <div className="text-center py-4 sm:py-6 text-muted-foreground">
+            <Settings2 className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-xs sm:text-sm">Selecione os sensores para monitorar</p>
           </div>
         )}
       </CardContent>
