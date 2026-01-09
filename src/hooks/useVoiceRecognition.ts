@@ -68,22 +68,46 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isManuallyStoppedRef = useRef(false);
   const shouldRestartRef = useRef(false);
+  const isStartingRef = useRef(false);
+  
+  // Usar refs para options que podem mudar - evita reinicialização do recognition
+  const continuousRef = useRef(continuous);
+  const interimResultsRef = useRef(interimResults);
+  const autoRestartRef = useRef(autoRestart);
+  const onResultRef = useRef(onResult);
+  const onErrorRef = useRef(onError);
+  
+  // Atualizar refs quando options mudam
+  useEffect(() => {
+    continuousRef.current = continuous;
+    interimResultsRef.current = interimResults;
+    autoRestartRef.current = autoRestart;
+    onResultRef.current = onResult;
+    onErrorRef.current = onError;
+    
+    // Atualizar propriedades do recognition existente sem reinstanciar
+    if (recognitionRef.current) {
+      recognitionRef.current.continuous = continuous;
+      recognitionRef.current.interimResults = interimResults;
+    }
+  }, [continuous, interimResults, autoRestart, onResult, onError]);
 
   const isSupported = typeof window !== 'undefined' && 
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-  // Inicializar reconhecimento de voz
+  // Inicializar reconhecimento de voz - apenas uma vez
   useEffect(() => {
     if (!isSupported) return;
 
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognitionAPI();
     
-    recognition.continuous = continuous;
-    recognition.interimResults = interimResults;
+    recognition.continuous = continuousRef.current;
+    recognition.interimResults = interimResultsRef.current;
     recognition.lang = language;
 
     recognition.onstart = () => {
+      isStartingRef.current = false;
       setIsListening(true);
       setError(null);
     };
@@ -109,49 +133,56 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
         const trimmedText = finalText.trim();
         setTranscript(trimmedText);
         setInterimTranscript('');
-        onResult?.(trimmedText);
+        onResultRef.current?.(trimmedText);
       }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      isStartingRef.current = false;
+      
       // Ignorar erros de "no-speech" e "aborted" quando parado manualmente
       if (event.error === 'no-speech' || event.error === 'aborted') {
-        if (!isManuallyStoppedRef.current && autoRestart && shouldRestartRef.current) {
+        if (!isManuallyStoppedRef.current && autoRestartRef.current && shouldRestartRef.current) {
           // Reiniciar automaticamente se configurado
           setTimeout(() => {
-            if (shouldRestartRef.current && recognitionRef.current) {
+            if (shouldRestartRef.current && recognitionRef.current && !isStartingRef.current) {
               try {
+                isStartingRef.current = true;
                 recognitionRef.current.start();
               } catch (e) {
+                isStartingRef.current = false;
                 // Ignorar erro se já estiver escutando
               }
             }
-          }, 100);
+          }, 300);
         }
         return;
       }
       
       const errorMessage = getErrorMessage(event.error);
       setError(errorMessage);
-      onError?.(errorMessage);
+      onErrorRef.current?.(errorMessage);
       setIsListening(false);
       shouldRestartRef.current = false;
     };
 
     recognition.onend = () => {
+      isStartingRef.current = false;
       setIsListening(false);
       
       // Auto-restart se configurado e não foi parado manualmente
-      if (autoRestart && shouldRestartRef.current && !isManuallyStoppedRef.current) {
+      if (autoRestartRef.current && shouldRestartRef.current && !isManuallyStoppedRef.current) {
         setTimeout(() => {
-          if (shouldRestartRef.current && recognitionRef.current) {
+          if (shouldRestartRef.current && recognitionRef.current && !isStartingRef.current) {
             try {
+              isStartingRef.current = true;
               recognitionRef.current.start();
             } catch (e) {
+              isStartingRef.current = false;
               // Ignorar erro se já estiver escutando
             }
           }
-        }, 100);
+        }, 300);
       }
       
       isManuallyStoppedRef.current = false;
@@ -161,35 +192,39 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
 
     return () => {
       shouldRestartRef.current = false;
+      isStartingRef.current = false;
       recognition.abort();
     };
-  }, [isSupported, continuous, interimResults, language, onResult, onError, autoRestart]);
+  }, [isSupported, language]); // Removido continuous, interimResults, autoRestart, onResult, onError
 
   const startListening = useCallback(() => {
     if (!isSupported || !recognitionRef.current) return;
     
-    // Se já está escutando, não fazer nada
-    if (isListening) return;
+    // Se já está escutando ou iniciando, não fazer nada
+    if (isListening || isStartingRef.current) return;
     
     setTranscript('');
     setInterimTranscript('');
     setError(null);
     isManuallyStoppedRef.current = false;
-    shouldRestartRef.current = autoRestart;
+    shouldRestartRef.current = autoRestartRef.current;
     
     try {
+      isStartingRef.current = true;
       recognitionRef.current.start();
     } catch (err) {
+      isStartingRef.current = false;
       console.error('Erro ao iniciar reconhecimento:', err);
       setError('Erro ao iniciar reconhecimento de voz');
     }
-  }, [isSupported, isListening, autoRestart]);
+  }, [isSupported, isListening]);
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return;
     
     isManuallyStoppedRef.current = true;
     shouldRestartRef.current = false;
+    isStartingRef.current = false;
     recognitionRef.current.stop();
   }, []);
 

@@ -29,6 +29,8 @@ const Index = () => {
     speed,
     temperature,
     voltage,
+    fuelLevel,
+    engineLoad,
     error,
     logs,
     isPolling,
@@ -59,6 +61,8 @@ const Index = () => {
       speed,
       temperature,
       voltage,
+      fuelLevel,
+      engineLoad,
       isConnected: status === 'ready' || status === 'reading',
       isPolling,
     },
@@ -340,7 +344,9 @@ const Index = () => {
                 speed={speed} 
                 temperature={temperature} 
                 voltage={voltage}
-                isReading={isReading} 
+                fuelLevel={fuelLevel}
+                engineLoad={engineLoad}
+                isReading={isReading}
               />
 
               {/* RPM Card */}

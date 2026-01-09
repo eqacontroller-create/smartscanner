@@ -10,6 +10,8 @@ interface VehicleContext {
   speed: number | null;
   temperature: number | null;
   voltage: number | null;
+  fuelLevel: number | null;
+  engineLoad: number | null;
   isConnected: boolean;
   isPolling: boolean;
 }
@@ -52,12 +54,13 @@ PERSONALIDADE E ESTILO:
 - Não seja robótico - fale como humano
 
 CAPACIDADES:
-- Informar dados do veículo em tempo real (RPM, velocidade, temperatura, voltagem da bateria)
+- Informar dados do veículo em tempo real (RPM, velocidade, temperatura, voltagem, nível de combustível, carga do motor)
 - Explicar situações do motor e dar conselhos
 - Responder perguntas sobre o carro e condução
-- Alertar sobre problemas potenciais (bateria baixa, superaquecimento, etc)
+- Alertar sobre problemas potenciais (bateria baixa, superaquecimento, combustível baixo, etc)
 - Dar dicas de economia de combustível e manutenção
 - Analisar estado do sistema elétrico (alternador, bateria)
+- Informar consumo e autonomia estimada
 
 REGRAS IMPORTANTES:
 - Se não tiver dados (valores null), diga que ainda não há leitura disponível
@@ -178,6 +181,36 @@ function buildVehicleStatus(ctx: VehicleContext): string {
     }
   } else {
     lines.push(`- Voltagem: Sem leitura`);
+  }
+  
+  // Nível de Combustível
+  if (ctx.fuelLevel !== null) {
+    lines.push(`- Nível de combustível: ${ctx.fuelLevel}%`);
+    if (ctx.fuelLevel <= 10) {
+      lines.push(`  (⚠️ CRÍTICO: Reserva! Abasteça imediatamente)`);
+    } else if (ctx.fuelLevel <= 20) {
+      lines.push(`  (⚠️ ATENÇÃO: Combustível baixo, procure um posto)`);
+    } else if (ctx.fuelLevel >= 80) {
+      lines.push(`  (✓ Tanque cheio)`);
+    } else {
+      lines.push(`  (Normal)`);
+    }
+  } else {
+    lines.push(`- Nível de combustível: Sem leitura (sensor pode não ser suportado)`);
+  }
+  
+  // Carga do Motor
+  if (ctx.engineLoad !== null) {
+    lines.push(`- Carga do motor: ${ctx.engineLoad}%`);
+    if (ctx.engineLoad > 80) {
+      lines.push(`  (Motor em alta demanda)`);
+    } else if (ctx.engineLoad > 50) {
+      lines.push(`  (Carga moderada)`);
+    } else {
+      lines.push(`  (Carga leve)`);
+    }
+  } else {
+    lines.push(`- Carga do motor: Sem leitura`);
   }
   
   return lines.join('\n');

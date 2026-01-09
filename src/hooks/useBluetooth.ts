@@ -11,6 +11,8 @@ interface VehicleData {
   speed: number | null;
   temperature: number | null;
   voltage: number | null;
+  fuelLevel: number | null;
+  engineLoad: number | null;
 }
 
 interface BluetoothHookReturn {
@@ -19,6 +21,8 @@ interface BluetoothHookReturn {
   speed: number | null;
   temperature: number | null;
   voltage: number | null;
+  fuelLevel: number | null;
+  engineLoad: number | null;
   error: string | null;
   logs: string[];
   isPolling: boolean;
@@ -39,6 +43,8 @@ export function useBluetooth(): BluetoothHookReturn {
   const [speed, setSpeed] = useState<number | null>(null);
   const [temperature, setTemperature] = useState<number | null>(null);
   const [voltage, setVoltage] = useState<number | null>(null);
+  const [fuelLevel, setFuelLevel] = useState<number | null>(null);
+  const [engineLoad, setEngineLoad] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isPolling, setIsPolling] = useState(false);
@@ -50,6 +56,7 @@ export function useBluetooth(): BluetoothHookReturn {
   const responseResolverRef = useRef<((value: string) => void) | null>(null);
   const pollingIntervalRef = useRef<number | null>(null);
   const isPollingRef = useRef(false);
+  const isReadingRef = useRef(false);
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 
@@ -144,6 +151,7 @@ export function useBluetooth(): BluetoothHookReturn {
         writeCharRef.current = null;
         notifyCharRef.current = null;
         responseBufferRef.current = '';
+        isReadingRef.current = false;
       });
 
       addLogRef.current('🔗 Conectando ao GATT Server...');
@@ -219,6 +227,7 @@ export function useBluetooth(): BluetoothHookReturn {
       pollingIntervalRef.current = null;
     }
     isPollingRef.current = false;
+    isReadingRef.current = false;
     setIsPolling(false);
     addLogRef.current('⏹ Leitura contínua parada');
   }, []);
@@ -232,66 +241,132 @@ export function useBluetooth(): BluetoothHookReturn {
     writeCharRef.current = null;
     notifyCharRef.current = null;
     responseBufferRef.current = '';
+    isReadingRef.current = false;
     setStatus('disconnected');
     setRPM(null);
+    setSpeed(null);
+    setTemperature(null);
+    setVoltage(null);
+    setFuelLevel(null);
+    setEngineLoad(null);
     addLogRef.current('🔌 Desconectado manualmente');
   }, [stopPolling]);
 
   const readVehicleData = useCallback(async (): Promise<boolean> => {
-    if (!writeCharRef.current) return false;
+    if (!writeCharRef.current || isReadingRef.current) return false;
+
+    isReadingRef.current = true;
 
     try {
-      // Read RPM (PID 010C)
-      const rpmResponse = await sendCommand('010C', 3000);
-      const cleanRpm = rpmResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-      const rpmMatch = cleanRpm.match(/410C([0-9A-F]{2})([0-9A-F]{2})/);
-      
-      if (rpmMatch) {
-        const A = parseInt(rpmMatch[1], 16);
-        const B = parseInt(rpmMatch[2], 16);
-        setRPM(Math.round(((A * 256) + B) / 4));
-      } else if (cleanRpm.includes('NODATA')) {
-        setRPM(0);
+      // Read RPM (PID 010C) - RPM = ((A * 256) + B) / 4
+      try {
+        const rpmResponse = await sendCommand('010C', 2500);
+        const cleanRpm = rpmResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+        const rpmMatch = cleanRpm.match(/410C([0-9A-F]{2})([0-9A-F]{2})/);
+        
+        if (rpmMatch) {
+          const A = parseInt(rpmMatch[1], 16);
+          const B = parseInt(rpmMatch[2], 16);
+          setRPM(Math.round(((A * 256) + B) / 4));
+        } else if (cleanRpm.includes('NODATA')) {
+          setRPM(0);
+        }
+      } catch (e) {
+        addLogRef.current('⚠️ Erro lendo RPM');
       }
 
-      // Read Speed (PID 010D) - km/h
-      const speedResponse = await sendCommand('010D', 3000);
-      const cleanSpeed = speedResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-      const speedMatch = cleanSpeed.match(/410D([0-9A-F]{2})/);
-      
-      if (speedMatch) {
-        setSpeed(parseInt(speedMatch[1], 16));
-      } else if (cleanSpeed.includes('NODATA')) {
-        setSpeed(0);
+      await delay(50);
+
+      // Read Speed (PID 010D) - km/h = A
+      try {
+        const speedResponse = await sendCommand('010D', 2500);
+        const cleanSpeed = speedResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+        const speedMatch = cleanSpeed.match(/410D([0-9A-F]{2})/);
+        
+        if (speedMatch) {
+          setSpeed(parseInt(speedMatch[1], 16));
+        } else if (cleanSpeed.includes('NODATA')) {
+          setSpeed(0);
+        }
+      } catch (e) {
+        addLogRef.current('⚠️ Erro lendo velocidade');
       }
 
-      // Read Coolant Temperature (PID 0105) - Celsius (A - 40)
-      const tempResponse = await sendCommand('0105', 3000);
-      const cleanTemp = tempResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-      const tempMatch = cleanTemp.match(/4105([0-9A-F]{2})/);
-      
-      if (tempMatch) {
-        setTemperature(parseInt(tempMatch[1], 16) - 40);
-      } else if (cleanTemp.includes('NODATA')) {
-        setTemperature(null);
+      await delay(50);
+
+      // Read Coolant Temperature (PID 0105) - Celsius = A - 40
+      try {
+        const tempResponse = await sendCommand('0105', 2500);
+        const cleanTemp = tempResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+        const tempMatch = cleanTemp.match(/4105([0-9A-F]{2})/);
+        
+        if (tempMatch) {
+          setTemperature(parseInt(tempMatch[1], 16) - 40);
+        } else if (cleanTemp.includes('NODATA')) {
+          setTemperature(null);
+        }
+      } catch (e) {
+        addLogRef.current('⚠️ Erro lendo temperatura');
       }
 
-      // Read Battery Voltage (PID 0142) - Volts ((A * 256 + B) / 1000)
-      const voltResponse = await sendCommand('0142', 3000);
-      const cleanVolt = voltResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-      const voltMatch = cleanVolt.match(/4142([0-9A-F]{2})([0-9A-F]{2})/);
-      
-      if (voltMatch) {
-        const A = parseInt(voltMatch[1], 16);
-        const B = parseInt(voltMatch[2], 16);
-        setVoltage(Math.round(((A * 256) + B) / 1000 * 10) / 10);
-      } else if (cleanVolt.includes('NODATA')) {
-        setVoltage(null);
+      await delay(50);
+
+      // Read Battery Voltage (PID 0142) - Volts = ((A * 256) + B) / 1000
+      try {
+        const voltResponse = await sendCommand('0142', 2500);
+        const cleanVolt = voltResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+        const voltMatch = cleanVolt.match(/4142([0-9A-F]{2})([0-9A-F]{2})/);
+        
+        if (voltMatch) {
+          const A = parseInt(voltMatch[1], 16);
+          const B = parseInt(voltMatch[2], 16);
+          setVoltage(Math.round(((A * 256) + B) / 1000 * 10) / 10);
+        } else if (cleanVolt.includes('NODATA')) {
+          setVoltage(null);
+        }
+      } catch (e) {
+        addLogRef.current('⚠️ Erro lendo voltagem');
+      }
+
+      await delay(50);
+
+      // Read Fuel Level (PID 012F) - % = (A * 100) / 255
+      try {
+        const fuelResponse = await sendCommand('012F', 2500);
+        const cleanFuel = fuelResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+        const fuelMatch = cleanFuel.match(/412F([0-9A-F]{2})/);
+        
+        if (fuelMatch) {
+          setFuelLevel(Math.round(parseInt(fuelMatch[1], 16) * 100 / 255));
+        } else if (cleanFuel.includes('NODATA')) {
+          setFuelLevel(null); // Sensor não suportado
+        }
+      } catch (e) {
+        addLogRef.current('⚠️ Erro lendo nível de combustível');
+      }
+
+      await delay(50);
+
+      // Read Engine Load (PID 0104) - % = (A * 100) / 255
+      try {
+        const loadResponse = await sendCommand('0104', 2500);
+        const cleanLoad = loadResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+        const loadMatch = cleanLoad.match(/4104([0-9A-F]{2})/);
+        
+        if (loadMatch) {
+          setEngineLoad(Math.round(parseInt(loadMatch[1], 16) * 100 / 255));
+        } else if (cleanLoad.includes('NODATA')) {
+          setEngineLoad(null);
+        }
+      } catch (e) {
+        addLogRef.current('⚠️ Erro lendo carga do motor');
       }
 
       return true;
     } catch {
       return false;
+    } finally {
+      isReadingRef.current = false;
     }
   }, [sendCommand]);
 
@@ -304,7 +379,7 @@ export function useBluetooth(): BluetoothHookReturn {
     isPollingRef.current = true;
     setIsPolling(true);
     setStatus('reading');
-    addLogRef.current('▶ Iniciando leitura contínua (RPM, Velocidade, Temperatura, Voltagem)...');
+    addLogRef.current('▶ Iniciando leitura contínua (RPM, Velocidade, Temp, Voltagem, Combustível, Carga)...');
 
     const poll = async () => {
       if (!isPollingRef.current) return;
@@ -312,7 +387,7 @@ export function useBluetooth(): BluetoothHookReturn {
       await readVehicleData();
       
       if (isPollingRef.current) {
-        pollingIntervalRef.current = window.setTimeout(poll, 400);
+        pollingIntervalRef.current = window.setTimeout(poll, 600);
       }
     };
 
@@ -329,6 +404,8 @@ export function useBluetooth(): BluetoothHookReturn {
     speed,
     temperature,
     voltage,
+    fuelLevel,
+    engineLoad,
     error,
     logs,
     isPolling,
