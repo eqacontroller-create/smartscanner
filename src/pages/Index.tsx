@@ -9,6 +9,7 @@ import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
 import { JarvisSettingsButton } from '@/components/dashboard/JarvisSettingsButton';
 import { JarvisSettingsSheet } from '@/components/dashboard/JarvisSettingsSheet';
 import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
+import { JarvisFloatingWidget } from '@/components/dashboard/JarvisFloatingWidget';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
@@ -366,6 +367,21 @@ const Index = () => {
           </p>
         </div>
       </footer>
+
+      {/* Jarvis Floating Widget */}
+      <JarvisFloatingWidget
+        isListening={jarvisAI.isListening}
+        isProcessing={jarvisAI.isProcessing}
+        isSpeaking={jarvisAI.isSpeaking}
+        isSupported={jarvisAI.isSupported}
+        isEnabled={jarvisSettings.aiModeEnabled}
+        error={jarvisAI.error}
+        lastTranscript={jarvisAI.lastTranscript}
+        lastResponse={jarvisAI.lastResponse}
+        conversationHistory={jarvisAI.conversationHistory}
+        onToggleListening={jarvisAI.toggleListening}
+        onClearHistory={jarvisAI.clearHistory}
+      />
 
       {/* Jarvis Settings Sheet */}
       <JarvisSettingsSheet
