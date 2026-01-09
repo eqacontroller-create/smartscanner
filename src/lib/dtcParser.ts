@@ -1,9 +1,12 @@
 // Parser para converter resposta hexadecimal OBD-II em códigos DTC legíveis
 // Formato: XYZZ onde X determina o tipo (P, C, B, U)
 
+import type { ECUModule } from './ecuModules';
+
 export interface ParsedDTC {
   code: string;
   raw: string;
+  module?: ECUModule;
 }
 
 const DTC_TYPE_MAP: Record<string, string> = {
