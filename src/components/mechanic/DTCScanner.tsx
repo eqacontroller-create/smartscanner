@@ -1,7 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw, Car } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Car, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { AllClearShield } from './AllClearShield';
 import { DTCList } from './DTCList';
 import { DTCModal } from './DTCModal';
@@ -10,8 +21,9 @@ import { ScanProgress, type ScanStep } from './ScanProgress';
 import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/lib/dtcParser';
 import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
 import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
+import { useToast } from '@/hooks/use-toast';
 
-type ScanState = 'idle' | 'scanning' | 'clear' | 'errors';
+type ScanState = 'idle' | 'scanning' | 'clearing' | 'clear' | 'errors';
 
 interface DTCScannerProps {
   sendCommand: (command: string, timeout?: number) => Promise<string>;
@@ -38,6 +50,7 @@ const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
 ];
 
 export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling }: DTCScannerProps) {
+  const { toast } = useToast();
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [dtcs, setDtcs] = useState<ParsedDTC[]>([]);
   const [selectedDTC, setSelectedDTC] = useState<ParsedDTC | null>(null);
@@ -46,6 +59,7 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const [elapsedTime, setElapsedTime] = useState(0);
   const [currentModule, setCurrentModule] = useState<string>('');
   const [detectedVIN, setDetectedVIN] = useState<VINInfo | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -129,6 +143,66 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     } catch {
       addLog('⚠️ Falha ao ler VIN, usando endereços genéricos');
       return 'Other';
+    }
+  };
+
+  // Limpar códigos de erro (comando 04)
+  const handleClearDTCs = async () => {
+    if (!isConnected) return;
+    
+    setIsClearing(true);
+    addLog('🗑️ Iniciando limpeza de códigos de erro...');
+    
+    try {
+      // Resetar para modo broadcast primeiro
+      await sendCommand('AT SH 7DF', 2000);
+      await sendCommand('AT CRA', 2000);
+      
+      // Comando 04 = Clear/Reset Emission-Related DTCs
+      addLog('📤 Enviando comando 04 (Clear DTCs)...');
+      const response = await sendCommand('04', 5000);
+      addLog(`📥 Resposta: "${response}"`);
+      
+      // Verificar se foi aceito (resposta 44 = sucesso)
+      if (response.includes('44')) {
+        addLog('✅ Códigos de erro limpos com sucesso!');
+        toast({
+          title: "Códigos limpos!",
+          description: "Os códigos de erro foram apagados. A luz do motor pode levar alguns ciclos para apagar.",
+        });
+        
+        // Limpar estado e mostrar tela limpa
+        setDtcs([]);
+        setScanState('clear');
+      } else if (response.includes('NODATA') || response.includes('NO DATA')) {
+        addLog('⚠️ Nenhum código para limpar');
+        toast({
+          title: "Nenhum código",
+          description: "Não havia códigos de erro para limpar.",
+        });
+        setDtcs([]);
+        setScanState('clear');
+      } else {
+        addLog('⚠️ Resposta inesperada, verificando...');
+        // Mesmo com resposta diferente, considerar sucesso se não houve erro
+        toast({
+          title: "Comando enviado",
+          description: "O comando foi enviado. Faça um novo scan para verificar.",
+          variant: "default",
+        });
+        setDtcs([]);
+        setScanState('idle');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      addLog(`❌ Erro ao limpar códigos: ${message}`);
+      toast({
+        title: "Erro",
+        description: "Não foi possível limpar os códigos de erro.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -479,10 +553,10 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
             para usar endereços CAN otimizados.
           </p>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               onClick={handleScan}
-              disabled={!isConnected || scanState === 'scanning'}
+              disabled={!isConnected || scanState === 'scanning' || isClearing}
               className="gap-2"
             >
               {scanState === 'scanning' ? (
@@ -497,6 +571,56 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
                 </>
               )}
             </Button>
+
+            {scanState === 'errors' && dtcs.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    className="gap-2"
+                    disabled={isClearing}
+                  >
+                    {isClearing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Limpando...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        Limpar Códigos
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Limpar códigos de erro?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <p>
+                        Isso irá apagar <strong>{dtcs.length} código(s)</strong> de erro do veículo.
+                      </p>
+                      <p className="text-amber-600 dark:text-amber-400">
+                        ⚠️ A luz do motor (check engine) será apagada, mas voltará se o problema persistir.
+                      </p>
+                      <p className="text-sm">
+                        Importante: Limpar os códigos não resolve o problema, apenas apaga o registro. 
+                        Se a falha persistir, os códigos retornarão.
+                      </p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleClearDTCs}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Limpar Códigos
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
 
             {(scanState === 'clear' || scanState === 'errors') && (
               <Button variant="outline" onClick={handleReset} className="gap-2">
