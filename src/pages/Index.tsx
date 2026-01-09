@@ -70,6 +70,7 @@ const Index = () => {
   const lastHighRpmAlertRef = useRef<number>(0);
   const lastHighTempAlertRef = useRef<number>(0);
   const lastSpeedAlertRef = useRef<number>(0);
+  const lastLowVoltageAlertRef = useRef<number>(0);
   // Ref para controlar se já deu boas-vindas nesta conexão
   const hasWelcomedRef = useRef<boolean>(false);
 
@@ -179,6 +180,29 @@ const Index = () => {
       speak(`Velocidade acima do limite configurado. Você está a ${speed} quilômetros por hora.`);
     }
   }, [speed, speak, jarvisSettings.speedAlertEnabled, jarvisSettings.speedLimit]);
+
+  // Monitor de Voltagem Baixa - Alerta de Bateria
+  useEffect(() => {
+    if (!jarvisSettings.lowVoltageAlertEnabled) return;
+    
+    const now = Date.now();
+    const cooldown = 120000; // 2 minutos entre alertas de bateria
+    
+    if (
+      voltage !== null && 
+      voltage > 0 && // Evitar falsos positivos
+      voltage < jarvisSettings.lowVoltageThreshold &&
+      now - lastLowVoltageAlertRef.current > cooldown
+    ) {
+      lastLowVoltageAlertRef.current = now;
+      
+      if (voltage < 12.0) {
+        speak(`Alerta crítico! Tensão da bateria em ${voltage} volts. Verifique o sistema elétrico imediatamente.`);
+      } else {
+        speak(`Atenção. Tensão da bateria baixa em ${voltage} volts. Recomendo verificar o alternador.`);
+      }
+    }
+  }, [voltage, speak, jarvisSettings.lowVoltageAlertEnabled, jarvisSettings.lowVoltageThreshold]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-y">

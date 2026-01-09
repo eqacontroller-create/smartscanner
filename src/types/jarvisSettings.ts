@@ -6,6 +6,8 @@ export interface JarvisSettings {
   highTempThreshold: number;        // Limite em Celsius (padrão: 100)
   speedAlertEnabled: boolean;
   speedLimit: number;               // Limite em km/h (padrão: 120)
+  lowVoltageAlertEnabled: boolean;  // Alerta de bateria baixa
+  lowVoltageThreshold: number;      // Limite de voltagem (padrão: 12.5V)
   maintenanceAlertEnabled: boolean;
   currentMileage: number;           // Quilometragem atual (entrada manual)
   nextOilChange: number;            // Próxima troca de óleo (km)
@@ -31,6 +33,8 @@ export const defaultJarvisSettings: JarvisSettings = {
   highTempThreshold: 100,
   speedAlertEnabled: true,
   speedLimit: 120,
+  lowVoltageAlertEnabled: true,
+  lowVoltageThreshold: 12.5,
   maintenanceAlertEnabled: true,
   currentMileage: 0,
   nextOilChange: 15000,
