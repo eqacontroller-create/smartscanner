@@ -8,6 +8,7 @@ interface VehicleContext {
   rpm: number | null;
   speed: number | null;
   temperature: number | null;
+  voltage: number | null;
   isConnected: boolean;
   isPolling: boolean;
 }

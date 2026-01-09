@@ -10,6 +10,7 @@ interface VehicleData {
   rpm: number | null;
   speed: number | null;
   temperature: number | null;
+  voltage: number | null;
 }
 
 interface BluetoothHookReturn {
@@ -17,6 +18,7 @@ interface BluetoothHookReturn {
   rpm: number | null;
   speed: number | null;
   temperature: number | null;
+  voltage: number | null;
   error: string | null;
   logs: string[];
   isPolling: boolean;
@@ -36,6 +38,7 @@ export function useBluetooth(): BluetoothHookReturn {
   const [rpm, setRPM] = useState<number | null>(null);
   const [speed, setSpeed] = useState<number | null>(null);
   const [temperature, setTemperature] = useState<number | null>(null);
+  const [voltage, setVoltage] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isPolling, setIsPolling] = useState(false);
@@ -273,6 +276,19 @@ export function useBluetooth(): BluetoothHookReturn {
         setTemperature(null);
       }
 
+      // Read Battery Voltage (PID 0142) - Volts ((A * 256 + B) / 1000)
+      const voltResponse = await sendCommand('0142', 3000);
+      const cleanVolt = voltResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+      const voltMatch = cleanVolt.match(/4142([0-9A-F]{2})([0-9A-F]{2})/);
+      
+      if (voltMatch) {
+        const A = parseInt(voltMatch[1], 16);
+        const B = parseInt(voltMatch[2], 16);
+        setVoltage(Math.round(((A * 256) + B) / 1000 * 10) / 10);
+      } else if (cleanVolt.includes('NODATA')) {
+        setVoltage(null);
+      }
+
       return true;
     } catch {
       return false;
@@ -288,7 +304,7 @@ export function useBluetooth(): BluetoothHookReturn {
     isPollingRef.current = true;
     setIsPolling(true);
     setStatus('reading');
-    addLogRef.current('▶ Iniciando leitura contínua (RPM, Velocidade, Temperatura)...');
+    addLogRef.current('▶ Iniciando leitura contínua (RPM, Velocidade, Temperatura, Voltagem)...');
 
     const poll = async () => {
       if (!isPollingRef.current) return;
@@ -312,6 +328,7 @@ export function useBluetooth(): BluetoothHookReturn {
     rpm,
     speed,
     temperature,
+    voltage,
     error,
     logs,
     isPolling,
