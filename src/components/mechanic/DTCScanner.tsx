@@ -7,7 +7,7 @@ import { DTCList } from './DTCList';
 import { DTCModal } from './DTCModal';
 import { OBDLimitations } from './OBDLimitations';
 import { ScanProgress, type ScanStep } from './ScanProgress';
-import { parseDTCResponse, isNoErrorsResponse, type ParsedDTC } from '@/lib/dtcParser';
+import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, type ParsedDTC } from '@/lib/dtcParser';
 import { KNOWN_ECU_MODULES, type ECUModule } from '@/lib/ecuModules';
 
 type ScanState = 'idle' | 'scanning' | 'clear' | 'errors';
@@ -62,53 +62,84 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   };
 
   const scanModule = async (module: ECUModule): Promise<ParsedDTC[]> => {
+    const allDTCs: ParsedDTC[] = [];
+    
     try {
       // Definir header de transmissão para este módulo
       addLog(`📡 AT SH ${module.txHeader} (${module.shortName})`);
       await sendCommand(`AT SH ${module.txHeader}`, 2000);
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Definir filtro de recepção
       addLog(`📡 AT CRA ${module.rxFilter}`);
       await sendCommand(`AT CRA ${module.rxFilter}`, 2000);
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Enviar comando 03 para ler DTCs
-      addLog(`📤 Enviando 03 para ${module.shortName}...`);
-      const response = await sendCommand('03', 5000);
-      addLog(`📥 ${module.shortName}: "${response.replace(/[\r\n]/g, '\\n')}"`);
+      // === PROTOCOLO 1: OBD-II Modo 03 (leitura de DTCs de emissão) ===
+      addLog(`📤 [OBD-II] Enviando 03 para ${module.shortName}...`);
+      const obd2Response = await sendCommand('03', 8000);
+      addLog(`📥 [OBD-II] ${module.shortName} RAW: "${obd2Response}"`);
 
-      // Verificar resposta
-      if (!isValidResponse(response) || 
-          response.includes('NODATA') || 
-          response.includes('NO DATA') ||
-          response.includes('UNABLE') ||
-          response.includes('ERROR')) {
-        addLog(`ℹ️ ${module.shortName}: Nenhum código ou módulo não responde`);
-        return [];
+      // Verificar resposta OBD-II
+      if (isValidResponse(obd2Response) && 
+          !obd2Response.includes('NODATA') && 
+          !obd2Response.includes('NO DATA') &&
+          !obd2Response.includes('UNABLE') &&
+          !obd2Response.includes('ERROR')) {
+        
+        if (!isNoErrorsResponse(obd2Response)) {
+          const parsedOBD2 = parseDTCResponse(obd2Response);
+          addLog(`📊 [OBD-II] Parsed: ${parsedOBD2.length} código(s)`);
+          
+          for (const dtc of parsedOBD2) {
+            allDTCs.push({ ...dtc, module });
+          }
+        } else {
+          addLog(`✅ [OBD-II] ${module.shortName}: Resposta indica sem erros`);
+        }
+      } else {
+        addLog(`ℹ️ [OBD-II] ${module.shortName}: NO DATA ou não suportado`);
       }
 
-      if (isNoErrorsResponse(response)) {
-        addLog(`✅ ${module.shortName}: Sem erros`);
-        return [];
+      // Pequena pausa antes do próximo protocolo
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // === PROTOCOLO 2: UDS Serviço 19 02 FF (leitura de DTCs avançado) ===
+      // Usado por BCM, SRS, ABS e outros módulos que não respondem ao modo 03
+      addLog(`📤 [UDS] Enviando 19 02 FF para ${module.shortName}...`);
+      const udsResponse = await sendCommand('19 02 FF', 8000);
+      addLog(`📥 [UDS] ${module.shortName} RAW: "${udsResponse}"`);
+
+      if (isValidResponse(udsResponse) && 
+          !udsResponse.includes('NODATA') && 
+          !udsResponse.includes('NO DATA') &&
+          !udsResponse.includes('UNABLE') &&
+          !udsResponse.includes('ERROR') &&
+          !udsResponse.includes('7F')) {  // 7F = negative response
+        
+        const parsedUDS = parseUDSResponse(udsResponse);
+        addLog(`📊 [UDS] Parsed: ${parsedUDS.length} código(s)`);
+        
+        // Evitar duplicatas
+        for (const dtc of parsedUDS) {
+          if (!allDTCs.some(existing => existing.code === dtc.code)) {
+            allDTCs.push({ ...dtc, module });
+          }
+        }
+      } else {
+        addLog(`ℹ️ [UDS] ${module.shortName}: NO DATA ou não suportado`);
       }
 
-      const parsedDTCs = parseDTCResponse(response);
-      
-      // Adicionar informação do módulo a cada DTC
-      const dtcsWithModule = parsedDTCs.map(dtc => ({
-        ...dtc,
-        module,
-      }));
-
-      if (dtcsWithModule.length > 0) {
-        addLog(`⚠️ ${module.shortName}: ${dtcsWithModule.length} código(s): ${dtcsWithModule.map(d => d.code).join(', ')}`);
+      if (allDTCs.length > 0) {
+        addLog(`⚠️ ${module.shortName}: TOTAL ${allDTCs.length} código(s): ${allDTCs.map(d => d.code).join(', ')}`);
+      } else {
+        addLog(`✅ ${module.shortName}: Nenhum código encontrado`);
       }
 
-      return dtcsWithModule;
+      return allDTCs;
     } catch (error) {
       addLog(`❌ Erro ao escanear ${module.shortName}: ${error}`);
-      return [];
+      return allDTCs;
     }
   };
 
