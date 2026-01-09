@@ -34,13 +34,16 @@ interface UseVoiceRecognitionOptions {
   onResult?: (transcript: string) => void;
   onError?: (error: string) => void;
   continuous?: boolean;
+  interimResults?: boolean;
   language?: string;
+  autoRestart?: boolean;
 }
 
 interface UseVoiceRecognitionReturn {
   isListening: boolean;
   isSupported: boolean;
   transcript: string;
+  interimTranscript: string;
   error: string | null;
   startListening: () => void;
   stopListening: () => void;
@@ -52,15 +55,19 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
     onResult,
     onError,
     continuous = false,
-    language = 'pt-BR'
+    interimResults = false,
+    language = 'pt-BR',
+    autoRestart = false,
   } = options;
 
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isManuallyStoppedRef = useRef(false);
+  const shouldRestartRef = useRef(false);
 
   const isSupported = typeof window !== 'undefined' && 
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -73,7 +80,7 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
     const recognition = new SpeechRecognitionAPI();
     
     recognition.continuous = continuous;
-    recognition.interimResults = false;
+    recognition.interimResults = interimResults;
     recognition.lang = language;
 
     recognition.onstart = () => {
@@ -82,19 +89,44 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const lastResult = event.results[event.results.length - 1];
-      if (lastResult.isFinal) {
-        const text = lastResult[0].transcript.trim();
-        setTranscript(text);
-        onResult?.(text);
+      let finalText = '';
+      let interimText = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalText += result[0].transcript;
+        } else {
+          interimText += result[0].transcript;
+        }
+      }
+      
+      if (interimText) {
+        setInterimTranscript(interimText);
+      }
+      
+      if (finalText) {
+        const trimmedText = finalText.trim();
+        setTranscript(trimmedText);
+        setInterimTranscript('');
+        onResult?.(trimmedText);
       }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       // Ignorar erros de "no-speech" e "aborted" quando parado manualmente
       if (event.error === 'no-speech' || event.error === 'aborted') {
-        if (!isManuallyStoppedRef.current) {
-          setError('Nenhuma fala detectada');
+        if (!isManuallyStoppedRef.current && autoRestart && shouldRestartRef.current) {
+          // Reiniciar automaticamente se configurado
+          setTimeout(() => {
+            if (shouldRestartRef.current && recognitionRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch (e) {
+                // Ignorar erro se já estiver escutando
+              }
+            }
+          }, 100);
         }
         return;
       }
@@ -103,26 +135,47 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
       setError(errorMessage);
       onError?.(errorMessage);
       setIsListening(false);
+      shouldRestartRef.current = false;
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      
+      // Auto-restart se configurado e não foi parado manualmente
+      if (autoRestart && shouldRestartRef.current && !isManuallyStoppedRef.current) {
+        setTimeout(() => {
+          if (shouldRestartRef.current && recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              // Ignorar erro se já estiver escutando
+            }
+          }
+        }, 100);
+      }
+      
       isManuallyStoppedRef.current = false;
     };
 
     recognitionRef.current = recognition;
 
     return () => {
+      shouldRestartRef.current = false;
       recognition.abort();
     };
-  }, [isSupported, continuous, language, onResult, onError]);
+  }, [isSupported, continuous, interimResults, language, onResult, onError, autoRestart]);
 
   const startListening = useCallback(() => {
-    if (!isSupported || !recognitionRef.current || isListening) return;
+    if (!isSupported || !recognitionRef.current) return;
+    
+    // Se já está escutando, não fazer nada
+    if (isListening) return;
     
     setTranscript('');
+    setInterimTranscript('');
     setError(null);
     isManuallyStoppedRef.current = false;
+    shouldRestartRef.current = autoRestart;
     
     try {
       recognitionRef.current.start();
@@ -130,14 +183,15 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
       console.error('Erro ao iniciar reconhecimento:', err);
       setError('Erro ao iniciar reconhecimento de voz');
     }
-  }, [isSupported, isListening]);
+  }, [isSupported, isListening, autoRestart]);
 
   const stopListening = useCallback(() => {
-    if (!recognitionRef.current || !isListening) return;
+    if (!recognitionRef.current) return;
     
     isManuallyStoppedRef.current = true;
+    shouldRestartRef.current = false;
     recognitionRef.current.stop();
-  }, [isListening]);
+  }, []);
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -151,6 +205,7 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
     isListening,
     isSupported,
     transcript,
+    interimTranscript,
     error,
     startListening,
     stopListening,

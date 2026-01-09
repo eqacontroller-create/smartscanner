@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mic, MicOff, Loader2, Volume2, X, ChevronUp, ChevronDown, Sparkles } from 'lucide-react';
+import { Mic, MicOff, Loader2, Volume2, X, ChevronUp, ChevronDown, Sparkles, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,29 +11,41 @@ interface Message {
 
 interface JarvisFloatingWidgetProps {
   isListening: boolean;
+  isContinuousMode: boolean;
+  isWakeWordDetected: boolean;
   isProcessing: boolean;
   isSpeaking: boolean;
   isSupported: boolean;
   isEnabled: boolean;
+  continuousListeningEnabled: boolean;
+  wakeWord: string;
   error: string | null;
   lastTranscript: string;
+  interimTranscript: string;
   lastResponse: string;
   conversationHistory: Message[];
   onToggleListening: () => void;
+  onToggleContinuousMode: () => void;
   onClearHistory: () => void;
 }
 
 export function JarvisFloatingWidget({
   isListening,
+  isContinuousMode,
+  isWakeWordDetected,
   isProcessing,
   isSpeaking,
   isSupported,
   isEnabled,
+  continuousListeningEnabled,
+  wakeWord,
   error,
   lastTranscript,
+  interimTranscript,
   lastResponse,
   conversationHistory,
   onToggleListening,
+  onToggleContinuousMode,
   onClearHistory,
 }: JarvisFloatingWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -45,13 +57,17 @@ export function JarvisFloatingWidget({
     if (error) return error;
     if (isProcessing) return 'Pensando...';
     if (isSpeaking) return 'Falando...';
+    if (isWakeWordDetected) return 'Wake word detectada!';
+    if (isContinuousMode && isListening) return `Diga "${wakeWord}"...`;
     if (isListening) return 'Escutando...';
+    if (isContinuousMode) return 'Modo contínuo pausado';
     return 'Toque para falar';
   };
 
   const getStatusIcon = () => {
     if (isProcessing) return <Loader2 className="h-5 w-5 animate-spin" />;
     if (isSpeaking) return <Volume2 className="h-5 w-5 animate-pulse" />;
+    if (isContinuousMode) return <Radio className="h-5 w-5" />;
     if (isListening) return <Mic className="h-5 w-5" />;
     return <Mic className="h-5 w-5" />;
   };
@@ -64,12 +80,14 @@ export function JarvisFloatingWidget({
           onClick={() => setIsMinimized(false)}
           className={cn(
             "h-14 w-14 rounded-full shadow-lg transition-all duration-300",
-            isListening && "bg-primary animate-pulse",
+            isContinuousMode && isListening && "bg-accent animate-pulse",
+            isWakeWordDetected && "bg-primary animate-bounce",
+            isListening && !isContinuousMode && "bg-primary animate-pulse",
             isSpeaking && "bg-accent",
             !isListening && !isSpeaking && "bg-card border border-border hover:bg-muted"
           )}
         >
-          <Sparkles className="h-6 w-6" />
+          {isContinuousMode ? <Radio className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
         </Button>
       </div>
     );
@@ -79,19 +97,30 @@ export function JarvisFloatingWidget({
     <div className="fixed bottom-4 right-4 z-50 safe-area-bottom">
       <div className={cn(
         "bg-card border border-border rounded-2xl shadow-xl transition-all duration-300 overflow-hidden",
-        isExpanded ? "w-80" : "w-72"
+        isExpanded ? "w-80" : "w-72",
+        isWakeWordDetected && "border-primary"
       )}>
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">
+        <div className={cn(
+          "flex items-center justify-between p-3 border-b border-border transition-colors",
+          isContinuousMode ? "bg-accent/10" : "bg-muted/30"
+        )}>
           <div className="flex items-center gap-2">
             <div className={cn(
-              "h-2 w-2 rounded-full",
-              isListening && "bg-primary animate-pulse",
+              "h-2 w-2 rounded-full transition-colors",
+              isWakeWordDetected && "bg-primary animate-ping",
+              isContinuousMode && isListening && "bg-accent animate-pulse",
+              isListening && !isContinuousMode && "bg-primary animate-pulse",
               isSpeaking && "bg-accent animate-pulse",
               isProcessing && "bg-warning animate-pulse",
               !isListening && !isSpeaking && !isProcessing && "bg-muted-foreground"
             )} />
             <span className="text-sm font-medium">Jarvis</span>
+            {isContinuousMode && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/20 text-accent-foreground">
+                CONTÍNUO
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -139,10 +168,23 @@ export function JarvisFloatingWidget({
 
         {/* Última interação */}
         <div className="p-3 space-y-2">
+          {/* Transcrição em tempo real (modo contínuo) */}
+          {isContinuousMode && isListening && interimTranscript && (
+            <div className="bg-accent/10 rounded-lg p-2 border border-accent/20">
+              <p className="text-xs text-muted-foreground mb-1">Ouvindo:</p>
+              <p className="text-sm text-foreground italic">{interimTranscript}</p>
+            </div>
+          )}
+
           {/* Transcrição atual (quando escutando ou processando) */}
-          {(isListening || lastTranscript) && !lastResponse && (
-            <div className="bg-primary/10 rounded-lg p-2">
-              <p className="text-xs text-muted-foreground mb-1">Você disse:</p>
+          {((isListening && !isContinuousMode) || lastTranscript) && !lastResponse && !interimTranscript && (
+            <div className={cn(
+              "rounded-lg p-2",
+              isWakeWordDetected ? "bg-primary/20 border border-primary/30" : "bg-primary/10"
+            )}>
+              <p className="text-xs text-muted-foreground mb-1">
+                {isWakeWordDetected ? '🎯 Wake word detectada:' : 'Você disse:'}
+              </p>
               <p className="text-sm text-foreground">
                 {isListening && !lastTranscript ? (
                   <span className="text-muted-foreground italic">Aguardando...</span>
@@ -162,9 +204,12 @@ export function JarvisFloatingWidget({
           )}
 
           {/* Estado vazio */}
-          {!lastTranscript && !lastResponse && !isListening && (
+          {!lastTranscript && !lastResponse && !isListening && !interimTranscript && (
             <p className="text-xs text-muted-foreground text-center py-2">
-              Pergunte algo como "Como está o motor?"
+              {isContinuousMode 
+                ? `Diga "${wakeWord}" seguido do comando`
+                : 'Pergunte algo como "Como está o motor?"'
+              }
             </p>
           )}
         </div>
@@ -176,14 +221,32 @@ export function JarvisFloatingWidget({
             disabled={isProcessing}
             className={cn(
               "flex-1 gap-2 transition-all duration-300",
-              isListening && "bg-primary text-primary-foreground",
+              isContinuousMode && isListening && "bg-accent text-accent-foreground",
+              isListening && !isContinuousMode && "bg-primary text-primary-foreground",
               isSpeaking && "bg-accent text-accent-foreground"
             )}
             variant={isListening || isSpeaking ? "default" : "outline"}
           >
             {getStatusIcon()}
-            <span className="text-sm">{getStatusText()}</span>
+            <span className="text-sm truncate">{getStatusText()}</span>
           </Button>
+
+          {/* Botão de modo contínuo */}
+          {continuousListeningEnabled && (
+            <Button
+              variant={isContinuousMode ? "default" : "ghost"}
+              size="icon"
+              className={cn(
+                "h-9 w-9 transition-colors",
+                isContinuousMode && "bg-accent text-accent-foreground"
+              )}
+              onClick={onToggleContinuousMode}
+              title={isContinuousMode ? "Desativar modo contínuo" : "Ativar modo contínuo"}
+              disabled={isProcessing}
+            >
+              <Radio className="h-4 w-4" />
+            </Button>
+          )}
           
           {conversationHistory.length > 0 && (
             <Button
@@ -200,8 +263,18 @@ export function JarvisFloatingWidget({
 
         {/* Indicador de escuta animado */}
         {isListening && (
-          <div className="h-1 bg-primary/20 overflow-hidden">
-            <div className="h-full bg-primary animate-pulse" style={{ width: '100%' }} />
+          <div className={cn(
+            "h-1 overflow-hidden",
+            isContinuousMode ? "bg-accent/20" : "bg-primary/20"
+          )}>
+            <div 
+              className={cn(
+                "h-full animate-pulse",
+                isContinuousMode ? "bg-accent" : "bg-primary",
+                isWakeWordDetected && "animate-bounce bg-primary"
+              )} 
+              style={{ width: '100%' }} 
+            />
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain } from 'lucide-react';
+import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -316,26 +316,69 @@ export function JarvisSettingsSheet({
                 </div>
 
                 {settings.aiModeEnabled && (
-                  <div className="space-y-3">
-                    <Label className="text-xs text-muted-foreground">Tamanho das respostas</Label>
-                    <Select
-                      value={settings.aiResponseLength}
-                      onValueChange={(value: 'short' | 'medium' | 'detailed') => 
-                        onUpdateSetting('aiResponseLength', value)
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="short">Curta (1-2 frases)</SelectItem>
-                        <SelectItem value="medium">Média (2-3 frases)</SelectItem>
-                        <SelectItem value="detailed">Detalhada (3-4 frases)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      💡 Dica: Pergunte "Como está o carro?" ou "Posso acelerar?"
-                    </p>
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label className="text-xs text-muted-foreground">Tamanho das respostas</Label>
+                      <Select
+                        value={settings.aiResponseLength}
+                        onValueChange={(value: 'short' | 'medium' | 'detailed') => 
+                          onUpdateSetting('aiResponseLength', value)
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="short">Curta (1-2 frases)</SelectItem>
+                          <SelectItem value="medium">Média (2-3 frases)</SelectItem>
+                          <SelectItem value="detailed">Detalhada (3-4 frases)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Modo Contínuo */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="continuous-mode" className="text-sm font-medium flex items-center gap-1.5">
+                          <Radio className="h-3.5 w-3.5 text-accent" />
+                          Escuta contínua
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Jarvis fica sempre atento à wake word
+                        </p>
+                      </div>
+                      <Switch
+                        id="continuous-mode"
+                        checked={settings.continuousListening}
+                        onCheckedChange={(checked) => onUpdateSetting('continuousListening', checked)}
+                      />
+                    </div>
+
+                    {settings.continuousListening && (
+                      <div className="space-y-2">
+                        <Label htmlFor="wake-word" className="text-xs text-muted-foreground">
+                          Palavra de ativação
+                        </Label>
+                        <Input
+                          id="wake-word"
+                          value={settings.wakeWord}
+                          onChange={(e) => onUpdateSetting('wakeWord', e.target.value || 'jarvis')}
+                          placeholder="jarvis"
+                          className="h-9"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          💡 Diga "{settings.wakeWord}, como está o motor?"
+                        </p>
+                      </div>
+                    )}
+
+                    {!settings.continuousListening && (
+                      <p className="text-xs text-muted-foreground">
+                        💡 Dica: Pergunte "Como está o carro?" ou "Posso acelerar?"
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

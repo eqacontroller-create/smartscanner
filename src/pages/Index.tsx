@@ -371,15 +371,21 @@ const Index = () => {
       {/* Jarvis Floating Widget */}
       <JarvisFloatingWidget
         isListening={jarvisAI.isListening}
+        isContinuousMode={jarvisAI.isContinuousMode}
+        isWakeWordDetected={jarvisAI.isWakeWordDetected}
         isProcessing={jarvisAI.isProcessing}
         isSpeaking={jarvisAI.isSpeaking}
         isSupported={jarvisAI.isSupported}
         isEnabled={jarvisSettings.aiModeEnabled}
+        continuousListeningEnabled={jarvisSettings.continuousListening}
+        wakeWord={jarvisSettings.wakeWord}
         error={jarvisAI.error}
         lastTranscript={jarvisAI.lastTranscript}
+        interimTranscript={jarvisAI.interimTranscript}
         lastResponse={jarvisAI.lastResponse}
         conversationHistory={jarvisAI.conversationHistory}
         onToggleListening={jarvisAI.toggleListening}
+        onToggleContinuousMode={jarvisAI.toggleContinuousMode}
         onClearHistory={jarvisAI.clearHistory}
       />
 
