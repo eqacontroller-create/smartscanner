@@ -7,10 +7,11 @@ import { VehicleStats } from '@/components/dashboard/VehicleStats';
 import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
+import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Gauge, Wrench } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle, Gauge, Wrench, Activity } from 'lucide-react';
 
 const Index = () => {
   const {
@@ -97,14 +98,18 @@ const Index = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dashboard" className="gap-2">
                 <Gauge className="h-4 w-4" />
                 Painel
               </TabsTrigger>
+              <TabsTrigger value="live" className="gap-2">
+                <Activity className="h-4 w-4" />
+                Live Data
+              </TabsTrigger>
               <TabsTrigger value="mechanic" className="gap-2">
                 <Wrench className="h-4 w-4" />
-                Mecânico IA
+                Diagnóstico
               </TabsTrigger>
             </TabsList>
 
@@ -153,7 +158,19 @@ const Index = () => {
               <LogPanel logs={logs} />
             </TabsContent>
 
-            {/* Mechanic IA Tab */}
+            {/* Live Data Tab */}
+            <TabsContent value="live" className="space-y-6 mt-6">
+              <LiveDataMonitor
+                sendCommand={sendRawCommand}
+                isConnected={isReady || isReading}
+                addLog={addLog}
+              />
+              
+              {/* Log Panel */}
+              <LogPanel logs={logs} />
+            </TabsContent>
+
+            {/* Mechanic/Diagnostics Tab */}
             <TabsContent value="mechanic" className="space-y-6 mt-6">
               {/* Vehicle VIN Reader */}
               <VehicleVIN
