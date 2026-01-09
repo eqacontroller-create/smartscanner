@@ -6,9 +6,17 @@ const NOTIFY_CHARACTERISTIC_UUID = '0000fff1-0000-1000-8000-00805f9b34fb';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'initializing' | 'ready' | 'reading' | 'error';
 
+interface VehicleData {
+  rpm: number | null;
+  speed: number | null;
+  temperature: number | null;
+}
+
 interface BluetoothHookReturn {
   status: ConnectionStatus;
   rpm: number | null;
+  speed: number | null;
+  temperature: number | null;
   error: string | null;
   logs: string[];
   isPolling: boolean;
@@ -16,7 +24,7 @@ interface BluetoothHookReturn {
   disconnect: () => void;
   startPolling: () => void;
   stopPolling: () => void;
-  sendRawCommand: (command: string) => Promise<string>;
+  sendRawCommand: (command: string, timeout?: number) => Promise<string>;
   addLog: (message: string) => void;
   isSupported: boolean;
 }
@@ -26,6 +34,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export function useBluetooth(): BluetoothHookReturn {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [rpm, setRPM] = useState<number | null>(null);
+  const [speed, setSpeed] = useState<number | null>(null);
+  const [temperature, setTemperature] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isPolling, setIsPolling] = useState(false);
@@ -224,26 +234,46 @@ export function useBluetooth(): BluetoothHookReturn {
     addLogRef.current('🔌 Desconectado manualmente');
   }, [stopPolling]);
 
-  const readRPMOnce = useCallback(async (): Promise<boolean> => {
+  const readVehicleData = useCallback(async (): Promise<boolean> => {
     if (!writeCharRef.current) return false;
 
     try {
-      const response = await sendCommand('010C', 3000);
-      const cleanResponse = response.replace(/[\r\n>\s]/g, '').toUpperCase();
+      // Read RPM (PID 010C)
+      const rpmResponse = await sendCommand('010C', 3000);
+      const cleanRpm = rpmResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+      const rpmMatch = cleanRpm.match(/410C([0-9A-F]{2})([0-9A-F]{2})/);
       
-      const match = cleanResponse.match(/410C([0-9A-F]{2})([0-9A-F]{2})/);
-      
-      if (match) {
-        const A = parseInt(match[1], 16);
-        const B = parseInt(match[2], 16);
-        const rpmValue = ((A * 256) + B) / 4;
-        setRPM(Math.round(rpmValue));
-        return true;
-      } else if (cleanResponse.includes('NODATA') || cleanResponse.includes('NO DATA')) {
+      if (rpmMatch) {
+        const A = parseInt(rpmMatch[1], 16);
+        const B = parseInt(rpmMatch[2], 16);
+        setRPM(Math.round(((A * 256) + B) / 4));
+      } else if (cleanRpm.includes('NODATA')) {
         setRPM(0);
-        return true;
       }
-      return false;
+
+      // Read Speed (PID 010D) - km/h
+      const speedResponse = await sendCommand('010D', 3000);
+      const cleanSpeed = speedResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+      const speedMatch = cleanSpeed.match(/410D([0-9A-F]{2})/);
+      
+      if (speedMatch) {
+        setSpeed(parseInt(speedMatch[1], 16));
+      } else if (cleanSpeed.includes('NODATA')) {
+        setSpeed(0);
+      }
+
+      // Read Coolant Temperature (PID 0105) - Celsius (A - 40)
+      const tempResponse = await sendCommand('0105', 3000);
+      const cleanTemp = tempResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
+      const tempMatch = cleanTemp.match(/4105([0-9A-F]{2})/);
+      
+      if (tempMatch) {
+        setTemperature(parseInt(tempMatch[1], 16) - 40);
+      } else if (cleanTemp.includes('NODATA')) {
+        setTemperature(null);
+      }
+
+      return true;
     } catch {
       return false;
     }
@@ -258,20 +288,20 @@ export function useBluetooth(): BluetoothHookReturn {
     isPollingRef.current = true;
     setIsPolling(true);
     setStatus('reading');
-    addLogRef.current('▶ Iniciando leitura contínua...');
+    addLogRef.current('▶ Iniciando leitura contínua (RPM, Velocidade, Temperatura)...');
 
     const poll = async () => {
       if (!isPollingRef.current) return;
       
-      await readRPMOnce();
+      await readVehicleData();
       
       if (isPollingRef.current) {
-        pollingIntervalRef.current = window.setTimeout(poll, 500);
+        pollingIntervalRef.current = window.setTimeout(poll, 1000);
       }
     };
 
     poll();
-  }, [status, readRPMOnce]);
+  }, [status, readVehicleData]);
 
   const sendRawCommand = async (command: string, timeout: number = 10000): Promise<string> => {
     return sendCommand(command, timeout);
@@ -280,6 +310,8 @@ export function useBluetooth(): BluetoothHookReturn {
   return {
     status,
     rpm,
+    speed,
+    temperature,
     error,
     logs,
     isPolling,

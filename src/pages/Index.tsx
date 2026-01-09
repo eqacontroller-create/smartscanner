@@ -3,6 +3,7 @@ import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
+import { VehicleStats } from '@/components/dashboard/VehicleStats';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ const Index = () => {
   const {
     status,
     rpm,
+    speed,
+    temperature,
     error,
     logs,
     isPolling,
@@ -134,6 +137,13 @@ const Index = () => {
                   </Button>
                 )}
               </div>
+
+              {/* Vehicle Stats */}
+              <VehicleStats 
+                speed={speed} 
+                temperature={temperature} 
+                isReading={isReading} 
+              />
 
               {/* RPM Card */}
               <RPMCard value={rpm} isReading={isReading} />
