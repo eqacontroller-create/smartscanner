@@ -142,8 +142,11 @@ export function parseLiveDataResponse(pid: string, response: string): number | n
   for (const line of lines) {
     const clean = line.replace(/\s+/g, '').toUpperCase();
     
-    // Ignorar erros
-    if (clean.includes('NODATA') || clean.includes('ERROR') || clean === '>') {
+    // Ignorar erros e respostas inválidas
+    if (clean.includes('NODATA') || clean.includes('ERROR') || 
+        clean.includes('STOPPED') || clean.startsWith('7F') ||
+        clean.includes('UNABLE') || clean.includes('SEARCHING') ||
+        clean === '>' || clean.length < 4) {
       continue;
     }
     
