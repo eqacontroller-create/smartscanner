@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw, Car, Trash2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Car, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -18,9 +18,11 @@ import { DTCList } from './DTCList';
 import { DTCModal } from './DTCModal';
 import { OBDLimitations } from './OBDLimitations';
 import { ScanProgress, type ScanStep } from './ScanProgress';
+import { ScanHistory } from './ScanHistory';
 import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/lib/dtcParser';
 import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
 import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
+import { saveScanResult } from '@/lib/scanHistory';
 import { useToast } from '@/hooks/use-toast';
 
 type ScanState = 'idle' | 'scanning' | 'clearing' | 'clear' | 'errors';
@@ -60,6 +62,8 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const [currentModule, setCurrentModule] = useState<string>('');
   const [detectedVIN, setDetectedVIN] = useState<VINInfo | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+  const [scanStartTime, setScanStartTime] = useState(0);
+  const [historyKey, setHistoryKey] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -327,6 +331,7 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     setCurrentModule('');
     
     let manufacturerGroup: ManufacturerGroup = detectedVIN?.manufacturerGroup || 'Other';
+    setScanStartTime(Date.now());
 
     // Start timer
     const startTime = Date.now();
@@ -486,6 +491,19 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       // Step 8: Processar resultados
       updateStep('process', 'running');
       setCurrentModule('');
+      
+      // Calcular duração do scan
+      const scanDuration = Date.now() - scanStartTime;
+      const modulesCount = KNOWN_ECU_MODULES.length + alternativeModules.length;
+      
+      // Salvar resultado no histórico
+      try {
+        await saveScanResult(allDTCs, detectedVIN, modulesCount, scanDuration);
+        addLog('💾 Scan salvo no histórico');
+        setHistoryKey(prev => prev + 1); // Atualizar histórico
+      } catch (e) {
+        addLog('⚠️ Erro ao salvar histórico');
+      }
       
       if (allDTCs.length === 0) {
         addLog('✅ Nenhum código de erro encontrado');
@@ -649,6 +667,12 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       )}
 
       {(scanState === 'clear' || scanState === 'errors') && <OBDLimitations />}
+
+      {/* Histórico de Scans */}
+      <ScanHistory 
+        key={historyKey}
+        currentVIN={detectedVIN?.vin}
+      />
 
       <DTCModal 
         dtc={selectedDTC}
