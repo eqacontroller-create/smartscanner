@@ -352,6 +352,7 @@ const Index = () => {
                 addLog={addLog}
                 stopPolling={stopPolling}
                 isPolling={isPolling}
+                onSpeakAlert={jarvisSettings.aiModeEnabled ? speak : undefined}
               />
               
               {/* Log Panel also visible in mechanic tab */}
