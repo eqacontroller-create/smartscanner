@@ -20,6 +20,8 @@ interface LiveDataMonitorProps {
   sendCommand: (command: string, timeout?: number) => Promise<string>;
   isConnected: boolean;
   addLog: (message: string) => void;
+  stopPolling: () => void;
+  isPolling: boolean;
 }
 
 interface SensorReading {
@@ -60,7 +62,9 @@ const getColorForPID = (pid: string): string => {
   return colors[pid.toUpperCase()] || '#6b7280';
 };
 
-export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMonitorProps) {
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling, isPolling }: LiveDataMonitorProps) {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [selectedPIDs, setSelectedPIDs] = useState<string[]>(DEFAULT_MONITORING_PIDS);
   const [currentValues, setCurrentValues] = useState<Record<string, number>>({});
@@ -142,14 +146,25 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog }: LiveDataMo
   const handleStartMonitoring = async () => {
     if (!isConnected || selectedPIDs.length === 0) return;
     
+    // Parar polling do painel primeiro para evitar conflitos
+    if (isPolling) {
+      stopPolling();
+      addLog('⏸️ Pausando leitura do painel...');
+      await delay(500); // Aguardar ELM327 estabilizar
+    }
+    
     addLog('📊 Iniciando monitoramento de dados ao vivo...');
     
-    // Configurar ELM327 para leituras rápidas
+    // Reconfigurar ELM327 para leituras limpas
     try {
-      await sendCommand('AT SH 7DF', 2000);
-      await sendCommand('AT ST 32', 2000); // Timeout mais curto
+      await sendCommand('AT Z', 2000); // Reset
+      await delay(300);
+      await sendCommand('AT E0', 2000); // Sem echo
+      await sendCommand('AT H0', 2000); // Sem headers
+      await sendCommand('AT SP 0', 2000); // Auto protocolo
+      await sendCommand('AT ST 32', 2000); // Timeout curto
     } catch {
-      // Continuar mesmo com erro
+      // Continuar mesmo com erro de configuração
     }
     
     setChartData([]);
