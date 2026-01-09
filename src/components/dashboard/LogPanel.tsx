@@ -18,22 +18,22 @@ export function LogPanel({ logs }: LogPanelProps) {
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="py-3 px-4">
-        <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-          <Terminal className="h-4 w-4" />
+      <CardHeader className="py-2 sm:py-3 px-3 sm:px-4">
+        <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2 text-muted-foreground">
+          <Terminal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           Logs de Comunicação
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="h-40" ref={scrollRef}>
-          <div className="p-4 pt-0 font-mono text-xs space-y-1">
+        <ScrollArea className="h-28 sm:h-40" ref={scrollRef}>
+          <div className="p-3 sm:p-4 pt-0 font-mono text-[10px] sm:text-xs space-y-0.5 sm:space-y-1">
             {logs.length === 0 ? (
               <p className="text-muted-foreground/50">Nenhum log ainda...</p>
             ) : (
               logs.map((log, index) => (
                 <p
                   key={index}
-                  className={`${
+                  className={`break-all ${
                     log.includes('TX:')
                       ? 'text-accent'
                       : log.includes('RX:')

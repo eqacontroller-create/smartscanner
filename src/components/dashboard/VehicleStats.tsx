@@ -23,37 +23,37 @@ export function VehicleStats({ speed, temperature, isReading }: VehicleStatsProp
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-2 sm:gap-4">
       {/* Velocidade */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Gauge className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-muted-foreground">Velocidade</span>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+            <Gauge className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+            <span className="text-xs sm:text-sm font-medium text-muted-foreground">Velocidade</span>
           </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-foreground">
+          <div className="flex items-baseline gap-0.5 sm:gap-1">
+            <span className="text-2xl sm:text-3xl font-bold text-foreground">
               {isReading && speed !== null ? speed : '--'}
             </span>
-            <span className="text-sm text-muted-foreground">km/h</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">km/h</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Temperatura */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Thermometer className={`h-4 w-4 ${getTemperatureColor(temperature)}`} />
-            <span className="text-sm font-medium text-muted-foreground">Temp. Motor</span>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+            <Thermometer className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${getTemperatureColor(temperature)}`} />
+            <span className="text-xs sm:text-sm font-medium text-muted-foreground">Temp. Motor</span>
           </div>
-          <div className="flex items-baseline gap-1">
-            <span className={`text-3xl font-bold ${getTemperatureColor(temperature)}`}>
+          <div className="flex items-baseline gap-0.5 sm:gap-1">
+            <span className={`text-2xl sm:text-3xl font-bold ${getTemperatureColor(temperature)}`}>
               {isReading && temperature !== null ? temperature : '--'}
             </span>
-            <span className="text-sm text-muted-foreground">°C</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">°C</span>
           </div>
-          <p className={`text-xs mt-1 ${getTemperatureColor(temperature)}`}>
+          <p className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 ${getTemperatureColor(temperature)}`}>
             {isReading ? getTemperatureStatus(temperature) : 'Parado'}
           </p>
         </CardContent>

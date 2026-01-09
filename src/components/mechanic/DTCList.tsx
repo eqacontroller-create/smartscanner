@@ -44,10 +44,10 @@ export function DTCList({ dtcs, onSelectDTC }: DTCListProps) {
   const totalModules = moduleIds.length;
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex items-center gap-2 text-destructive mb-4">
-        <AlertTriangle className="h-5 w-5" />
-        <span className="font-medium">
+    <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
+      <div className="flex items-center gap-2 text-destructive mb-3 sm:mb-4">
+        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+        <span className="font-medium text-sm sm:text-base">
           {totalErrors} {totalErrors === 1 ? 'erro encontrado' : 'erros encontrados'} em {totalModules} {totalModules === 1 ? 'módulo' : 'módulos'}
         </span>
       </div>
@@ -58,45 +58,45 @@ export function DTCList({ dtcs, onSelectDTC }: DTCListProps) {
         
         return (
           <Card key={moduleId} className="border-destructive/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <span>{icon}</span>
+            <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-base sm:text-lg">{icon}</span>
                 <span>{group.shortName}</span>
-                <span className="text-muted-foreground font-normal text-sm">
+                <span className="text-muted-foreground font-normal text-xs sm:text-sm hidden xs:inline">
                   ({group.moduleName})
                 </span>
-                <Badge variant="destructive" className="ml-auto">
+                <Badge variant="destructive" className="ml-auto text-xs">
                   {group.dtcs.length}
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 space-y-2">
+            <CardContent className="pt-0 space-y-2 px-3 sm:px-6 pb-3 sm:pb-6">
               {group.dtcs.map((dtc) => {
                 const info = getDTCInfo(dtc.code) || getDefaultDTCInfo(dtc.code);
                 
                 return (
                   <div
                     key={dtc.code}
-                    className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 active:bg-destructive/15 transition-colors cursor-pointer touch-target"
                     onClick={() => onSelectDTC(dtc)}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       <Badge 
                         variant="destructive" 
-                        className="font-mono text-sm px-2 py-0.5"
+                        className="font-mono text-xs sm:text-sm px-1.5 sm:px-2 py-0.5 flex-shrink-0"
                       >
                         {dtc.code}
                       </Badge>
-                      <div>
-                        <p className="font-medium text-sm text-foreground">
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs sm:text-sm text-foreground truncate">
                           {info.name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           Clique para ver detalhes
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
                   </div>
                 );
               })}
