@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Activity, Play, Square, Settings2, Gauge, Thermometer, Zap } from 'lucide-react';
+import { Activity, Play, Square, Settings2, Gauge, Thermometer, Zap, Circle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,12 @@ interface SensorReading {
 interface ChartDataPoint {
   time: number;
   [key: string]: number;
+}
+
+interface RecordedDataPoint {
+  timestamp: string;
+  elapsedSeconds: number;
+  [key: string]: string | number;
 }
 
 const CHART_MAX_POINTS = 60; // 60 segundos de histórico
@@ -70,7 +76,11 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
   const [currentValues, setCurrentValues] = useState<Record<string, number>>({});
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [updateRate, setUpdateRate] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedData, setRecordedData] = useState<RecordedDataPoint[]>([]);
+  const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null);
   const monitoringRef = useRef(false);
+  const recordingRef = useRef(false);
   const startTimeRef = useRef(0);
 
   const readSensorData = useCallback(async () => {
@@ -100,14 +110,14 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
       
       // Adicionar ponto ao gráfico
       const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
+      const newPoint: ChartDataPoint = { time: elapsed };
+      selectedPIDs.forEach(pid => {
+        if (newValues[pid] !== undefined) {
+          newPoint[pid] = newValues[pid];
+        }
+      });
+      
       setChartData(prev => {
-        const newPoint: ChartDataPoint = { time: elapsed };
-        selectedPIDs.forEach(pid => {
-          if (newValues[pid] !== undefined) {
-            newPoint[pid] = newValues[pid];
-          }
-        });
-        
         const updated = [...prev, newPoint];
         // Manter apenas os últimos CHART_MAX_POINTS
         if (updated.length > CHART_MAX_POINTS) {
@@ -115,6 +125,21 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
         }
         return updated;
       });
+
+      // Gravar dados se estiver em modo de gravação
+      if (recordingRef.current) {
+        const recordPoint: RecordedDataPoint = {
+          timestamp: new Date().toISOString(),
+          elapsedSeconds: elapsed,
+        };
+        selectedPIDs.forEach(pid => {
+          const pidInfo = getPIDInfo(pid);
+          if (newValues[pid] !== undefined && pidInfo) {
+            recordPoint[`${pidInfo.shortName} (${pidInfo.unit})`] = newValues[pid];
+          }
+        });
+        setRecordedData(prev => [...prev, recordPoint]);
+      }
 
       setUpdateRate(successCount);
     }
@@ -176,7 +201,69 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
   const handleStopMonitoring = () => {
     monitoringRef.current = false;
     setIsMonitoring(false);
+    if (isRecording) {
+      handleStopRecording();
+    }
     addLog('⏹️ Monitoramento parado');
+  };
+
+  const handleStartRecording = () => {
+    setRecordedData([]);
+    setRecordingStartTime(new Date());
+    recordingRef.current = true;
+    setIsRecording(true);
+    addLog('🔴 Gravação iniciada');
+  };
+
+  const handleStopRecording = () => {
+    recordingRef.current = false;
+    setIsRecording(false);
+    addLog(`⏹️ Gravação parada - ${recordedData.length} pontos gravados`);
+  };
+
+  const handleExportCSV = () => {
+    if (recordedData.length === 0) {
+      addLog('⚠️ Nenhum dado gravado para exportar');
+      return;
+    }
+
+    // Criar cabeçalhos CSV
+    const headers = Object.keys(recordedData[0]);
+    const csvRows = [headers.join(',')];
+
+    // Adicionar linhas de dados
+    for (const row of recordedData) {
+      const values = headers.map(header => {
+        const val = row[header];
+        // Escapar strings com vírgulas
+        if (typeof val === 'string' && val.includes(',')) {
+          return `"${val}"`;
+        }
+        return val;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Criar nome do arquivo com data/hora
+    const dateStr = recordingStartTime 
+      ? recordingStartTime.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_')
+      : new Date().toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+    const filename = `obd2_livedata_${dateStr}.csv`;
+
+    // Download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    addLog(`📥 Arquivo exportado: ${filename}`);
   };
 
   const togglePID = (pid: string) => {
@@ -247,7 +334,7 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
       
       <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
         {/* Controles */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {!isMonitoring ? (
             <Button
               onClick={handleStartMonitoring}
@@ -259,16 +346,61 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
               <span className="xs:hidden">Iniciar</span>
             </Button>
           ) : (
+            <>
+              <Button
+                onClick={handleStopMonitoring}
+                variant="destructive"
+                className="gap-2 min-h-[44px] touch-target text-sm sm:text-base"
+              >
+                <Square className="h-4 w-4" />
+                Parar
+              </Button>
+              
+              {/* Botão de Gravação */}
+              {!isRecording ? (
+                <Button
+                  onClick={handleStartRecording}
+                  variant="outline"
+                  className="gap-2 min-h-[44px] touch-target text-sm sm:text-base border-red-500/50 text-red-500 hover:bg-red-500/10"
+                >
+                  <Circle className="h-4 w-4 fill-current" />
+                  <span className="hidden xs:inline">Gravar</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStopRecording}
+                  variant="outline"
+                  className="gap-2 min-h-[44px] touch-target text-sm sm:text-base bg-red-500/10 border-red-500 text-red-500"
+                >
+                  <Circle className="h-4 w-4 fill-current animate-pulse" />
+                  <span className="hidden xs:inline">{recordedData.length} pts</span>
+                  <span className="xs:hidden">{recordedData.length}</span>
+                </Button>
+              )}
+            </>
+          )}
+          
+          {/* Botão de Exportar (aparece quando há dados gravados) */}
+          {recordedData.length > 0 && !isRecording && (
             <Button
-              onClick={handleStopMonitoring}
-              variant="destructive"
+              onClick={handleExportCSV}
+              variant="secondary"
               className="gap-2 min-h-[44px] touch-target text-sm sm:text-base"
             >
-              <Square className="h-4 w-4" />
-              Parar
+              <Download className="h-4 w-4" />
+              <span className="hidden xs:inline">Exportar CSV</span>
+              <span className="xs:hidden">CSV</span>
             </Button>
           )}
         </div>
+        
+        {/* Indicador de Gravação */}
+        {isRecording && (
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-red-500 bg-red-500/10 px-3 py-2 rounded-md">
+            <Circle className="h-3 w-3 fill-current animate-pulse" />
+            <span>Gravando dados... {recordedData.length} pontos coletados</span>
+          </div>
+        )}
 
         {!isConnected && (
           <p className="text-xs sm:text-sm text-muted-foreground">
