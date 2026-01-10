@@ -15,6 +15,13 @@ interface VehicleData {
   engineLoad: number | null;
 }
 
+export interface DetectedVehicleInfo {
+  vin: string | null;
+  manufacturer: string | null;
+  modelYear: string | null;
+  country: string | null;
+}
+
 interface BluetoothHookReturn {
   status: ConnectionStatus;
   rpm: number | null;
@@ -23,6 +30,7 @@ interface BluetoothHookReturn {
   voltage: number | null;
   fuelLevel: number | null;
   engineLoad: number | null;
+  detectedVehicle: DetectedVehicleInfo | null;
   error: string | null;
   logs: string[];
   isPolling: boolean;
@@ -45,6 +53,7 @@ export function useBluetooth(): BluetoothHookReturn {
   const [voltage, setVoltage] = useState<number | null>(null);
   const [fuelLevel, setFuelLevel] = useState<number | null>(null);
   const [engineLoad, setEngineLoad] = useState<number | null>(null);
+  const [detectedVehicle, setDetectedVehicle] = useState<DetectedVehicleInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isPolling, setIsPolling] = useState(false);
@@ -208,6 +217,23 @@ export function useBluetooth(): BluetoothHookReturn {
       addLogRef.current('📡 AT SP0 (auto protocolo)...');
       await sendCommand('AT SP0', 5000);
       await delay(300);
+
+      // Auto-detectar VIN do veículo
+      addLogRef.current('🚗 Tentando detectar VIN do veículo...');
+      try {
+        const vinResponse = await sendCommand('0902', 8000);
+        const vinInfo = parseVINFromResponse(vinResponse);
+        if (vinInfo) {
+          setDetectedVehicle(vinInfo);
+          addLogRef.current(`✅ VIN detectado: ${vinInfo.vin} (${vinInfo.manufacturer || 'Fabricante desconhecido'})`);
+        } else {
+          addLogRef.current('⚠️ VIN não disponível - usando modo genérico');
+          setDetectedVehicle(null);
+        }
+      } catch {
+        addLogRef.current('⚠️ Erro ao ler VIN - usando modo genérico');
+        setDetectedVehicle(null);
+      }
 
       setStatus('ready');
       setError(null);
@@ -406,6 +432,7 @@ export function useBluetooth(): BluetoothHookReturn {
     voltage,
     fuelLevel,
     engineLoad,
+    detectedVehicle,
     error,
     logs,
     isPolling,
@@ -417,4 +444,107 @@ export function useBluetooth(): BluetoothHookReturn {
     addLog,
     isSupported
   };
+}
+
+// Parser simples de VIN da resposta OBD-II (comando 0902)
+function parseVINFromResponse(response: string): DetectedVehicleInfo | null {
+  try {
+    const lines = response.split(/[\r\n]+/).filter(line => line.trim());
+    let hexData = '';
+    
+    for (const line of lines) {
+      const clean = line.replace(/\s+/g, '').toUpperCase();
+      
+      // Ignorar erros e linhas inválidas
+      if (clean.includes('NODATA') || clean.includes('ERROR') || 
+          clean.includes('STOPPED') || clean.startsWith('7F') ||
+          clean === '>' || clean.length < 4) {
+        continue;
+      }
+      
+      // Resposta Mode 09 PID 02: 49 02 [dados]
+      if (clean.includes('4902')) {
+        const idx = clean.indexOf('4902');
+        hexData += clean.substring(idx + 4);
+      } else if (clean.match(/^[0-9A-F]+$/)) {
+        // Linha de continuação (dados hex puros)
+        hexData += clean;
+      }
+    }
+    
+    if (hexData.length < 34) return null; // VIN tem 17 caracteres = 34 hex
+    
+    // Converter HEX para ASCII
+    let vin = '';
+    for (let i = 0; i < Math.min(hexData.length, 40); i += 2) {
+      const byte = parseInt(hexData.substring(i, i + 2), 16);
+      if (byte >= 32 && byte <= 126) { // Caracteres ASCII imprimíveis
+        vin += String.fromCharCode(byte);
+      }
+    }
+    
+    // VIN deve ter exatamente 17 caracteres alfanuméricos
+    vin = vin.replace(/[^A-Z0-9]/gi, '').substring(0, 17);
+    
+    if (vin.length !== 17) return null;
+    
+    // Decodificar informações básicas do VIN
+    const wmi = vin.substring(0, 3);
+    const yearChar = vin.charAt(9);
+    
+    return {
+      vin,
+      manufacturer: getManufacturerFromWMI(wmi),
+      modelYear: getYearFromVIN(yearChar),
+      country: getCountryFromWMI(wmi),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Mapeamento simplificado WMI -> Fabricante
+function getManufacturerFromWMI(wmi: string): string | null {
+  const map: Record<string, string> = {
+    '9BW': 'Volkswagen', '93W': 'Volkswagen', '3VW': 'Volkswagen', 'WVW': 'Volkswagen',
+    '9BF': 'Ford', '1FA': 'Ford', '3FA': 'Ford', 'WF0': 'Ford',
+    '9BG': 'Chevrolet', '1G1': 'Chevrolet', '3G1': 'Chevrolet',
+    '93H': 'Honda', 'JHM': 'Honda', '1HG': 'Honda',
+    '9BD': 'Fiat', 'ZFA': 'Fiat',
+    '9BR': 'Toyota', 'JT2': 'Toyota', '4T1': 'Toyota',
+    'KMH': 'Hyundai', '5NP': 'Hyundai',
+    'VF1': 'Renault', '93Y': 'Renault',
+    'JN1': 'Nissan', '1N4': 'Nissan',
+    '1J4': 'Jeep', '1C4': 'Jeep',
+    'WBA': 'BMW', 'WBS': 'BMW',
+    'WDB': 'Mercedes-Benz', 'WDC': 'Mercedes-Benz',
+    'WAU': 'Audi', 'WUA': 'Audi',
+  };
+  return map[wmi] || null;
+}
+
+// Ano do modelo pelo caractere da posição 10
+function getYearFromVIN(char: string): string | null {
+  const map: Record<string, string> = {
+    'A': '2010', 'B': '2011', 'C': '2012', 'D': '2013', 'E': '2014',
+    'F': '2015', 'G': '2016', 'H': '2017', 'J': '2018', 'K': '2019',
+    'L': '2020', 'M': '2021', 'N': '2022', 'P': '2023', 'R': '2024',
+    'S': '2025', 'T': '2026', 'V': '2027', 'W': '2028', 'X': '2029',
+    'Y': '2030',
+    '1': '2001', '2': '2002', '3': '2003', '4': '2004', '5': '2005',
+    '6': '2006', '7': '2007', '8': '2008', '9': '2009',
+  };
+  return map[char.toUpperCase()] || null;
+}
+
+// País de origem pelo primeiro caractere do WMI
+function getCountryFromWMI(wmi: string): string | null {
+  const first = wmi.charAt(0).toUpperCase();
+  const map: Record<string, string> = {
+    '1': 'Estados Unidos', '2': 'Canadá', '3': 'México',
+    '9': 'Brasil', 'J': 'Japão', 'K': 'Coreia do Sul',
+    'W': 'Alemanha', 'V': 'França', 'Z': 'Itália',
+    'S': 'Reino Unido', 'Y': 'Suécia/Finlândia',
+  };
+  return map[first] || null;
 }
