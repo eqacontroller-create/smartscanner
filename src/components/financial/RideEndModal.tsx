@@ -31,17 +31,17 @@ export function RideEndModal({ isOpen, ride, onClose, onSave, onSkip }: RideEndM
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-money">
-            <Flag className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2 text-money text-base sm:text-lg">
+            <Flag className="h-4 w-4 sm:h-5 sm:w-5" />
             Corrida Finalizada!
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
           {/* Estatísticas da corrida */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <div>

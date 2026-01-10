@@ -26,34 +26,34 @@ export function TripControls({
   const hasData = tripData.distance > 0.01;
   
   return (
-    <div className="flex flex-wrap gap-3 justify-center">
+    <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
       {/* Botão Iniciar/Pausar/Retomar */}
       {!tripData.isActive && !hasData ? (
         <Button
           size="lg"
-          className="gap-2 bg-money text-money-foreground hover:bg-money/90 min-h-[48px] px-6"
+          className="gap-1.5 sm:gap-2 bg-money text-money-foreground hover:bg-money/90 min-h-[44px] px-3 sm:px-6 text-sm sm:text-base"
           onClick={onStart}
         >
-          <Play className="h-5 w-5" />
-          Iniciar Viagem
+          <Play className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="hidden xs:inline">Iniciar</span> Viagem
         </Button>
       ) : tripData.isActive ? (
         <Button
           size="lg"
           variant="secondary"
-          className="gap-2 min-h-[48px] px-6"
+          className="gap-1.5 sm:gap-2 min-h-[44px] px-3 sm:px-6 text-sm sm:text-base"
           onClick={onPause}
         >
-          <Pause className="h-5 w-5" />
+          <Pause className="h-4 w-4 sm:h-5 sm:w-5" />
           Pausar
         </Button>
       ) : (
         <Button
           size="lg"
-          className="gap-2 bg-money text-money-foreground hover:bg-money/90 min-h-[48px] px-6"
+          className="gap-1.5 sm:gap-2 bg-money text-money-foreground hover:bg-money/90 min-h-[44px] px-3 sm:px-6 text-sm sm:text-base"
           onClick={onResume}
         >
-          <Play className="h-5 w-5" />
+          <Play className="h-4 w-4 sm:h-5 sm:w-5" />
           Retomar
         </Button>
       )}
@@ -62,11 +62,11 @@ export function TripControls({
       <Button
         size="lg"
         variant="outline"
-        className="gap-2 min-h-[48px] px-6"
+        className="gap-1.5 sm:gap-2 min-h-[44px] px-3 sm:px-6 text-sm sm:text-base"
         onClick={onReset}
         disabled={!hasData && !tripData.isActive}
       >
-        <RotateCcw className="h-5 w-5" />
+        <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
         Zerar
       </Button>
 
@@ -75,10 +75,10 @@ export function TripControls({
         <Button
           size="lg"
           variant="outline"
-          className="gap-2 min-h-[48px] px-6 border-money/50 text-money hover:bg-money/10"
+          className="gap-1.5 sm:gap-2 min-h-[44px] px-3 sm:px-6 text-sm sm:text-base border-money/50 text-money hover:bg-money/10"
           onClick={onSave}
         >
-          <Save className="h-5 w-5" />
+          <Save className="h-4 w-4 sm:h-5 sm:w-5" />
           Salvar
         </Button>
       )}
@@ -87,12 +87,12 @@ export function TripControls({
       <Button
         size="lg"
         variant="outline"
-        className="gap-2 min-h-[48px] px-6"
+        className="gap-1.5 sm:gap-2 min-h-[44px] px-3 sm:px-6 text-sm sm:text-base"
         onClick={onVoiceReport}
         disabled={isSpeaking || !hasData}
       >
-        <Volume2 className={`h-5 w-5 ${isSpeaking ? 'animate-pulse' : ''}`} />
-        Ouvir Custo
+        <Volume2 className={`h-4 w-4 sm:h-5 sm:w-5 ${isSpeaking ? 'animate-pulse' : ''}`} />
+        <span className="hidden xs:inline">Ouvir</span> Custo
       </Button>
     </div>
   );

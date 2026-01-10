@@ -37,8 +37,14 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle, Download } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle, Download, MoreVertical, Volume2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Index = () => {
   const {
@@ -345,24 +351,63 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              {/* Status de Sincronização */}
+              {/* Status de Sincronização - sempre visível */}
               <SyncStatus 
                 synced={syncedRides.synced} 
                 onLoginClick={() => setIsAuthModalOpen(true)} 
               />
-              {/* Botão Instalar PWA */}
-              <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
-                <Link to="/instalar">
-                  <Download className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Link>
-              </Button>
-              {/* Botão de Ajuda */}
-              <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
-                <Link to="/ajuda">
-                  <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Link>
-              </Button>
-              {/* Botão de voz do Jarvis AI */}
+              
+              {/* Botões secundários - visíveis em telas >= xs */}
+              <div className="hidden xs:flex items-center gap-1 sm:gap-2">
+                {/* Botão Instalar PWA */}
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
+                  <Link to="/instalar">
+                    <Download className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </Link>
+                </Button>
+                {/* Botão de Ajuda */}
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
+                  <Link to="/ajuda">
+                    <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </Link>
+                </Button>
+              </div>
+              
+              {/* Menu dropdown para mobile (< xs) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild className="xs:hidden">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[180px]">
+                  <DropdownMenuItem asChild>
+                    <Link to="/instalar" className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Instalar App
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/ajuda" className="flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4" />
+                      Central de Ajuda
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurações Jarvis
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={testAudio} 
+                    disabled={!isJarvisSupported || isSpeaking}
+                  >
+                    <Volume2 className="h-4 w-4 mr-2" />
+                    Testar Áudio
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              {/* Botão de voz do Jarvis AI - sempre visível se ativo */}
               {jarvisSettings.aiModeEnabled && (
                 <JarvisVoiceButton
                   isListening={jarvisAI.isListening}
@@ -373,15 +418,21 @@ const Index = () => {
                   onToggle={jarvisAI.toggleListening}
                 />
               )}
-              <JarvisSettingsButton 
-                onClick={() => setIsSettingsOpen(true)} 
-                disabled={!isJarvisSupported} 
-              />
-              <JarvisTestButton 
-                onTest={testAudio} 
-                isSpeaking={isSpeaking} 
-                isSupported={isJarvisSupported} 
-              />
+              
+              {/* Botões de configuração - visíveis em telas >= xs */}
+              <div className="hidden xs:flex items-center gap-1 sm:gap-2">
+                <JarvisSettingsButton 
+                  onClick={() => setIsSettingsOpen(true)} 
+                  disabled={!isJarvisSupported} 
+                />
+                <JarvisTestButton 
+                  onTest={testAudio} 
+                  isSpeaking={isSpeaking} 
+                  isSupported={isJarvisSupported} 
+                />
+              </div>
+              
+              {/* Status de conexão - sempre visível */}
               <StatusIndicator status={status} />
             </div>
           </div>

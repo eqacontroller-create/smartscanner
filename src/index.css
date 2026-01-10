@@ -323,3 +323,35 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* Extra small screen adjustments (< 375px) */
+@media screen and (max-width: 374px) {
+  .container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  /* Scale down large text for tiny screens */
+  .text-5xl {
+    font-size: 2.25rem !important;
+  }
+  
+  .text-4xl {
+    font-size: 1.875rem !important;
+  }
+  
+  .text-3xl {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* Horizontal scroll for tabs without scrollbar */
+.tabs-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}

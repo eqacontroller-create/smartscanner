@@ -98,12 +98,12 @@ export default function Help() {
             icon={Chrome}
             variant="warning"
           >
-            <div className="flex gap-2 mt-2">
-              <span className="text-xs px-2 py-1 bg-green-500/20 text-green-500 rounded">✓ Chrome</span>
-              <span className="text-xs px-2 py-1 bg-green-500/20 text-green-500 rounded">✓ Edge</span>
-              <span className="text-xs px-2 py-1 bg-green-500/20 text-green-500 rounded">✓ Opera</span>
-              <span className="text-xs px-2 py-1 bg-red-500/20 text-red-500 rounded">✗ Safari</span>
-              <span className="text-xs px-2 py-1 bg-red-500/20 text-red-500 rounded">✗ iOS</span>
+            <div className="flex flex-wrap gap-1.5 xs:gap-2 mt-2">
+              <span className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-1 bg-green-500/20 text-green-500 rounded">✓ Chrome</span>
+              <span className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-1 bg-green-500/20 text-green-500 rounded">✓ Edge</span>
+              <span className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-1 bg-green-500/20 text-green-500 rounded">✓ Opera</span>
+              <span className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-1 bg-red-500/20 text-red-500 rounded">✗ Safari</span>
+              <span className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-1 bg-red-500/20 text-red-500 rounded">✗ iOS</span>
             </div>
           </HelpCard>
         </HelpSection>

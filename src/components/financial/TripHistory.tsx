@@ -222,7 +222,7 @@ export function TripHistory({ history, onClearHistory }: TripHistoryProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Totais */}
-        <div className="grid grid-cols-3 gap-2 p-3 bg-money/5 rounded-lg border border-money/20">
+        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 p-3 bg-money/5 rounded-lg border border-money/20">
           <div className="text-center">
             <p className="text-xs text-muted-foreground">Total KM</p>
             <p className="font-semibold text-money">{totals.distance.toFixed(1)}</p>
