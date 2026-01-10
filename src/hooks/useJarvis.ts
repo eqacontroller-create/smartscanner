@@ -75,7 +75,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
   }, [isSupported]);
 
   const testAudio = useCallback(() => {
-    speak('Áudio do sistema sincronizado com o Ford Sync.');
+    speak('Sistema de áudio sincronizado. Jarvis operacional, piloto.');
   }, [speak]);
 
   return {

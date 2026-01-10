@@ -4,6 +4,8 @@ import { useJarvis } from '@/hooks/useJarvis';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 import { useJarvisAI } from '@/hooks/useJarvisAI';
 import { useVehicleTheme } from '@/hooks/useVehicleTheme';
+import { useShiftLight } from '@/hooks/useShiftLight';
+import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
@@ -82,11 +84,22 @@ const Index = () => {
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
+  // Hook de Shift Light Adaptativo
+  useShiftLight({
+    rpm,
+    redlineRPM: jarvisSettings.redlineRPM,
+    ecoEnabled: jarvisSettings.ecoShiftEnabled,
+    sportEnabled: jarvisSettings.sportShiftEnabled,
+    shiftLightEnabled: jarvisSettings.shiftLightEnabled,
+    speak,
+  });
+  
   // Refs para controlar cooldowns dos alertas
   const lastHighRpmAlertRef = useRef<number>(0);
   const lastHighTempAlertRef = useRef<number>(0);
   const lastSpeedAlertRef = useRef<number>(0);
   const lastLowVoltageAlertRef = useRef<number>(0);
+  const lastLuggingAlertRef = useRef<number>(0);
   // Ref para controlar se já deu boas-vindas nesta conexão
   const hasWelcomedRef = useRef<boolean>(false);
 
@@ -149,7 +162,7 @@ const Index = () => {
           }
         }
         
-        speak(`Sistema ${brandName} conectado. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning} Pronto para rodar.`);
+        speak(`Sistema do veículo conectado, piloto. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning} Pronto para rodar.`);
       }, 4000);
       
       return () => clearTimeout(timer);
@@ -176,9 +189,31 @@ const Index = () => {
       now - lastHighRpmAlertRef.current > cooldown
     ) {
       lastHighRpmAlertRef.current = now;
-      speak('Cuidado. O motor ainda está frio. Evite altas rotações para proteger o motor.');
+      speak('Cuidado, piloto. O motor ainda está frio. Evite altas rotações para proteger o motor.');
     }
   }, [rpm, temperature, speak, jarvisSettings.highRpmAlertEnabled]);
+
+  // Monitor de Lugging (Sobrecarga do Motor)
+  useEffect(() => {
+    if (!jarvisSettings.luggingAlertEnabled) return;
+    
+    const now = Date.now();
+    const cooldown = 30000; // 30 segundos entre alertas de lugging
+    const { luggingPoint } = getShiftPoints(jarvisSettings.redlineRPM);
+    
+    // Detectar lugging: RPM baixo + carga alta
+    if (
+      rpm !== null &&
+      rpm > 0 && // Motor ligado
+      rpm < luggingPoint && // RPM muito baixo para o motor
+      engineLoad !== null &&
+      engineLoad > 80 && // Pedal fundo (alta demanda)
+      now - lastLuggingAlertRef.current > cooldown
+    ) {
+      lastLuggingAlertRef.current = now;
+      speak('Motor em esforço excessivo, piloto. Reduza a marcha para proteger o motor.');
+    }
+  }, [rpm, engineLoad, speak, jarvisSettings.luggingAlertEnabled, jarvisSettings.redlineRPM]);
 
   // Monitor de Temperatura Alta - Alerta de Superaquecimento
   useEffect(() => {
@@ -193,7 +228,7 @@ const Index = () => {
       now - lastHighTempAlertRef.current > cooldown
     ) {
       lastHighTempAlertRef.current = now;
-      speak(`Atenção! Temperatura do motor em ${temperature} graus. Risco de superaquecimento. Reduza a velocidade ou pare o veículo.`);
+      speak(`Atenção, piloto! Temperatura do motor em ${temperature} graus. Risco de superaquecimento. Reduza a velocidade ou pare o veículo.`);
     }
   }, [temperature, speak, jarvisSettings.highTempAlertEnabled, jarvisSettings.highTempThreshold]);
 
@@ -210,7 +245,7 @@ const Index = () => {
       now - lastSpeedAlertRef.current > cooldown
     ) {
       lastSpeedAlertRef.current = now;
-      speak(`Velocidade acima do limite configurado. Você está a ${speed} quilômetros por hora.`);
+      speak(`Velocidade acima do limite configurado, piloto. Você está a ${speed} quilômetros por hora.`);
     }
   }, [speed, speak, jarvisSettings.speedAlertEnabled, jarvisSettings.speedLimit]);
 
@@ -230,9 +265,9 @@ const Index = () => {
       lastLowVoltageAlertRef.current = now;
       
       if (voltage < 12.0) {
-        speak(`Alerta crítico! Tensão da bateria em ${voltage} volts. Verifique o sistema elétrico imediatamente.`);
+        speak(`Alerta crítico, piloto! Tensão da bateria em ${voltage} volts. Verifique o sistema elétrico imediatamente.`);
       } else {
-        speak(`Atenção. Tensão da bateria baixa em ${voltage} volts. Recomendo verificar o alternador.`);
+        speak(`Atenção, piloto. Tensão da bateria baixa em ${voltage} volts. Recomendo verificar o alternador.`);
       }
     }
   }, [voltage, speak, jarvisSettings.lowVoltageAlertEnabled, jarvisSettings.lowVoltageThreshold]);
@@ -374,7 +409,7 @@ const Index = () => {
             <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
               {/* Gauge Section */}
               <div className="flex flex-col items-center gap-4 sm:gap-6">
-                <RPMGauge value={rpm} />
+                <RPMGauge value={rpm} redlineRPM={jarvisSettings.redlineRPM} />
                 
                 {/* Polling Toggle Button */}
                 {(isReady || isReading) && (

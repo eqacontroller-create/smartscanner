@@ -2,11 +2,17 @@ import { useMemo } from 'react';
 
 interface RPMGaugeProps {
   value: number | null;
-  maxRPM?: number;
+  redlineRPM?: number; // Limite de giro configurado pelo usuário
 }
 
-export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
+export function RPMGauge({ value, redlineRPM = 6500 }: RPMGaugeProps) {
   const rpm = value ?? 0;
+  
+  // Calcular maxRPM visual baseado no redline (adiciona margem de 1000)
+  const maxRPM = redlineRPM + 1000;
+  
+  // Zona vermelha começa em 90% do redline
+  const redZoneStart = redlineRPM * 0.9;
   
   const { needleRotation, segments, tickMarks } = useMemo(() => {
     const minAngle = -135;
@@ -17,11 +23,15 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
     const clampedRotation = Math.min(Math.max(rotation, minAngle), maxAngle);
 
     const ticks = [];
-    const majorTickCount = 8;
+    // Calcular número de ticks baseado no maxRPM para múltiplos bonitos
+    const tickInterval = maxRPM <= 5500 ? 500 : 1000;
+    const majorTickCount = Math.ceil(maxRPM / tickInterval);
+    
     for (let i = 0; i <= majorTickCount; i++) {
-      const tickRPM = (maxRPM / majorTickCount) * i;
-      const tickAngle = minAngle + (i / majorTickCount) * angleRange;
-      const isRedZone = tickRPM >= 6000;
+      const tickRPM = tickInterval * i;
+      if (tickRPM > maxRPM) break;
+      const tickAngle = minAngle + (tickRPM / maxRPM) * angleRange;
+      const isRedZone = tickRPM >= redZoneStart;
       ticks.push({
         angle: tickAngle,
         label: tickRPM / 1000,
@@ -35,7 +45,7 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
       const segAngle = minAngle + (i / segmentCount) * angleRange;
       const segRPM = (maxRPM / segmentCount) * i;
       const isActive = segRPM <= rpm;
-      const isRedZone = segRPM >= 6000;
+      const isRedZone = segRPM >= redZoneStart;
       segs.push({ angle: segAngle, isActive, isRedZone });
     }
 
@@ -44,7 +54,7 @@ export function RPMGauge({ value, maxRPM = 8000 }: RPMGaugeProps) {
       segments: segs,
       tickMarks: ticks
     };
-  }, [rpm, maxRPM]);
+  }, [rpm, maxRPM, redZoneStart]);
 
   // Radius percentages for positioning elements
   const tickRadius = 0.38; // 38% from center
