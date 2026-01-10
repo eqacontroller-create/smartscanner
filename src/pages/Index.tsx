@@ -141,11 +141,13 @@ const Index = () => {
   });
   
   // Verificar suporte de PIDs ao conectar
+  // CORRIGIDO: Comentário eslint para ignorar dependência intencionalmente
   useEffect(() => {
     if (status === 'ready') {
       refuelMonitor.checkPIDSupport();
     }
-  }, [status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]); // Intencionalmente omitido refuelMonitor para executar apenas quando status muda
   
   // Hook de Shift Light Adaptativo
   useShiftLight({
@@ -161,10 +163,12 @@ const Index = () => {
   const reconnectAttemptedRef = useRef(false);
   
   // Handler para reconexão automática quando tela é desbloqueada
+  // CORRIGIDO: Adiciona verificação de status desconectado para evitar tentativas desnecessárias
   const handleVisibilityRestore = useCallback(async () => {
     if (
       jarvisSettings.autoReconnectEnabled && 
       hasLastDevice &&
+      status === 'disconnected' && // NOVA VERIFICAÇÃO: Só reconecta se realmente desconectou
       !reconnectAttemptedRef.current
     ) {
       reconnectAttemptedRef.current = true;
@@ -183,7 +187,7 @@ const Index = () => {
       
       reconnectAttemptedRef.current = false;
     }
-  }, [jarvisSettings.autoReconnectEnabled, hasLastDevice, reconnect, speak, addLog, startPolling]);
+  }, [jarvisSettings.autoReconnectEnabled, hasLastDevice, status, reconnect, speak, addLog, startPolling]);
   
   // Hook de Wake Lock (Modo Insônia)
   const wakeLock = useWakeLock({

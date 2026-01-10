@@ -28,6 +28,7 @@ export function useWakeLock({
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wasConnectedRef = useRef(false);
+  const wasEnabledRef = useRef(false);
   
   // Verificar suporte à API
   const isWakeLockSupported = typeof navigator !== 'undefined' && 'wakeLock' in navigator;
@@ -99,11 +100,16 @@ export function useWakeLock({
     }
   }, []);
 
-  // Parar áudio silencioso
+  // Parar áudio silencioso - CORRIGIDO para evitar warnings
   const stopAudioKeepAlive = useCallback(() => {
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        // Não resetar src para evitar warnings
+      } catch (e) {
+        console.warn('⚠️ Erro ao parar audio keep-alive:', e);
+      }
       audioRef.current = null;
       setIsAudioKeepAliveActive(false);
       console.log('🔊 Audio keep-alive parado');
@@ -116,13 +122,15 @@ export function useWakeLock({
       if (document.visibilityState === 'visible') {
         console.log('👁 Tela desbloqueada - verificando conexões...');
         
-        // Re-adquirir wake lock se estava conectado e habilitado
-        if (enabled && wasConnectedRef.current) {
+        // Re-adquirir wake lock se estava conectado E habilitado antes
+        if (wasEnabledRef.current && wasConnectedRef.current) {
           await requestWakeLock();
         }
         
-        // Notificar componente pai para verificar reconexão
-        onVisibilityRestore?.();
+        // Só chamar callback se realmente estava conectado antes
+        if (wasConnectedRef.current) {
+          onVisibilityRestore?.();
+        }
       } else {
         console.log('👁 Tela bloqueada - wake lock pode ser liberado pelo sistema');
       }
@@ -130,17 +138,19 @@ export function useWakeLock({
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [enabled, requestWakeLock, onVisibilityRestore]);
+  }, [requestWakeLock, onVisibilityRestore]);
 
   // Gerenciar wake lock e audio baseado em conexão e configuração
   useEffect(() => {
+    // Atualizar refs para estado atual
+    wasEnabledRef.current = enabled;
+    wasConnectedRef.current = isConnected;
+    
     if (enabled && isConnected) {
-      wasConnectedRef.current = true;
       requestWakeLock();
       startAudioKeepAlive();
     } else {
       if (!isConnected) {
-        wasConnectedRef.current = false;
         releaseWakeLock();
         stopAudioKeepAlive();
       }

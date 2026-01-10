@@ -79,13 +79,16 @@ export function useRefuelMonitor({
   const [anomalyActive, setAnomalyActive] = useState(false);
   const [anomalyDuration, setAnomalyDuration] = useState(0);
   
-  // Refs para monitoramento
+  // Refs para monitoramento (evitar re-renders e memory leaks)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSpeedRef = useRef(0);
+  const distanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fuelLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startOdometerRef = useRef(0);
   const anomalyStartRef = useRef<number | null>(null);
   const stftSamplesRef = useRef<number[]>([]);
   const initialLTFTRef = useRef<number | null>(null);
+  const distanceRef = useRef(0);
+  const isMonitoringActiveRef = useRef(false);
   
   // Verificar suporte de PIDs
   const checkPIDSupport = useCallback(async () => {
@@ -129,29 +132,33 @@ export function useRefuelMonitor({
     return null;
   }, [fuelLevelSupported, sendRawCommand]);
   
-  // Ler STFT (PID 0106)
+  // Ler STFT (PID 0106) - Precisão melhorada com 1 casa decimal
   const readSTFT = useCallback(async (): Promise<number | null> => {
+    if (!stftSupported) return null;
+    
     try {
       const response = await sendRawCommand('0106', 2000);
       const match = response.match(/41\s*06\s*([0-9A-Fa-f]{2})/i);
       if (match) {
         const a = parseInt(match[1], 16);
-        return Math.round((a - 128) * 100 / 128);
+        // Manter 1 casa decimal para precisão na detecção de anomalias
+        return Math.round(((a - 128) * 100 / 128) * 10) / 10;
       }
     } catch (error) {
       console.error('[Refuel] Error reading STFT:', error);
     }
     return null;
-  }, [sendRawCommand]);
+  }, [stftSupported, sendRawCommand]);
   
-  // Ler LTFT (PID 0107)
+  // Ler LTFT (PID 0107) - Precisão melhorada com 1 casa decimal
   const readLTFT = useCallback(async (): Promise<number | null> => {
     try {
       const response = await sendRawCommand('0107', 2000);
       const match = response.match(/41\s*07\s*([0-9A-Fa-f]{2})/i);
       if (match) {
         const a = parseInt(match[1], 16);
-        return Math.round((a - 128) * 100 / 128);
+        // Manter 1 casa decimal para precisão
+        return Math.round(((a - 128) * 100 / 128) * 10) / 10;
       }
     } catch (error) {
       console.error('[Refuel] Error reading LTFT:', error);
@@ -165,6 +172,7 @@ export function useRefuelMonitor({
     setCurrentRefuel(null);
     setFuelTrimHistory([]);
     setDistanceMonitored(0);
+    distanceRef.current = 0;
     setAnomalyActive(false);
     setAnomalyDuration(0);
     stftSamplesRef.current = [];
@@ -176,6 +184,53 @@ export function useRefuelMonitor({
   
   // Confirmar dados do abastecimento
   const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number) => {
+    // Verificar se STFT é suportado antes de continuar
+    if (!stftSupported) {
+      speak('Este veículo não suporta monitoramento de Fuel Trim. Registrando abastecimento sem análise de qualidade.');
+      
+      // Salvar entrada sem análise
+      const entry: Partial<RefuelEntry> = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        pricePerLiter,
+        litersAdded,
+        totalPaid: pricePerLiter * litersAdded,
+        quality: 'unknown',
+        stftAverage: 0,
+        ltftDelta: 0,
+        distanceMonitored: 0,
+        anomalyDetected: false,
+      };
+      
+      // Salvar no banco se usuário logado
+      if (userId) {
+        try {
+          await supabase.from('refuel_entries').insert({
+            user_id: userId,
+            timestamp: new Date(entry.timestamp!).toISOString(),
+            price_per_liter: entry.pricePerLiter,
+            liters_added: entry.litersAdded,
+            total_paid: entry.totalPaid,
+            quality: 'unknown',
+            stft_average: 0,
+            ltft_delta: 0,
+            distance_monitored: 0,
+            anomaly_detected: false,
+          });
+        } catch (error) {
+          console.error('[Refuel] Error saving to database:', error);
+        }
+      }
+      
+      // Atualizar preço do combustível
+      if (onFuelPriceUpdate) {
+        onFuelPriceUpdate(pricePerLiter);
+      }
+      
+      setMode('inactive');
+      return;
+    }
+    
     const totalPaid = pricePerLiter * litersAdded;
     const fuelLevelBefore = await readFuelLevel();
     
@@ -204,7 +259,7 @@ export function useRefuelMonitor({
     initialLTFTRef.current = await readLTFT();
     
     speak('Dados registrados. Quando iniciar o trajeto, começarei a análise do combustível.');
-  }, [readFuelLevel, readLTFT, settings.tankCapacity, onFuelPriceUpdate, speak]);
+  }, [stftSupported, readFuelLevel, readLTFT, settings.tankCapacity, onFuelPriceUpdate, userId, speak]);
   
   // Cancelar modo abastecimento
   const cancelRefuel = useCallback(() => {
@@ -212,12 +267,18 @@ export function useRefuelMonitor({
     setCurrentRefuel(null);
     setFuelTrimHistory([]);
     setDistanceMonitored(0);
+    distanceRef.current = 0;
     setAnomalyActive(false);
     setAnomalyDuration(0);
+    isMonitoringActiveRef.current = false;
     
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
       monitoringIntervalRef.current = null;
+    }
+    if (distanceIntervalRef.current) {
+      clearInterval(distanceIntervalRef.current);
+      distanceIntervalRef.current = null;
     }
   }, []);
   
@@ -240,6 +301,17 @@ export function useRefuelMonitor({
     if (!currentRefuel) return;
     
     setMode('analyzing');
+    isMonitoringActiveRef.current = false;
+    
+    // Limpar intervalos
+    if (monitoringIntervalRef.current) {
+      clearInterval(monitoringIntervalRef.current);
+      monitoringIntervalRef.current = null;
+    }
+    if (distanceIntervalRef.current) {
+      clearInterval(distanceIntervalRef.current);
+      distanceIntervalRef.current = null;
+    }
     
     const fuelLevelAfter = await readFuelLevel();
     const currentLTFTValue = await readLTFT();
@@ -254,6 +326,7 @@ export function useRefuelMonitor({
       : 0;
     
     const quality = analyzeQuality();
+    const finalDistance = distanceRef.current;
     
     // Calcular precisão da bomba
     let pumpAccuracyPercent: number | undefined;
@@ -269,7 +342,7 @@ export function useRefuelMonitor({
       quality,
       stftAverage: Math.round(stftAverage * 10) / 10,
       ltftDelta: Math.round(ltftDelta * 10) / 10,
-      distanceMonitored,
+      distanceMonitored: finalDistance,
       anomalyDetected: quality !== 'ok' && quality !== 'unknown',
       anomalyDetails: quality === 'warning' 
         ? `STFT médio de ${stftAverage.toFixed(1)}% indica possível combustível de baixa qualidade.`
@@ -316,18 +389,16 @@ export function useRefuelMonitor({
     }
     
     setMode('completed');
-    
-    if (monitoringIntervalRef.current) {
-      clearInterval(monitoringIntervalRef.current);
-      monitoringIntervalRef.current = null;
-    }
-  }, [currentRefuel, distanceMonitored, readFuelLevel, readLTFT, analyzeQuality, settings.tankCapacity, userId, speak]);
+  }, [currentRefuel, readFuelLevel, readLTFT, analyzeQuality, settings.tankCapacity, userId, speak]);
   
-  // Monitorar quando carro começa a se mover
+  // Monitorar quando carro começa a se mover - CORRIGIDO para evitar memory leaks
   useEffect(() => {
-    if (mode === 'waiting' && currentRefuel && speed > 5) {
+    // Só inicia monitoramento se está em 'waiting', tem refuel, speed > 5 e não está já monitorando
+    if (mode === 'waiting' && currentRefuel && speed > 5 && !isMonitoringActiveRef.current) {
+      isMonitoringActiveRef.current = true;
       setMode('monitoring');
       startOdometerRef.current = 0;
+      distanceRef.current = 0;
       speak('Monitoramento iniciado. Analisarei os primeiros 5 quilômetros.');
       
       // Iniciar polling de Fuel Trim
@@ -370,56 +441,76 @@ export function useRefuelMonitor({
           timestamp: Date.now(),
           stft: stft ?? 0,
           ltft: ltft ?? 0,
-          distance: distanceMonitored,
+          distance: distanceRef.current,
         }]);
       }, 2000);
     }
     
     return () => {
-      if (monitoringIntervalRef.current) {
-        clearInterval(monitoringIntervalRef.current);
-      }
+      // NÃO limpar aqui - será limpo no cancelRefuel ou finalizeAnalysis
     };
-  }, [mode, currentRefuel, speed, settings, distanceMonitored, readSTFT, readLTFT, speak]);
+  }, [mode, currentRefuel, speed, settings.stftWarningThreshold, settings.anomalyDurationWarning, readSTFT, readLTFT, speak]);
   
-  // Calcular distância percorrida
+  // Calcular distância percorrida - CORRIGIDO para evitar memory leaks
   useEffect(() => {
-    if (mode === 'monitoring') {
-      const interval = setInterval(() => {
+    if (mode === 'monitoring' && !distanceIntervalRef.current) {
+      distanceIntervalRef.current = setInterval(() => {
         // Calcular distância baseada na velocidade atual
         const kmPerSecond = speed / 3600;
-        setDistanceMonitored(prev => {
-          const newDistance = prev + kmPerSecond;
-          
-          // Anunciar progresso a cada 2.5km
-          if (prev < 2.5 && newDistance >= 2.5) {
-            speak('Metade da análise concluída. Adaptação de combustível dentro do normal até agora.');
-          }
-          
-          // Finalizar análise aos 5km
-          if (newDistance >= settings.monitoringDistance) {
-            finalizeAnalysis();
-          }
-          
-          return newDistance;
-        });
+        distanceRef.current += kmPerSecond;
+        const newDistance = distanceRef.current;
+        setDistanceMonitored(newDistance);
+        
+        // Anunciar progresso a cada 2.5km
+        if (distanceRef.current - kmPerSecond < 2.5 && distanceRef.current >= 2.5) {
+          speak('Metade da análise concluída. Adaptação de combustível dentro do normal até agora.');
+        }
+        
+        // Finalizar análise aos 5km
+        if (newDistance >= settings.monitoringDistance) {
+          finalizeAnalysis();
+        }
       }, 1000);
-      
-      return () => clearInterval(interval);
     }
+    
+    return () => {
+      // NÃO limpar aqui - será limpo no cancelRefuel ou finalizeAnalysis
+    };
   }, [mode, speed, settings.monitoringDistance, finalizeAnalysis, speak]);
   
-  // Ler nível de combustível atual
+  // Ler nível de combustível atual - CORRIGIDO para polling condicional
   useEffect(() => {
-    if (fuelLevelSupported && isConnected) {
-      const interval = setInterval(async () => {
+    // Só faz polling quando está em modo de monitoramento ou waiting
+    if (fuelLevelSupported && isConnected && (mode === 'monitoring' || mode === 'waiting')) {
+      fuelLevelIntervalRef.current = setInterval(async () => {
         const level = await readFuelLevel();
         setCurrentFuelLevel(level);
       }, 5000);
       
-      return () => clearInterval(interval);
+      return () => {
+        if (fuelLevelIntervalRef.current) {
+          clearInterval(fuelLevelIntervalRef.current);
+          fuelLevelIntervalRef.current = null;
+        }
+      };
     }
-  }, [fuelLevelSupported, isConnected, readFuelLevel]);
+  }, [fuelLevelSupported, isConnected, mode, readFuelLevel]);
+  
+  // Cleanup geral quando modo muda para inactive
+  useEffect(() => {
+    if (mode === 'inactive' || mode === 'completed') {
+      isMonitoringActiveRef.current = false;
+      
+      if (monitoringIntervalRef.current) {
+        clearInterval(monitoringIntervalRef.current);
+        monitoringIntervalRef.current = null;
+      }
+      if (distanceIntervalRef.current) {
+        clearInterval(distanceIntervalRef.current);
+        distanceIntervalRef.current = null;
+      }
+    }
+  }, [mode]);
   
   return {
     mode,
