@@ -68,6 +68,7 @@ export function useBluetooth(): BluetoothHookReturn {
   const pollingIntervalRef = useRef<number | null>(null);
   const isPollingRef = useRef(false);
   const isReadingRef = useRef(false);
+  const isReconnectingRef = useRef(false);
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 
@@ -280,12 +281,20 @@ export function useBluetooth(): BluetoothHookReturn {
     addLogRef.current('🔌 Desconectado manualmente');
   }, [stopPolling]);
 
-  // Função de reconexão automática
+  // Função de reconexão automática - CORRIGIDO para evitar race conditions
   const reconnect = useCallback(async (): Promise<boolean> => {
+    // Proteção contra múltiplas tentativas simultâneas
+    if (isReconnectingRef.current) {
+      addLogRef.current('⚠️ Reconexão já em andamento...');
+      return false;
+    }
+    
     if (!deviceRef.current) {
       addLogRef.current('⚠️ Nenhum dispositivo anterior para reconectar');
       return false;
     }
+
+    isReconnectingRef.current = true;
 
     try {
       setStatus('connecting');
@@ -351,6 +360,8 @@ export function useBluetooth(): BluetoothHookReturn {
       setStatus('error');
       addLogRef.current(`❌ Reconexão falhou: ${message}`);
       return false;
+    } finally {
+      isReconnectingRef.current = false;
     }
   }, [handleNotification, sendCommand]);
 
