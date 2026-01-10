@@ -179,6 +179,35 @@
   /* Mantém as cores padrão do app */
 }
 
+/* Estilo Verde Dólar para Financeiro */
+:root {
+  --money: 120 100% 50%;
+  --money-foreground: 0 0% 0%;
+}
+
+.text-money {
+  color: hsl(var(--money));
+}
+
+.bg-money {
+  background-color: hsl(var(--money));
+}
+
+.text-money-foreground {
+  color: hsl(var(--money-foreground));
+}
+
+.border-money {
+  border-color: hsl(var(--money));
+}
+
+.money-glow {
+  text-shadow: 
+    0 0 10px hsl(var(--money) / 0.5),
+    0 0 20px hsl(var(--money) / 0.3),
+    0 0 30px hsl(var(--money) / 0.2);
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVoiceRecognition } from './useVoiceRecognition';
 import { useJarvis } from './useJarvis';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
+import { TripData } from '@/types/tripSettings';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VehicleContext {
@@ -23,6 +24,7 @@ interface Message {
 interface UseJarvisAIOptions {
   settings?: JarvisSettings;
   vehicleContext: VehicleContext;
+  tripData?: TripData;
 }
 
 interface UseJarvisAIReturn {
@@ -72,7 +74,7 @@ function detectWakeWord(text: string, wakeWord: string): { detected: boolean; co
 }
 
 export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
-  const { settings = defaultJarvisSettings, vehicleContext } = options;
+  const { settings = defaultJarvisSettings, vehicleContext, tripData } = options;
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResponse, setLastResponse] = useState('');
@@ -83,6 +85,7 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
   const [displayTranscript, setDisplayTranscript] = useState('');
   
   const vehicleContextRef = useRef(vehicleContext);
+  const tripDataRef = useRef(tripData);
   const isProcessingRef = useRef(false);
   const wakeWordCooldownRef = useRef(false);
   const settingsRef = useRef(settings);
@@ -95,6 +98,10 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+  
+  useEffect(() => {
+    tripDataRef.current = tripData;
+  }, [tripData]);
 
   // Hook de síntese de voz (TTS)
   const { speak, isSpeaking, isSupported: isTTSSupported } = useJarvis({ settings });
@@ -117,6 +124,7 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
         body: {
           message: userMessage,
           vehicleContext: vehicleContextRef.current,
+          tripData: tripDataRef.current,
           conversationHistory: conversationHistory.slice(-6),
         },
       });
