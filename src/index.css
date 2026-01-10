@@ -94,6 +94,91 @@
   }
 }
 
+/* Temas dinâmicos por marca de veículo */
+.brand-volkswagen {
+  --primary: 214 100% 16%;
+  --ring: 214 100% 16%;
+  --accent: 195 100% 41%;
+}
+
+.brand-ford {
+  --primary: 212 100% 22%;
+  --ring: 212 100% 22%;
+  --accent: 199 89% 48%;
+}
+
+.brand-chevrolet {
+  --primary: 43 73% 52%;
+  --ring: 43 73% 52%;
+  --primary-foreground: 0 0% 10%;
+  --accent: 0 0% 20%;
+}
+
+.brand-honda {
+  --primary: 0 100% 40%;
+  --ring: 0 100% 40%;
+  --accent: 0 0% 75%;
+}
+
+.brand-fiat {
+  --primary: 352 74% 41%;
+  --ring: 352 74% 41%;
+  --accent: 0 0% 100%;
+}
+
+.brand-toyota {
+  --primary: 0 92% 48%;
+  --ring: 0 92% 48%;
+  --accent: 0 0% 50%;
+}
+
+.brand-hyundai {
+  --primary: 212 100% 19%;
+  --ring: 212 100% 19%;
+  --accent: 0 0% 75%;
+}
+
+.brand-renault {
+  --primary: 48 100% 50%;
+  --ring: 48 100% 50%;
+  --primary-foreground: 0 0% 10%;
+  --accent: 0 0% 20%;
+}
+
+.brand-nissan {
+  --primary: 0 0% 20%;
+  --ring: 0 0% 20%;
+  --accent: 0 100% 50%;
+}
+
+.brand-jeep {
+  --primary: 80 50% 30%;
+  --ring: 80 50% 30%;
+  --accent: 0 0% 20%;
+}
+
+.brand-bmw {
+  --primary: 210 100% 30%;
+  --ring: 210 100% 30%;
+  --accent: 0 0% 90%;
+}
+
+.brand-mercedes {
+  --primary: 0 0% 15%;
+  --ring: 0 0% 15%;
+  --accent: 0 0% 75%;
+}
+
+.brand-audi {
+  --primary: 0 0% 15%;
+  --ring: 0 0% 15%;
+  --accent: 0 100% 50%;
+}
+
+.brand-generic {
+  /* Mantém as cores padrão do app */
+}
+
 @layer base {
   * {
     @apply border-border;

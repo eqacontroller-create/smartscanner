@@ -3,6 +3,7 @@ import { useBluetooth } from '@/hooks/useBluetooth';
 import { useJarvis } from '@/hooks/useJarvis';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 import { useJarvisAI } from '@/hooks/useJarvisAI';
+import { useVehicleTheme } from '@/hooks/useVehicleTheme';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
@@ -13,6 +14,7 @@ import { JarvisFloatingWidget } from '@/components/dashboard/JarvisFloatingWidge
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
+import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
 import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
@@ -32,6 +34,7 @@ const Index = () => {
     voltage,
     fuelLevel,
     engineLoad,
+    detectedVehicle,
     error,
     logs,
     isPolling,
@@ -53,6 +56,14 @@ const Index = () => {
   } = useJarvisSettings();
 
   const { speak, testAudio, isSpeaking, isSupported: isJarvisSupported } = useJarvis({ settings: jarvisSettings });
+  
+  // Hook de tema dinâmico baseado no veículo
+  const { 
+    detectedVehicle: themeVehicle, 
+    currentProfile, 
+    setVehicle, 
+    resetToGeneric 
+  } = useVehicleTheme();
   
   // Hook de IA conversacional
   const jarvisAI = useJarvisAI({
@@ -82,6 +93,20 @@ const Index = () => {
   const isReady = status === 'ready';
   const isReading = status === 'reading';
 
+  // Atualizar tema quando veículo for detectado
+  useEffect(() => {
+    if (detectedVehicle?.vin) {
+      setVehicle(
+        detectedVehicle.vin,
+        detectedVehicle.manufacturer || undefined,
+        detectedVehicle.modelYear || undefined,
+        detectedVehicle.country || undefined
+      );
+    } else if (status === 'disconnected') {
+      resetToGeneric();
+    }
+  }, [detectedVehicle, status, setVehicle, resetToGeneric]);
+
   // Protocolo de Boas-vindas ao conectar (inclui lembretes de manutenção e voltagem real)
   useEffect(() => {
     if (status === 'ready' && !hasWelcomedRef.current && jarvisSettings.welcomeEnabled) {
@@ -90,6 +115,9 @@ const Index = () => {
       // Aguardar 4 segundos para dar tempo de ler a voltagem
       const timer = setTimeout(() => {
         const temp = temperature !== null ? temperature : 'desconhecida';
+        
+        // Nome da marca detectada
+        const brandName = currentProfile.displayName;
         
         // Status da bateria baseado na voltagem real
         let batteryStatus: string;
@@ -121,7 +149,7 @@ const Index = () => {
           }
         }
         
-        speak(`Sistema Ford conectado. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning} Pronto para rodar.`);
+        speak(`Sistema ${brandName} conectado. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning} Pronto para rodar.`);
       }, 4000);
       
       return () => clearTimeout(timer);
@@ -131,9 +159,9 @@ const Index = () => {
     if (status === 'disconnected') {
       hasWelcomedRef.current = false;
     }
-  }, [status, temperature, voltage, speak, jarvisSettings]);
+  }, [status, temperature, voltage, speak, jarvisSettings, currentProfile]);
 
-  // Monitor de "Pé Pesado" - Proteção do Motor Sigma
+  // Monitor de "Pé Pesado" - Proteção do Motor
   useEffect(() => {
     if (!jarvisSettings.highRpmAlertEnabled) return;
     
@@ -148,7 +176,7 @@ const Index = () => {
       now - lastHighRpmAlertRef.current > cooldown
     ) {
       lastHighRpmAlertRef.current = now;
-      speak('Cuidado. O motor ainda está frio. Evite altas rotações para proteger o motor Sigma.');
+      speak('Cuidado. O motor ainda está frio. Evite altas rotações para proteger o motor.');
     }
   }, [rpm, temperature, speak, jarvisSettings.highRpmAlertEnabled]);
 
@@ -216,12 +244,26 @@ const Index = () => {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              </div>
+              {/* Badge da Marca Detectada ou Ícone Padrão */}
+              {themeVehicle ? (
+                <VehicleBadge 
+                  brand={themeVehicle.brand} 
+                  profile={themeVehicle.profile}
+                  modelYear={themeVehicle.modelYear}
+                  compact
+                />
+              ) : (
+                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                  <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+              )}
               <div className="min-w-0">
-                <h1 className="text-base sm:text-xl font-bold text-foreground truncate">OBD-II Scanner</h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Diagnóstico Automotivo via Bluetooth</p>
+                <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
+                  {themeVehicle ? 'Scanner OBD-II' : 'OBD-II Scanner'}
+                </h1>
+                <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">
+                  {themeVehicle ? currentProfile.slogan : 'Scanner Universal Didático'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
@@ -284,6 +326,19 @@ const Index = () => {
                   <p className="font-medium text-destructive text-sm sm:text-base">Erro de Conexão</p>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">{error}</p>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Vehicle Detection Info */}
+          {themeVehicle && isReady && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-3 sm:p-4">
+                <VehicleBadge 
+                  brand={themeVehicle.brand} 
+                  profile={themeVehicle.profile}
+                  modelYear={themeVehicle.modelYear}
+                />
               </CardContent>
             </Card>
           )}
@@ -406,7 +461,7 @@ const Index = () => {
       <footer className="border-t border-border mt-auto safe-area-bottom">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <p className="text-center text-[10px] sm:text-xs text-muted-foreground">
-            Compatível com adaptadores ELM327 via Bluetooth Low Energy
+            Scanner Universal OBD-II • Compatível com qualquer veículo 2008+
           </p>
         </div>
       </footer>
@@ -439,9 +494,9 @@ const Index = () => {
         settings={jarvisSettings}
         onUpdateSetting={updateSetting}
         onResetToDefaults={resetToDefaults}
-        onTestVoice={testAudio}
         availableVoices={availableVoices}
         portugueseVoices={portugueseVoices}
+        onTestVoice={testAudio}
         isSpeaking={isSpeaking}
       />
     </div>
