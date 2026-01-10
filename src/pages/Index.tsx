@@ -7,6 +7,8 @@ import { useVehicleTheme } from '@/hooks/useVehicleTheme';
 import { useShiftLight } from '@/hooks/useShiftLight';
 import { useTripCalculator } from '@/hooks/useTripCalculator';
 import { useAutoRide } from '@/hooks/useAutoRide';
+import { useAuth } from '@/hooks/useAuth';
+import { useSyncedRides } from '@/hooks/useSyncedRides';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
@@ -15,6 +17,7 @@ import { JarvisSettingsButton } from '@/components/dashboard/JarvisSettingsButto
 import { JarvisSettingsSheet } from '@/components/dashboard/JarvisSettingsSheet';
 import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
 import { JarvisFloatingWidget } from '@/components/dashboard/JarvisFloatingWidget';
+import { SyncStatus } from '@/components/dashboard/SyncStatus';
 import { RPMGauge } from '@/components/dashboard/RPMGauge';
 import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
@@ -30,10 +33,11 @@ import { TripHistory } from '@/components/financial/TripHistory';
 import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
 import { RideEndModal } from '@/components/financial/RideEndModal';
 import { TodayRides } from '@/components/financial/TodayRides';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
@@ -104,7 +108,12 @@ const Index = () => {
   });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mainTab, setMainTab] = useState('painel');
+  
+  // Hooks de autenticação e sincronização
+  const { isAuthenticated } = useAuth();
+  const syncedRides = useSyncedRides();
   
   // Hook de Shift Light Adaptativo
   useShiftLight({
@@ -336,6 +345,17 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
+              {/* Status de Sincronização */}
+              <SyncStatus 
+                synced={syncedRides.synced} 
+                onLoginClick={() => setIsAuthModalOpen(true)} 
+              />
+              {/* Botão Instalar PWA */}
+              <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
+                <Link to="/instalar">
+                  <Download className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Link>
+              </Button>
               {/* Botão de Ajuda */}
               <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
                 <Link to="/ajuda">
@@ -677,6 +697,12 @@ const Index = () => {
         onClose={autoRide.closeModal}
         onSave={autoRide.saveRideWithAmount}
         onSkip={autoRide.skipAmountEntry}
+      />
+      
+      {/* Modal de Autenticação */}
+      <AuthModal
+        open={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
       />
     </div>
   );

@@ -99,6 +99,93 @@ export type Database = {
           },
         ]
       }
+      rides: {
+        Row: {
+          amount_received: number | null
+          average_speed: number | null
+          cost: number | null
+          cost_per_km: number | null
+          created_at: string | null
+          distance: number | null
+          duration: number | null
+          end_time: string | null
+          id: string
+          profit: number | null
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          amount_received?: number | null
+          average_speed?: number | null
+          cost?: number | null
+          cost_per_km?: number | null
+          created_at?: string | null
+          distance?: number | null
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          profit?: number | null
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          amount_received?: number | null
+          average_speed?: number | null
+          cost?: number | null
+          cost_per_km?: number | null
+          created_at?: string | null
+          distance?: number | null
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          profit?: number | null
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trip_settings: {
+        Row: {
+          auto_ride_enabled: boolean | null
+          auto_start_delay: number | null
+          auto_stop_delay: number | null
+          average_consumption: number | null
+          created_at: string | null
+          fuel_price: number | null
+          id: string
+          speed_threshold: number | null
+          updated_at: string | null
+          user_id: string
+          vehicle_cost_per_km: number | null
+        }
+        Insert: {
+          auto_ride_enabled?: boolean | null
+          auto_start_delay?: number | null
+          auto_stop_delay?: number | null
+          average_consumption?: number | null
+          created_at?: string | null
+          fuel_price?: number | null
+          id?: string
+          speed_threshold?: number | null
+          updated_at?: string | null
+          user_id: string
+          vehicle_cost_per_km?: number | null
+        }
+        Update: {
+          auto_ride_enabled?: boolean | null
+          auto_start_delay?: number | null
+          auto_stop_delay?: number | null
+          average_consumption?: number | null
+          created_at?: string | null
+          fuel_price?: number | null
+          id?: string
+          speed_threshold?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vehicle_cost_per_km?: number | null
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           country: string | null
