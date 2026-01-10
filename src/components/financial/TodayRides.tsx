@@ -103,7 +103,7 @@ export function TodayRides({ summary, onClear, onVoiceReport, isSpeaking }: Toda
                 Totais do Dia
               </h4>
               
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 text-center">
                 <div className="p-2 rounded-lg bg-muted/50">
                   <MapPin className="h-4 w-4 mx-auto text-accent mb-1" />
                   <p className="font-semibold">{summary.totalDistance.toFixed(1)} km</p>

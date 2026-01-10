@@ -56,12 +56,12 @@ export default function Install() {
           Voltar ao App
         </Link>
 
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
-            <Smartphone className="h-12 w-12 text-primary" />
+        <div className="text-center space-y-3 sm:space-y-4">
+          <div className="mx-auto w-16 h-16 xs:w-20 xs:h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+            <Smartphone className="h-8 w-8 xs:h-10 xs:w-10 sm:h-12 sm:w-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold">Instalar SmartScanner</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl xs:text-3xl font-bold">Instalar SmartScanner</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Instale o app na sua tela inicial para acesso rápido e funcionar offline!
           </p>
         </div>

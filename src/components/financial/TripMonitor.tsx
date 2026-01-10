@@ -28,7 +28,7 @@ export function TripMonitor({ tripData, currentSpeed }: TripMonitorProps) {
       </Card>
 
       {/* Cards Secundários */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 xs:grid-cols-3 gap-2 sm:gap-3">
         {/* Distância */}
         <Card className="border-border/50">
           <CardContent className="p-3 text-center">
