@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TripHistoryEntry, formatCurrency, formatDuration } from '@/types/tripSettings';
-import { History, Trash2, MapPin, Clock } from 'lucide-react';
+import { History, Trash2, MapPin, Clock, FileText, FileSpreadsheet } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface TripHistoryProps {
   history: TripHistoryEntry[];
@@ -10,6 +11,154 @@ interface TripHistoryProps {
 }
 
 export function TripHistory({ history, onClearHistory }: TripHistoryProps) {
+  const { toast } = useToast();
+
+  // Exportar para CSV
+  const exportToCSV = () => {
+    if (history.length === 0) return;
+
+    const headers = ['Data', 'Distância (km)', 'Custo (R$)', 'Custo/KM (R$)', 'Duração', 'Velocidade Média (km/h)'];
+    const rows = history.map(entry => [
+      new Date(entry.date).toLocaleString('pt-BR'),
+      entry.distance.toFixed(2),
+      entry.cost.toFixed(2),
+      entry.costPerKm.toFixed(2),
+      formatDuration(entry.duration),
+      entry.averageSpeed.toFixed(1),
+    ]);
+
+    // Adicionar totais
+    const totals = history.reduce(
+      (acc, entry) => ({
+        distance: acc.distance + entry.distance,
+        cost: acc.cost + entry.cost,
+        duration: acc.duration + entry.duration,
+      }),
+      { distance: 0, cost: 0, duration: 0 }
+    );
+
+    rows.push([]);
+    rows.push(['TOTAIS', totals.distance.toFixed(2), totals.cost.toFixed(2), '', formatDuration(totals.duration), '']);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.join(';'))
+      .join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `relatorio-viagens-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    toast({
+      title: '📊 CSV Exportado!',
+      description: `${history.length} viagens exportadas com sucesso.`,
+    });
+  };
+
+  // Exportar para PDF (usando window.print com estilo)
+  const exportToPDF = () => {
+    if (history.length === 0) return;
+
+    const totals = history.reduce(
+      (acc, entry) => ({
+        distance: acc.distance + entry.distance,
+        cost: acc.cost + entry.cost,
+        duration: acc.duration + entry.duration,
+      }),
+      { distance: 0, cost: 0, duration: 0 }
+    );
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório de Viagens</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+          h1 { color: #00cc00; border-bottom: 2px solid #00cc00; padding-bottom: 10px; }
+          .summary { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+          .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+          .summary-item { text-align: center; }
+          .summary-label { font-size: 12px; color: #666; }
+          .summary-value { font-size: 24px; font-weight: bold; color: #00cc00; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+          th { background: #00cc00; color: white; }
+          tr:nth-child(even) { background: #f9f9f9; }
+          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #999; }
+          @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <h1>📊 Relatório de Viagens</h1>
+        <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+        
+        <div class="summary">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-label">Total de Viagens</div>
+              <div class="summary-value">${history.length}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Distância Total</div>
+              <div class="summary-value">${totals.distance.toFixed(1)} km</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Custo Total</div>
+              <div class="summary-value">${formatCurrency(totals.cost)}</div>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Distância</th>
+              <th>Custo</th>
+              <th>Custo/KM</th>
+              <th>Duração</th>
+              <th>Vel. Média</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${history.map(entry => `
+              <tr>
+                <td>${new Date(entry.date).toLocaleString('pt-BR')}</td>
+                <td>${entry.distance.toFixed(2)} km</td>
+                <td>${formatCurrency(entry.cost)}</td>
+                <td>${formatCurrency(entry.costPerKm)}</td>
+                <td>${formatDuration(entry.duration)}</td>
+                <td>${entry.averageSpeed.toFixed(1)} km/h</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <p>OBD-II Scanner com Jarvis AI - Relatório Financeiro</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+
+    toast({
+      title: '📄 PDF Gerado!',
+      description: 'Use Ctrl+P ou Cmd+P para salvar como PDF.',
+    });
+  };
+
   if (history.length === 0) {
     return (
       <Card className="border-border/50">
@@ -34,19 +183,42 @@ export function TripHistory({ history, onClearHistory }: TripHistoryProps) {
 
   return (
     <Card className="border-border/50">
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <History className="h-4 w-4" />
-          Histórico de Viagens
-        </CardTitle>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={onClearHistory}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Histórico de Viagens
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-money hover:text-money hover:bg-money/10"
+              onClick={exportToCSV}
+              title="Exportar CSV"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-money hover:text-money hover:bg-money/10"
+              onClick={exportToPDF}
+              title="Exportar PDF"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={onClearHistory}
+              title="Limpar histórico"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Totais */}
