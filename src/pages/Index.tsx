@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useBluetooth } from '@/hooks/useBluetooth';
 import { useJarvis } from '@/hooks/useJarvis';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
@@ -10,6 +10,7 @@ import { useAutoRide } from '@/hooks/useAutoRide';
 import { useAuth } from '@/hooks/useAuth';
 import { useSyncedRides } from '@/hooks/useSyncedRides';
 import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
+import { useWakeLock } from '@/hooks/useWakeLock';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
@@ -42,7 +43,7 @@ import { RefuelResult } from '@/components/refuel/RefuelResult';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle, Download, MoreVertical, Volume2 } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle, Download, MoreVertical, Volume2, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
@@ -70,7 +71,9 @@ const Index = () => {
     stopPolling,
     sendRawCommand,
     addLog,
-    isSupported
+    isSupported,
+    reconnect,
+    hasLastDevice,
   } = useBluetooth();
 
   const {
@@ -153,6 +156,48 @@ const Index = () => {
     shiftLightEnabled: jarvisSettings.shiftLightEnabled,
     speak,
   });
+  
+  // Ref para controlar tentativas de reconexão
+  const reconnectAttemptedRef = useRef(false);
+  
+  // Handler para reconexão automática quando tela é desbloqueada
+  const handleVisibilityRestore = useCallback(async () => {
+    if (
+      jarvisSettings.autoReconnectEnabled && 
+      hasLastDevice &&
+      !reconnectAttemptedRef.current
+    ) {
+      reconnectAttemptedRef.current = true;
+      addLog('👁 Tela desbloqueada - verificando conexão...');
+      
+      const success = await reconnect();
+      if (success) {
+        speak('Reconectado automaticamente');
+        // Reiniciar polling após reconexão bem-sucedida
+        setTimeout(() => {
+          startPolling();
+        }, 500);
+      } else {
+        speak('Conexão perdida. Toque para reconectar.');
+      }
+      
+      reconnectAttemptedRef.current = false;
+    }
+  }, [jarvisSettings.autoReconnectEnabled, hasLastDevice, reconnect, speak, addLog, startPolling]);
+  
+  // Hook de Wake Lock (Modo Insônia)
+  const wakeLock = useWakeLock({
+    enabled: jarvisSettings.keepAwakeEnabled,
+    isConnected: status === 'ready' || status === 'reading',
+    onVisibilityRestore: handleVisibilityRestore,
+  });
+  
+  // Log quando Wake Lock é ativado
+  useEffect(() => {
+    if (wakeLock.isWakeLockActive && (status === 'ready' || status === 'reading')) {
+      addLog('🌙 Modo Insônia ativado - tela permanecerá ligada');
+    }
+  }, [wakeLock.isWakeLockActive, status, addLog]);
   
   // Refs para controlar cooldowns dos alertas
   const lastHighRpmAlertRef = useRef<number>(0);
@@ -454,6 +499,13 @@ const Index = () => {
                   isSupported={isJarvisSupported} 
                 />
               </div>
+              
+              {/* Indicador de Modo Insônia */}
+              {wakeLock.isWakeLockActive && (
+                <div className="flex items-center text-blue-400" title="Modo Insônia ativo">
+                  <Moon className="h-4 w-4" />
+                </div>
+              )}
               
               {/* Status de conexão - sempre visível */}
               <StatusIndicator status={status} />
@@ -762,6 +814,7 @@ const Index = () => {
         portugueseVoices={portugueseVoices}
         onTestVoice={testAudio}
         isSpeaking={isSpeaking}
+        isWakeLockActive={wakeLock.isWakeLockActive}
       />
       
       {/* Modal de fim de corrida automática */}

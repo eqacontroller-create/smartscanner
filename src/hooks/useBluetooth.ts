@@ -41,6 +41,8 @@ interface BluetoothHookReturn {
   sendRawCommand: (command: string, timeout?: number) => Promise<string>;
   addLog: (message: string) => void;
   isSupported: boolean;
+  reconnect: () => Promise<boolean>;
+  hasLastDevice: boolean;
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -263,7 +265,7 @@ export function useBluetooth(): BluetoothHookReturn {
     if (deviceRef.current?.gatt?.connected) {
       deviceRef.current.gatt.disconnect();
     }
-    deviceRef.current = null;
+    // Não limpa deviceRef para permitir reconexão
     writeCharRef.current = null;
     notifyCharRef.current = null;
     responseBufferRef.current = '';
@@ -277,6 +279,80 @@ export function useBluetooth(): BluetoothHookReturn {
     setEngineLoad(null);
     addLogRef.current('🔌 Desconectado manualmente');
   }, [stopPolling]);
+
+  // Função de reconexão automática
+  const reconnect = useCallback(async (): Promise<boolean> => {
+    if (!deviceRef.current) {
+      addLogRef.current('⚠️ Nenhum dispositivo anterior para reconectar');
+      return false;
+    }
+
+    try {
+      setStatus('connecting');
+      setError(null);
+      addLogRef.current('🔄 Tentando reconexão automática...');
+
+      // Verificar se o GATT ainda está acessível
+      if (!deviceRef.current.gatt) {
+        addLogRef.current('❌ GATT não disponível');
+        setStatus('disconnected');
+        return false;
+      }
+
+      addLogRef.current('🔗 Reconectando ao GATT Server...');
+      const server = await deviceRef.current.gatt.connect();
+      if (!server) {
+        throw new Error('Falha ao reconectar ao GATT Server');
+      }
+      addLogRef.current('✅ GATT reconectado');
+
+      addLogRef.current('🔍 Re-obtendo serviço...');
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      addLogRef.current('✅ Serviço encontrado');
+
+      addLogRef.current('🔍 Re-obtendo características...');
+      const [writeChar, notifyChar] = await Promise.all([
+        service.getCharacteristic(WRITE_CHARACTERISTIC_UUID),
+        service.getCharacteristic(NOTIFY_CHARACTERISTIC_UUID)
+      ]);
+
+      writeCharRef.current = writeChar;
+      notifyCharRef.current = notifyChar;
+      addLogRef.current('✅ Características obtidas');
+
+      addLogRef.current('📡 Reativando notificações...');
+      await notifyChar.startNotifications();
+      notifyChar.addEventListener('characteristicvaluechanged', handleNotification);
+      addLogRef.current('✅ Notificações reativas');
+
+      await delay(300);
+
+      // Re-inicializar ELM327 de forma rápida
+      setStatus('initializing');
+      addLogRef.current('🔧 Re-inicializando ELM327...');
+
+      await sendCommand('AT E0', 2000);
+      await delay(100);
+      await sendCommand('AT L0', 2000);
+      await delay(100);
+      await sendCommand('AT S0', 2000);
+      await delay(100);
+      await sendCommand('AT H0', 2000);
+      await delay(100);
+
+      setStatus('ready');
+      setError(null);
+      addLogRef.current('✅ Reconectado com sucesso!');
+      return true;
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      setError(message);
+      setStatus('error');
+      addLogRef.current(`❌ Reconexão falhou: ${message}`);
+      return false;
+    }
+  }, [handleNotification, sendCommand]);
 
   const readVehicleData = useCallback(async (): Promise<boolean> => {
     if (!writeCharRef.current || isReadingRef.current) return false;
@@ -442,7 +518,9 @@ export function useBluetooth(): BluetoothHookReturn {
     stopPolling,
     sendRawCommand,
     addLog,
-    isSupported
+    isSupported,
+    reconnect,
+    hasLastDevice: !!deviceRef.current,
   };
 }
 
