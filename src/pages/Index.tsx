@@ -6,6 +6,7 @@ import { useJarvisAI } from '@/hooks/useJarvisAI';
 import { useVehicleTheme } from '@/hooks/useVehicleTheme';
 import { useShiftLight } from '@/hooks/useShiftLight';
 import { useTripCalculator } from '@/hooks/useTripCalculator';
+import { useAutoRide } from '@/hooks/useAutoRide';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
@@ -26,6 +27,9 @@ import { TripMonitor } from '@/components/financial/TripMonitor';
 import { TripControls } from '@/components/financial/TripControls';
 import { QuickSettings } from '@/components/financial/QuickSettings';
 import { TripHistory } from '@/components/financial/TripHistory';
+import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
+import { RideEndModal } from '@/components/financial/RideEndModal';
+import { TodayRides } from '@/components/financial/TodayRides';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -74,6 +78,14 @@ const Index = () => {
   
   // Hook de calculadora de viagem (Taxímetro)
   const tripCalculator = useTripCalculator({ speed });
+  
+  // Hook de detecção automática de corridas
+  const autoRide = useAutoRide({
+    speed,
+    rpm,
+    settings: tripCalculator.settings,
+    speak: jarvisSettings.aiModeEnabled ? speak : undefined,
+  });
   
   // Hook de IA conversacional
   const jarvisAI = useJarvisAI({
@@ -285,6 +297,12 @@ const Index = () => {
   // Handler para relatório de voz
   const handleVoiceReport = () => {
     const report = tripCalculator.getVoiceReport();
+    speak(report);
+  };
+  
+  // Handler para relatório do dia (auto-ride)
+  const handleDailyReport = () => {
+    const report = autoRide.getVoiceReport();
     speak(report);
   };
 
@@ -529,6 +547,13 @@ const Index = () => {
 
             {/* Financeiro Tab (Taxímetro) */}
             <TabsContent value="financeiro" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+              {/* Status da corrida automática */}
+              {tripCalculator.settings.autoRideEnabled && (
+                <div className="flex justify-center">
+                  <RideStatusBadge status={autoRide.rideStatus} />
+                </div>
+              )}
+
               {/* Trip Monitor - Main Display */}
               <TripMonitor 
                 tripData={tripCalculator.tripData} 
@@ -546,6 +571,16 @@ const Index = () => {
                 onVoiceReport={handleVoiceReport}
                 isSpeaking={isSpeaking}
               />
+
+              {/* Histórico de Hoje (Auto-Ride) */}
+              {tripCalculator.settings.autoRideEnabled && (
+                <TodayRides
+                  summary={autoRide.dailySummary}
+                  onClear={autoRide.clearTodayRides}
+                  onVoiceReport={handleDailyReport}
+                  isSpeaking={isSpeaking}
+                />
+              )}
 
               {/* Quick Settings */}
               <QuickSettings
@@ -633,6 +668,15 @@ const Index = () => {
         portugueseVoices={portugueseVoices}
         onTestVoice={testAudio}
         isSpeaking={isSpeaking}
+      />
+      
+      {/* Modal de fim de corrida automática */}
+      <RideEndModal
+        isOpen={autoRide.isModalOpen}
+        ride={autoRide.finishedRide}
+        onClose={autoRide.closeModal}
+        onSave={autoRide.saveRideWithAmount}
+        onSkip={autoRide.skipAmountEntry}
       />
     </div>
   );
