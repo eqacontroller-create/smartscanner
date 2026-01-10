@@ -9,6 +9,7 @@ import { useTripCalculator } from '@/hooks/useTripCalculator';
 import { useAutoRide } from '@/hooks/useAutoRide';
 import { useAuth } from '@/hooks/useAuth';
 import { useSyncedRides } from '@/hooks/useSyncedRides';
+import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
@@ -34,6 +35,10 @@ import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
 import { RideEndModal } from '@/components/financial/RideEndModal';
 import { TodayRides } from '@/components/financial/TodayRides';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { RefuelButton } from '@/components/refuel/RefuelButton';
+import { RefuelModal } from '@/components/refuel/RefuelModal';
+import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
+import { RefuelResult } from '@/components/refuel/RefuelResult';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -116,10 +121,28 @@ const Index = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mainTab, setMainTab] = useState('painel');
+  const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
   
   // Hooks de autenticação e sincronização
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const syncedRides = useSyncedRides();
+  
+  // Hook de monitoramento de abastecimento
+  const refuelMonitor = useRefuelMonitor({
+    speed,
+    sendRawCommand,
+    isConnected: status === 'ready' || status === 'reading',
+    speak,
+    onFuelPriceUpdate: (price) => tripCalculator.updateSettings({ fuelPrice: price }),
+    userId: user?.id,
+  });
+  
+  // Verificar suporte de PIDs ao conectar
+  useEffect(() => {
+    if (status === 'ready') {
+      refuelMonitor.checkPIDSupport();
+    }
+  }, [status]);
   
   // Hook de Shift Light Adaptativo
   useShiftLight({
@@ -755,6 +778,60 @@ const Index = () => {
         open={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
       />
+      
+      {/* Modal de Abastecimento */}
+      <RefuelModal
+        open={isRefuelModalOpen}
+        onOpenChange={setIsRefuelModalOpen}
+        currentFuelLevel={refuelMonitor.currentFuelLevel}
+        fuelLevelSupported={refuelMonitor.fuelLevelSupported}
+        defaultPrice={tripCalculator.settings.fuelPrice}
+        onConfirm={(price, liters) => {
+          refuelMonitor.confirmRefuel(price, liters);
+          setIsRefuelModalOpen(false);
+        }}
+      />
+      
+      {/* Monitoramento de Combustível Flutuante */}
+      {(refuelMonitor.mode === 'monitoring' || refuelMonitor.mode === 'analyzing') && (
+        <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
+          <FuelQualityMonitor
+            mode={refuelMonitor.mode}
+            distanceMonitored={refuelMonitor.distanceMonitored}
+            currentSTFT={refuelMonitor.currentSTFT}
+            currentLTFT={refuelMonitor.currentLTFT}
+            anomalyActive={refuelMonitor.anomalyActive}
+            anomalyDuration={refuelMonitor.anomalyDuration}
+            fuelTrimHistory={refuelMonitor.fuelTrimHistory}
+            settings={refuelMonitor.settings}
+          />
+        </div>
+      )}
+      
+      {/* Resultado da Análise de Combustível */}
+      {refuelMonitor.mode === 'completed' && refuelMonitor.currentRefuel && (
+        <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
+          <RefuelResult
+            refuel={refuelMonitor.currentRefuel}
+            onClose={refuelMonitor.cancelRefuel}
+          />
+        </div>
+      )}
+      
+      {/* Botão Flutuante de Abastecimento */}
+      {(status === 'ready' || status === 'reading') && (
+        <div className="fixed bottom-4 left-4 z-50 safe-area-bottom">
+          <RefuelButton
+            mode={refuelMonitor.mode}
+            isConnected={status === 'ready' || status === 'reading'}
+            onStart={() => {
+              refuelMonitor.startRefuelMode();
+              setIsRefuelModalOpen(true);
+            }}
+            onCancel={refuelMonitor.cancelRefuel}
+          />
+        </div>
+      )}
     </div>
   );
 };
