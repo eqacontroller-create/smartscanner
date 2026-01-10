@@ -1,4 +1,4 @@
-import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio, Fuel, Zap } from 'lucide-react';
+import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio, Fuel, Zap, Moon, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -32,6 +32,7 @@ interface JarvisSettingsSheetProps {
   availableVoices: SpeechSynthesisVoice[];
   portugueseVoices: SpeechSynthesisVoice[];
   isSpeaking: boolean;
+  isWakeLockActive?: boolean;
 }
 
 export function JarvisSettingsSheet({
@@ -44,6 +45,7 @@ export function JarvisSettingsSheet({
   availableVoices,
   portugueseVoices,
   isSpeaking,
+  isWakeLockActive = false,
 }: JarvisSettingsSheetProps) {
   const voicesToShow = portugueseVoices.length > 0 ? portugueseVoices : availableVoices;
 
@@ -521,6 +523,62 @@ export function JarvisSettingsSheet({
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Seção Modo Insônia (Keep Awake) */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Moon className="h-4 w-4 text-blue-500" />
+                Modo Insônia
+                {isWakeLockActive && (
+                  <span className="ml-auto text-xs text-green-500 flex items-center gap-1">
+                    <Wifi className="h-3 w-3" />
+                    Ativo
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-4 pl-6">
+                {/* Manter Tela Acesa */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="keep-awake" className="text-sm font-medium">
+                      Manter Tela Sempre Acesa
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Impede que a tela desligue enquanto conectado
+                    </p>
+                  </div>
+                  <Switch
+                    id="keep-awake"
+                    checked={settings.keepAwakeEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('keepAwakeEnabled', checked)}
+                  />
+                </div>
+
+                {/* Reconexão Automática */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-reconnect" className="text-sm font-medium">
+                      Reconexão Automática
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Reconecta ao desbloquear se desconectou
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-reconnect"
+                    checked={settings.autoReconnectEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('autoReconnectEnabled', checked)}
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  💡 Mantém o Bluetooth ativo mesmo com a tela bloqueada
+                </p>
               </div>
             </div>
 

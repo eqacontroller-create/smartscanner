@@ -33,6 +33,10 @@ export interface JarvisSettings {
   continuousListening: boolean;     // Modo escuta contínua
   wakeWord: string;                 // Palavra de ativação (padrão: "jarvis")
   
+  // Modo Insônia (Keep Awake)
+  keepAwakeEnabled: boolean;        // Manter tela sempre acesa quando conectado
+  autoReconnectEnabled: boolean;    // Reconexão automática ao desbloquear tela
+  
   // Configurações de Voz
   volume: number;       // 0.0 a 1.0
   rate: number;         // 0.5 a 2.0 (velocidade)
@@ -67,6 +71,10 @@ export const defaultJarvisSettings: JarvisSettings = {
   aiResponseLength: 'short',
   continuousListening: false,
   wakeWord: 'jarvis',
+  // Modo Insônia (Keep Awake)
+  keepAwakeEnabled: true,
+  autoReconnectEnabled: true,
+  // Voz
   volume: 1.0,
   rate: 0.9,
   pitch: 0.95,
