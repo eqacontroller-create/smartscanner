@@ -5,6 +5,7 @@ import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 import { useJarvisAI } from '@/hooks/useJarvisAI';
 import { useVehicleTheme } from '@/hooks/useVehicleTheme';
 import { useShiftLight } from '@/hooks/useShiftLight';
+import { useTripCalculator } from '@/hooks/useTripCalculator';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
@@ -21,10 +22,14 @@ import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
 import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
+import { TripMonitor } from '@/components/financial/TripMonitor';
+import { TripControls } from '@/components/financial/TripControls';
+import { QuickSettings } from '@/components/financial/QuickSettings';
+import { TripHistory } from '@/components/financial/TripHistory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Gauge, Wrench, Activity, HelpCircle } from 'lucide-react';
+import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
@@ -67,6 +72,9 @@ const Index = () => {
     resetToGeneric 
   } = useVehicleTheme();
   
+  // Hook de calculadora de viagem (Taxímetro)
+  const tripCalculator = useTripCalculator({ speed });
+  
   // Hook de IA conversacional
   const jarvisAI = useJarvisAI({
     settings: jarvisSettings,
@@ -80,9 +88,11 @@ const Index = () => {
       isConnected: status === 'ready' || status === 'reading',
       isPolling,
     },
+    tripData: tripCalculator.tripData,
   });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [mainTab, setMainTab] = useState('painel');
   
   // Hook de Shift Light Adaptativo
   useShiftLight({
@@ -272,6 +282,12 @@ const Index = () => {
     }
   }, [voltage, speak, jarvisSettings.lowVoltageAlertEnabled, jarvisSettings.lowVoltageThreshold]);
 
+  // Handler para relatório de voz
+  const handleVoiceReport = () => {
+    const report = tripCalculator.getVoiceReport();
+    speak(report);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-y">
       {/* Header */}
@@ -333,6 +349,7 @@ const Index = () => {
           </div>
         </div>
       </header>
+
       {/* Main Content */}
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 safe-area-x">
         <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
@@ -388,105 +405,188 @@ const Index = () => {
             />
           </div>
 
-          {/* Tabs */}
-          <Tabs defaultValue="dashboard" className="w-full">
+          {/* Main Navigation Tabs */}
+          <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
-              <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
-                <Gauge className="h-4 w-4" />
+              <TabsTrigger value="painel" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
+                <Home className="h-4 w-4" />
                 <span className="hidden xs:inline">Painel</span>
               </TabsTrigger>
-              <TabsTrigger value="live" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
-                <Activity className="h-4 w-4" />
-                <span className="hidden xs:inline">Live Data</span>
+              <TabsTrigger value="financeiro" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden xs:inline">Financeiro</span>
               </TabsTrigger>
-              <TabsTrigger value="mechanic" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
-                <Wrench className="h-4 w-4" />
-                <span className="hidden xs:inline">Diagnóstico</span>
+              <TabsTrigger value="ajustes" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
+                <Settings className="h-4 w-4" />
+                <span className="hidden xs:inline">Ajustes</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* Dashboard Tab */}
-            <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              {/* Gauge Section */}
-              <div className="flex flex-col items-center gap-4 sm:gap-6">
-                <RPMGauge value={rpm} redlineRPM={jarvisSettings.redlineRPM} />
-                
-                {/* Polling Toggle Button */}
-                {(isReady || isReading) && (
-                  <Button
-                    size="lg"
-                    onClick={isPolling ? stopPolling : startPolling}
-                    className={`gap-2 min-h-[48px] px-6 touch-target ${isPolling 
-                      ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
-                      : 'bg-accent text-accent-foreground hover:bg-accent/90'
-                    }`}
-                  >
-                    {isPolling ? (
-                      <>
-                        <Square className="h-5 w-5" />
-                        <span>Parar Leitura</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-5 w-5" />
-                        <span>Iniciar Leitura</span>
-                      </>
+            {/* Painel Tab (Dashboard) */}
+            <TabsContent value="painel" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+              {/* Sub-tabs for dashboard features */}
+              <Tabs defaultValue="dashboard" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 h-auto">
+                  <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 text-xs touch-target">
+                    <Gauge className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Gauges</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="live" className="gap-1.5 sm:gap-2 py-2 text-xs touch-target">
+                    <Activity className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Live Data</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="mechanic" className="gap-1.5 sm:gap-2 py-2 text-xs touch-target">
+                    <Wrench className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Diagnóstico</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Dashboard Sub-Tab */}
+                <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4">
+                  {/* Gauge Section */}
+                  <div className="flex flex-col items-center gap-4 sm:gap-6">
+                    <RPMGauge value={rpm} redlineRPM={jarvisSettings.redlineRPM} />
+                    
+                    {/* Polling Toggle Button */}
+                    {(isReady || isReading) && (
+                      <Button
+                        size="lg"
+                        onClick={isPolling ? stopPolling : startPolling}
+                        className={`gap-2 min-h-[48px] px-6 touch-target ${isPolling 
+                          ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
+                          : 'bg-accent text-accent-foreground hover:bg-accent/90'
+                        }`}
+                      >
+                        {isPolling ? (
+                          <>
+                            <Square className="h-5 w-5" />
+                            <span>Parar Leitura</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-5 w-5" />
+                            <span>Iniciar Leitura</span>
+                          </>
+                        )}
+                      </Button>
                     )}
+                  </div>
+
+                  {/* Vehicle Stats */}
+                  <VehicleStats 
+                    speed={speed} 
+                    temperature={temperature} 
+                    voltage={voltage}
+                    fuelLevel={fuelLevel}
+                    engineLoad={engineLoad}
+                    isReading={isReading}
+                  />
+
+                  {/* RPM Card */}
+                  <RPMCard value={rpm} isReading={isReading} />
+
+                  {/* Log Panel */}
+                  <LogPanel logs={logs} />
+                </TabsContent>
+
+                {/* Live Data Sub-Tab */}
+                <TabsContent value="live" className="space-y-4 sm:space-y-6 mt-4">
+                  <LiveDataMonitor
+                    sendCommand={sendRawCommand}
+                    isConnected={isReady || isReading}
+                    addLog={addLog}
+                    stopPolling={stopPolling}
+                    isPolling={isPolling}
+                  />
+                  
+                  {/* Log Panel */}
+                  <LogPanel logs={logs} />
+                </TabsContent>
+
+                {/* Mechanic/Diagnostics Sub-Tab */}
+                <TabsContent value="mechanic" className="space-y-4 sm:space-y-6 mt-4">
+                  {/* Vehicle VIN Reader */}
+                  <VehicleVIN
+                    sendCommand={sendRawCommand}
+                    isConnected={isReady || isReading}
+                    addLog={addLog}
+                  />
+                  
+                  <DTCScanner 
+                    sendCommand={sendRawCommand}
+                    isConnected={isReady || isReading}
+                    addLog={addLog}
+                    stopPolling={stopPolling}
+                    isPolling={isPolling}
+                    onSpeakAlert={jarvisSettings.aiModeEnabled ? speak : undefined}
+                  />
+                  
+                  {/* Log Panel also visible in mechanic tab */}
+                  <LogPanel logs={logs} />
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+
+            {/* Financeiro Tab (Taxímetro) */}
+            <TabsContent value="financeiro" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+              {/* Trip Monitor - Main Display */}
+              <TripMonitor 
+                tripData={tripCalculator.tripData} 
+                currentSpeed={speed}
+              />
+
+              {/* Trip Controls */}
+              <TripControls
+                tripData={tripCalculator.tripData}
+                onStart={tripCalculator.startTrip}
+                onPause={tripCalculator.pauseTrip}
+                onResume={tripCalculator.resumeTrip}
+                onReset={tripCalculator.resetTrip}
+                onSave={tripCalculator.saveTrip}
+                onVoiceReport={handleVoiceReport}
+                isSpeaking={isSpeaking}
+              />
+
+              {/* Quick Settings */}
+              <QuickSettings
+                settings={tripCalculator.settings}
+                onUpdateSettings={tripCalculator.updateSettings}
+              />
+
+              {/* Trip History */}
+              <TripHistory
+                history={tripCalculator.history}
+                onClearHistory={tripCalculator.clearHistory}
+              />
+            </TabsContent>
+
+            {/* Ajustes Tab (Settings) */}
+            <TabsContent value="ajustes" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+              <Card>
+                <CardContent className="p-4 sm:p-6 text-center space-y-4">
+                  <Settings className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <div>
+                    <h3 className="font-semibold text-lg">Configurações do Jarvis</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Acesse as configurações do assistente de voz, alertas e perfil do motor.
+                    </p>
+                  </div>
+                  <Button 
+                    size="lg"
+                    className="gap-2"
+                    onClick={() => setIsSettingsOpen(true)}
+                  >
+                    <Settings className="h-5 w-5" />
+                    Abrir Configurações
                   </Button>
-                )}
-              </div>
+                </CardContent>
+              </Card>
 
-              {/* Vehicle Stats */}
-              <VehicleStats 
-                speed={speed} 
-                temperature={temperature} 
-                voltage={voltage}
-                fuelLevel={fuelLevel}
-                engineLoad={engineLoad}
-                isReading={isReading}
+              {/* Quick Financial Settings */}
+              <QuickSettings
+                settings={tripCalculator.settings}
+                onUpdateSettings={tripCalculator.updateSettings}
               />
-
-              {/* RPM Card */}
-              <RPMCard value={rpm} isReading={isReading} />
-
-              {/* Log Panel */}
-              <LogPanel logs={logs} />
-            </TabsContent>
-
-            {/* Live Data Tab */}
-            <TabsContent value="live" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              <LiveDataMonitor
-                sendCommand={sendRawCommand}
-                isConnected={isReady || isReading}
-                addLog={addLog}
-                stopPolling={stopPolling}
-                isPolling={isPolling}
-              />
-              
-              {/* Log Panel */}
-              <LogPanel logs={logs} />
-            </TabsContent>
-
-            {/* Mechanic/Diagnostics Tab */}
-            <TabsContent value="mechanic" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              {/* Vehicle VIN Reader */}
-              <VehicleVIN
-                sendCommand={sendRawCommand}
-                isConnected={isReady || isReading}
-                addLog={addLog}
-              />
-              
-              <DTCScanner 
-                sendCommand={sendRawCommand}
-                isConnected={isReady || isReading}
-                addLog={addLog}
-                stopPolling={stopPolling}
-                isPolling={isPolling}
-                onSpeakAlert={jarvisSettings.aiModeEnabled ? speak : undefined}
-              />
-              
-              {/* Log Panel also visible in mechanic tab */}
-              <LogPanel logs={logs} />
             </TabsContent>
           </Tabs>
         </div>

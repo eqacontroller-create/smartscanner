@@ -26,17 +26,27 @@ interface Message {
   content: string;
 }
 
+interface TripData {
+  distance: number;
+  cost: number;
+  costPerKm: number;
+  duration: number;
+  averageSpeed: number;
+  isActive: boolean;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { message, vehicleContext, conversationHistory, engineProfile } = await req.json() as {
+    const { message, vehicleContext, conversationHistory, engineProfile, tripData } = await req.json() as {
       message: string;
       vehicleContext: VehicleContext;
       conversationHistory: Message[];
       engineProfile?: EngineProfile;
+      tripData?: TripData;
     };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -47,6 +57,7 @@ serve(async (req) => {
     // Construir contexto do veículo para o prompt
     const vehicleStatus = buildVehicleStatus(vehicleContext);
     const engineContext = buildEngineContext(engineProfile);
+    const tripContext = buildTripContext(tripData);
 
     const systemPrompt = `Você é Jarvis, uma inteligência automotiva UNIVERSAL integrada a qualquer veículo. Seu papel é ser um copiloto inteligente e DIDÁTICO, explicando tudo de forma simples para pessoas leigas.
 
@@ -54,6 +65,8 @@ DADOS DO VEÍCULO EM TEMPO REAL:
 ${vehicleStatus}
 
 ${engineContext}
+
+${tripContext}
 
 MODO DIDÁTICO (USUÁRIO LEIGO):
 - Explique problemas mecânicos como se falasse com alguém que NÃO entende de carros
@@ -157,6 +170,30 @@ REGRAS IMPORTANTES:
     });
   }
 });
+
+function buildTripContext(tripData?: TripData): string {
+  if (!tripData || tripData.distance < 0.01) {
+    return 'DADOS DA VIAGEM: Nenhuma viagem em andamento';
+  }
+  
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return hours > 0 ? `${hours}h ${minutes}min` : `${minutes} minutos`;
+  };
+  
+  const lines = [
+    'DADOS DA VIAGEM (TAXÍMETRO):',
+    `- Status: ${tripData.isActive ? 'Em andamento' : 'Pausada'}`,
+    `- Distância percorrida: ${tripData.distance.toFixed(2)} km`,
+    `- Custo estimado: R$ ${tripData.cost.toFixed(2)}`,
+    `- Custo por km: R$ ${tripData.costPerKm.toFixed(2)}`,
+    `- Tempo de viagem: ${formatDuration(tripData.duration)}`,
+    `- Velocidade média: ${tripData.averageSpeed.toFixed(0)} km/h`,
+  ];
+  
+  return lines.join('\n');
+}
 
 function buildEngineContext(profile?: EngineProfile): string {
   if (!profile) {
