@@ -1,9 +1,18 @@
 // Configurações de viagem para motoristas de app
 
+// Estados da corrida automática
+export type RideStatus = 'idle' | 'detecting' | 'in_ride' | 'finishing';
+
 export interface TripSettings {
   fuelPrice: number;           // Preço do combustível R$/L
   averageConsumption: number;  // Consumo médio km/L
   vehicleCostPerKm: number;    // Custo adicional por km (depreciação, manutenção)
+  
+  // Configurações de auditoria automática
+  autoRideEnabled: boolean;      // Ativar/desativar detecção automática
+  autoStartDelay: number;        // Segundos para auto-start (padrão: 5)
+  autoStopDelay: number;         // Segundos para auto-stop (padrão: 30)
+  speedThreshold: number;        // Threshold de velocidade (padrão: 10 km/h)
 }
 
 export interface TripData {
@@ -26,10 +35,38 @@ export interface TripHistoryEntry {
   averageSpeed: number;
 }
 
+// Corrida individual com campo para valor recebido
+export interface RideEntry {
+  id: string;
+  startTime: number;
+  endTime: number;
+  distance: number;
+  cost: number;
+  costPerKm: number;
+  duration: number;
+  averageSpeed: number;
+  amountReceived?: number;    // Valor recebido pelo motorista
+  profit?: number;            // Lucro = valor recebido - custo
+}
+
+// Histórico do dia (Fechamento de Caixa)
+export interface DailySummary {
+  date: string;               // YYYY-MM-DD
+  rides: RideEntry[];
+  totalDistance: number;
+  totalCost: number;
+  totalReceived: number;
+  totalProfit: number;
+}
+
 export const defaultTripSettings: TripSettings = {
   fuelPrice: 6.00,
   averageConsumption: 12,
   vehicleCostPerKm: 0.10,
+  autoRideEnabled: true,
+  autoStartDelay: 5,
+  autoStopDelay: 30,
+  speedThreshold: 10,
 };
 
 export const initialTripData: TripData = {

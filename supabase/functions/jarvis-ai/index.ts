@@ -35,18 +35,27 @@ interface TripData {
   isActive: boolean;
 }
 
+interface AutoRideData {
+  rideStatus: 'idle' | 'detecting' | 'in_ride' | 'finishing';
+  todayRidesCount: number;
+  todayTotalDistance: number;
+  todayTotalCost: number;
+  todayTotalProfit: number;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { message, vehicleContext, conversationHistory, engineProfile, tripData } = await req.json() as {
+    const { message, vehicleContext, conversationHistory, engineProfile, tripData, autoRideData } = await req.json() as {
       message: string;
       vehicleContext: VehicleContext;
       conversationHistory: Message[];
       engineProfile?: EngineProfile;
       tripData?: TripData;
+      autoRideData?: AutoRideData;
     };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -58,6 +67,7 @@ serve(async (req) => {
     const vehicleStatus = buildVehicleStatus(vehicleContext);
     const engineContext = buildEngineContext(engineProfile);
     const tripContext = buildTripContext(tripData);
+    const autoRideContext = buildAutoRideContext(autoRideData);
 
     const systemPrompt = `Você é Jarvis, uma inteligência automotiva UNIVERSAL integrada a qualquer veículo. Seu papel é ser um copiloto inteligente e DIDÁTICO, explicando tudo de forma simples para pessoas leigas.
 
@@ -67,6 +77,8 @@ ${vehicleStatus}
 ${engineContext}
 
 ${tripContext}
+
+${autoRideContext}
 
 MODO DIDÁTICO (USUÁRIO LEIGO):
 - Explique problemas mecânicos como se falasse com alguém que NÃO entende de carros
@@ -191,6 +203,34 @@ function buildTripContext(tripData?: TripData): string {
     `- Tempo de viagem: ${formatDuration(tripData.duration)}`,
     `- Velocidade média: ${tripData.averageSpeed.toFixed(0)} km/h`,
   ];
+  
+  return lines.join('\n');
+}
+
+function buildAutoRideContext(autoRideData?: AutoRideData): string {
+  if (!autoRideData) {
+    return 'AUDITORIA DE CORRIDAS: Não configurada';
+  }
+  
+  const statusNames: Record<string, string> = {
+    idle: 'Aguardando corrida',
+    detecting: 'Detectando início de corrida',
+    in_ride: 'Corrida em andamento',
+    finishing: 'Finalizando corrida',
+  };
+  
+  const lines = [
+    'AUDITORIA AUTOMÁTICA DE CORRIDAS (MOTORISTA DE APP):',
+    `- Status atual: ${statusNames[autoRideData.rideStatus] || autoRideData.rideStatus}`,
+    `- Corridas hoje: ${autoRideData.todayRidesCount}`,
+    `- Total rodado hoje: ${autoRideData.todayTotalDistance.toFixed(1)} km`,
+    `- Total gasto em combustível: R$ ${autoRideData.todayTotalCost.toFixed(2)}`,
+    `- Lucro líquido do dia: R$ ${autoRideData.todayTotalProfit.toFixed(2)}`,
+  ];
+  
+  if (autoRideData.todayRidesCount > 0) {
+    lines.push(`- Média por corrida: R$ ${(autoRideData.todayTotalProfit / autoRideData.todayRidesCount).toFixed(2)}`);
+  }
   
   return lines.join('\n');
 }

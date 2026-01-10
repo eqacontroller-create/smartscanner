@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { TripSettings } from '@/types/tripSettings';
-import { Check, Fuel, Gauge, Wrench } from 'lucide-react';
+import { Check, Fuel, Gauge, Wrench, Car } from 'lucide-react';
 
 interface QuickSettingsProps {
   settings: TripSettings;
@@ -75,6 +76,24 @@ export function QuickSettings({ settings, onUpdateSettings }: QuickSettingsProps
             onChange={(e) => onUpdateSettings({ vehicleCostPerKm: parseFloat(e.target.value) || 0 })}
             className="font-mono"
           />
+        </div>
+
+        {/* Toggle de Detecção Automática */}
+        <div className="space-y-2 border-t border-border pt-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="autoRide" className="flex items-center gap-2 text-sm cursor-pointer">
+              <Car className="h-4 w-4 text-money" />
+              Detecção Automática de Corridas
+            </Label>
+            <Switch
+              id="autoRide"
+              checked={settings.autoRideEnabled}
+              onCheckedChange={(checked) => onUpdateSettings({ autoRideEnabled: checked })}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Inicia/para corridas automaticamente baseado na velocidade.
+          </p>
         </div>
 
         {/* Info de salvamento */}
