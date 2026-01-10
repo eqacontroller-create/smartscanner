@@ -99,6 +99,66 @@ export type Database = {
           },
         ]
       }
+      refuel_entries: {
+        Row: {
+          anomaly_details: string | null
+          anomaly_detected: boolean | null
+          created_at: string | null
+          distance_monitored: number | null
+          fuel_level_after: number | null
+          fuel_level_before: number | null
+          id: string
+          liters_added: number
+          ltft_delta: number | null
+          price_per_liter: number
+          pump_accuracy_percent: number | null
+          quality: string | null
+          stft_average: number | null
+          tank_capacity: number | null
+          timestamp: string
+          total_paid: number
+          user_id: string
+        }
+        Insert: {
+          anomaly_details?: string | null
+          anomaly_detected?: boolean | null
+          created_at?: string | null
+          distance_monitored?: number | null
+          fuel_level_after?: number | null
+          fuel_level_before?: number | null
+          id?: string
+          liters_added: number
+          ltft_delta?: number | null
+          price_per_liter: number
+          pump_accuracy_percent?: number | null
+          quality?: string | null
+          stft_average?: number | null
+          tank_capacity?: number | null
+          timestamp?: string
+          total_paid: number
+          user_id: string
+        }
+        Update: {
+          anomaly_details?: string | null
+          anomaly_detected?: boolean | null
+          created_at?: string | null
+          distance_monitored?: number | null
+          fuel_level_after?: number | null
+          fuel_level_before?: number | null
+          id?: string
+          liters_added?: number
+          ltft_delta?: number | null
+          price_per_liter?: number
+          pump_accuracy_percent?: number | null
+          quality?: string | null
+          stft_average?: number | null
+          tank_capacity?: number | null
+          timestamp?: string
+          total_paid?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       rides: {
         Row: {
           amount_received: number | null
