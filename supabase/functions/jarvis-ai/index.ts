@@ -16,6 +16,11 @@ interface VehicleContext {
   isPolling: boolean;
 }
 
+interface EngineProfile {
+  fuelType: 'gasoline' | 'ethanol' | 'diesel';
+  redlineRPM: number;
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -27,10 +32,11 @@ serve(async (req) => {
   }
 
   try {
-    const { message, vehicleContext, conversationHistory } = await req.json() as {
+    const { message, vehicleContext, conversationHistory, engineProfile } = await req.json() as {
       message: string;
       vehicleContext: VehicleContext;
       conversationHistory: Message[];
+      engineProfile?: EngineProfile;
     };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -40,11 +46,14 @@ serve(async (req) => {
 
     // Construir contexto do veículo para o prompt
     const vehicleStatus = buildVehicleStatus(vehicleContext);
+    const engineContext = buildEngineContext(engineProfile);
 
-    const systemPrompt = `Você é Jarvis, uma inteligência automotiva integrada a um veículo. Seu papel é ser um copiloto inteligente e DIDÁTICO, explicando tudo de forma simples para pessoas leigas.
+    const systemPrompt = `Você é Jarvis, uma inteligência automotiva UNIVERSAL integrada a qualquer veículo. Seu papel é ser um copiloto inteligente e DIDÁTICO, explicando tudo de forma simples para pessoas leigas.
 
 DADOS DO VEÍCULO EM TEMPO REAL:
 ${vehicleStatus}
+
+${engineContext}
 
 MODO DIDÁTICO (USUÁRIO LEIGO):
 - Explique problemas mecânicos como se falasse com alguém que NÃO entende de carros
@@ -53,8 +62,15 @@ MODO DIDÁTICO (USUÁRIO LEIGO):
   * Bateria baixa = "É como um celular com pouca carga"
   * Carga do motor = "É como o esforço que você faz subindo escada"
   * RPM alto = "O motor está girando muito rápido, como bater o liquidificador na velocidade máxima"
+  * Lugging (motor forçando) = "É como pedalar uma bicicleta em marcha pesada subindo morro"
 - SEMPRE informe se é SEGURO continuar dirigindo ou não
 - Sugira ações práticas (ex: "Pare em um posto", "Ligue o ar-condicionado para ajudar a esfriar")
+
+REGRAS UNIVERSAIS DE LINGUAGEM:
+- NUNCA mencione marcas ou modelos específicos de veículos
+- Use SEMPRE termos genéricos: "Piloto", "Motor", "Veículo", "Seu carro"
+- Trate o usuário como "Piloto" de forma amigável
+- Adapte as dicas ao tipo de combustível quando relevante
 
 PERSONALIDADE E ESTILO:
 - Responda de forma CONCISA (máximo 2-3 frases curtas)
@@ -69,6 +85,7 @@ CAPACIDADES:
 - Responder perguntas sobre o carro e condução
 - Alertar sobre problemas potenciais (bateria baixa, superaquecimento, combustível baixo, etc)
 - Dar dicas de economia de combustível e manutenção
+- Orientar sobre pontos ideais de troca de marcha
 
 REGRAS IMPORTANTES:
 - Se não tiver dados (valores null), diga que ainda não há leitura disponível
@@ -140,6 +157,40 @@ REGRAS IMPORTANTES:
     });
   }
 });
+
+function buildEngineContext(profile?: EngineProfile): string {
+  if (!profile) {
+    return 'PERFIL DO MOTOR: Não configurado (usando padrões)';
+  }
+  
+  const fuelTypeNames: Record<string, string> = {
+    gasoline: 'Gasolina',
+    ethanol: 'Etanol/Flex',
+    diesel: 'Diesel'
+  };
+  
+  const ecoPoint = Math.round(profile.redlineRPM * 0.4);
+  const sportPoint = Math.round(profile.redlineRPM * 0.9);
+  const luggingPoint = Math.round(profile.redlineRPM * 0.25);
+  
+  const lines = [
+    'PERFIL DO MOTOR:',
+    `- Tipo de combustível: ${fuelTypeNames[profile.fuelType] || profile.fuelType}`,
+    `- Limite de giro (redline): ${profile.redlineRPM} RPM`,
+    `- Ponto de troca econômico: ${ecoPoint} RPM (40%)`,
+    `- Ponto de troca esportivo: ${sportPoint} RPM (90%)`,
+    `- Limite de lugging: Abaixo de ${luggingPoint} RPM com carga alta`,
+  ];
+  
+  // Dicas específicas por tipo de combustível
+  if (profile.fuelType === 'diesel') {
+    lines.push('- NOTA: Motores diesel têm menor rotação máxima e mais torque em baixas rotações');
+  } else if (profile.fuelType === 'ethanol') {
+    lines.push('- NOTA: Etanol pode exigir RPM um pouco mais alto para mesma potência');
+  }
+  
+  return lines.join('\n');
+}
 
 function buildVehicleStatus(ctx: VehicleContext): string {
   const lines: string[] = [];

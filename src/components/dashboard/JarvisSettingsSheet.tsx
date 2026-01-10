@@ -1,4 +1,4 @@
-import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio } from 'lucide-react';
+import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio, Fuel, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { JarvisSettings } from '@/types/jarvisSettings';
+import { JarvisSettings, FuelType, getDefaultRedlineForFuelType, getShiftPoints } from '@/types/jarvisSettings';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -60,6 +60,15 @@ export function JarvisSettingsSheet({
       onUpdateSetting('selectedVoiceURI', value);
     }
   };
+
+  // Handler para mudança de tipo de combustível (auto-ajusta redline)
+  const handleFuelTypeChange = (value: FuelType) => {
+    onUpdateSetting('fuelType', value);
+    onUpdateSetting('redlineRPM', getDefaultRedlineForFuelType(value));
+  };
+
+  // Calcular pontos de shift para exibição
+  const shiftPoints = getShiftPoints(settings.redlineRPM);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -115,6 +124,137 @@ export function JarvisSettingsSheet({
                     onCheckedChange={(checked) => onUpdateSetting('highRpmAlertEnabled', checked)}
                   />
                 </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Seção de Perfil do Motor */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Fuel className="h-4 w-4 text-accent" />
+                Perfil do Motor
+              </div>
+              
+              <div className="space-y-4 pl-6">
+                {/* Tipo de Combustível */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Tipo de Combustível</Label>
+                  <Select
+                    value={settings.fuelType}
+                    onValueChange={(value: FuelType) => handleFuelTypeChange(value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gasoline">Gasolina</SelectItem>
+                      <SelectItem value="ethanol">Etanol / Flex</SelectItem>
+                      <SelectItem value="diesel">Diesel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Limite de Giro (Redline) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Limite de Giro (Redline)</Label>
+                    <span className="text-xs font-medium text-primary">{settings.redlineRPM} RPM</span>
+                  </div>
+                  <Slider
+                    value={[settings.redlineRPM]}
+                    onValueChange={([value]) => onUpdateSetting('redlineRPM', value)}
+                    min={3000}
+                    max={9000}
+                    step={100}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>3000</span>
+                    <span>Diesel ~4500 | Gasolina ~6500</span>
+                    <span>9000</span>
+                  </div>
+                </div>
+
+                <Separator className="my-2" />
+
+                {/* Shift Light */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="shift-light" className="text-sm font-medium flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5 text-accent" />
+                      Shift Light (Luz de Troca)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Avisos sonoros para troca de marcha
+                    </p>
+                  </div>
+                  <Switch
+                    id="shift-light"
+                    checked={settings.shiftLightEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('shiftLightEnabled', checked)}
+                  />
+                </div>
+
+                {settings.shiftLightEnabled && (
+                  <div className="space-y-3 pl-4 border-l-2 border-accent/30">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="eco-shift" className="text-sm font-medium">
+                          Modo Eco (40%)
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Avisa em {shiftPoints.ecoPoint} RPM
+                        </p>
+                      </div>
+                      <Switch
+                        id="eco-shift"
+                        checked={settings.ecoShiftEnabled}
+                        onCheckedChange={(checked) => onUpdateSetting('ecoShiftEnabled', checked)}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="sport-shift" className="text-sm font-medium">
+                          Modo Sport (90%)
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Avisa em {shiftPoints.sportPoint} RPM
+                        </p>
+                      </div>
+                      <Switch
+                        id="sport-shift"
+                        checked={settings.sportShiftEnabled}
+                        onCheckedChange={(checked) => onUpdateSetting('sportShiftEnabled', checked)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <Separator className="my-2" />
+
+                {/* Alerta de Sobrecarga (Lugging) */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="lugging-alert" className="text-sm font-medium">
+                      Alerta de Sobrecarga
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Avisa quando o motor está forçando (RPM baixo + pedal fundo)
+                    </p>
+                  </div>
+                  <Switch
+                    id="lugging-alert"
+                    checked={settings.luggingAlertEnabled}
+                    onCheckedChange={(checked) => onUpdateSetting('luggingAlertEnabled', checked)}
+                  />
+                </div>
+                {settings.luggingAlertEnabled && (
+                  <p className="text-xs text-muted-foreground pl-4">
+                    💡 Detecta quando RPM &lt; {shiftPoints.luggingPoint} e carga &gt; 80%
+                  </p>
+                )}
               </div>
             </div>
 

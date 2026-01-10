@@ -1,3 +1,5 @@
+export type FuelType = 'gasoline' | 'ethanol' | 'diesel';
+
 export interface JarvisSettings {
   // Alertas
   welcomeEnabled: boolean;
@@ -12,6 +14,18 @@ export interface JarvisSettings {
   currentMileage: number;           // Quilometragem atual (entrada manual)
   nextOilChange: number;            // Próxima troca de óleo (km)
   nextInspection: number;           // Próxima revisão (km)
+  
+  // Perfil do Motor
+  fuelType: FuelType;               // Tipo de combustível
+  redlineRPM: number;               // Limite de giro (Redline)
+  
+  // Shift Light Adaptativo
+  shiftLightEnabled: boolean;       // Ativar luz de troca
+  ecoShiftEnabled: boolean;         // Bip suave em modo eco (40%)
+  sportShiftEnabled: boolean;       // Bip agudo em modo sport (90%)
+  
+  // Alerta de Sobrecarga (Lugging)
+  luggingAlertEnabled: boolean;     // Alerta de motor sofrendo
   
   // IA Conversacional
   aiModeEnabled: boolean;           // Ativar modo IA conversacional
@@ -39,6 +53,16 @@ export const defaultJarvisSettings: JarvisSettings = {
   currentMileage: 0,
   nextOilChange: 15000,
   nextInspection: 30000,
+  // Perfil do Motor
+  fuelType: 'gasoline',
+  redlineRPM: 6500,
+  // Shift Light
+  shiftLightEnabled: true,
+  ecoShiftEnabled: true,
+  sportShiftEnabled: true,
+  // Lugging
+  luggingAlertEnabled: true,
+  // IA
   aiModeEnabled: true,
   aiResponseLength: 'short',
   continuousListening: false,
@@ -48,3 +72,24 @@ export const defaultJarvisSettings: JarvisSettings = {
   pitch: 0.95,
   selectedVoiceURI: null,
 };
+
+// Helper para obter redline padrão por tipo de combustível
+export function getDefaultRedlineForFuelType(fuelType: FuelType): number {
+  switch (fuelType) {
+    case 'diesel':
+      return 4500;
+    case 'gasoline':
+    case 'ethanol':
+    default:
+      return 6500;
+  }
+}
+
+// Helper para calcular pontos de shift
+export function getShiftPoints(redlineRPM: number) {
+  return {
+    ecoPoint: Math.round(redlineRPM * 0.4),    // 40% do limite
+    sportPoint: Math.round(redlineRPM * 0.9),  // 90% do limite
+    luggingPoint: Math.round(redlineRPM * 0.25), // 25% do limite (muito baixo)
+  };
+}
