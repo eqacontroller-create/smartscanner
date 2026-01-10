@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TripSettings } from '@/types/tripSettings';
-import { Fuel, Gauge, Wrench } from 'lucide-react';
+import { Check, Fuel, Gauge, Wrench } from 'lucide-react';
 
 interface QuickSettingsProps {
   settings: TripSettings;
@@ -13,10 +13,16 @@ export function QuickSettings({ settings, onUpdateSettings }: QuickSettingsProps
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Wrench className="h-4 w-4" />
-          Configurações Rápidas
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Wrench className="h-4 w-4" />
+            Configurações Rápidas
+          </CardTitle>
+          <div className="flex items-center gap-1.5 text-xs text-money">
+            <Check className="h-3 w-3" />
+            Auto-salvo
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Preço do Combustível */}
@@ -71,9 +77,9 @@ export function QuickSettings({ settings, onUpdateSettings }: QuickSettingsProps
           />
         </div>
 
-        {/* Dica de economia */}
+        {/* Info de salvamento */}
         <p className="text-xs text-muted-foreground border-t border-border pt-3">
-          💡 Dica: Para calcular seu consumo real, divida os km rodados pelos litros abastecidos.
+          💡 Alterações salvas automaticamente no dispositivo.
         </p>
       </CardContent>
     </Card>
