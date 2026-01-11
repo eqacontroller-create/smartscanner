@@ -102,6 +102,7 @@ export type Database = {
       profiles: {
         Row: {
           ai_mode_enabled: boolean | null
+          ai_provider: string | null
           auto_ride_enabled: boolean | null
           auto_start_delay: number | null
           auto_stop_delay: number | null
@@ -120,6 +121,9 @@ export type Database = {
           lugging_alert_enabled: boolean | null
           maintenance_alert_enabled: boolean | null
           model_year: string | null
+          openai_api_key: string | null
+          openai_tts_enabled: boolean | null
+          openai_voice: string | null
           redline_rpm: number | null
           selected_voice_uri: string | null
           shift_light_enabled: boolean | null
@@ -138,6 +142,7 @@ export type Database = {
         }
         Insert: {
           ai_mode_enabled?: boolean | null
+          ai_provider?: string | null
           auto_ride_enabled?: boolean | null
           auto_start_delay?: number | null
           auto_stop_delay?: number | null
@@ -156,6 +161,9 @@ export type Database = {
           lugging_alert_enabled?: boolean | null
           maintenance_alert_enabled?: boolean | null
           model_year?: string | null
+          openai_api_key?: string | null
+          openai_tts_enabled?: boolean | null
+          openai_voice?: string | null
           redline_rpm?: number | null
           selected_voice_uri?: string | null
           shift_light_enabled?: boolean | null
@@ -174,6 +182,7 @@ export type Database = {
         }
         Update: {
           ai_mode_enabled?: boolean | null
+          ai_provider?: string | null
           auto_ride_enabled?: boolean | null
           auto_start_delay?: number | null
           auto_stop_delay?: number | null
@@ -192,6 +201,9 @@ export type Database = {
           lugging_alert_enabled?: boolean | null
           maintenance_alert_enabled?: boolean | null
           model_year?: string | null
+          openai_api_key?: string | null
+          openai_tts_enabled?: boolean | null
+          openai_voice?: string | null
           redline_rpm?: number | null
           selected_voice_uri?: string | null
           shift_light_enabled?: boolean | null

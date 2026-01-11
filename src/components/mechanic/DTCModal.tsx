@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, AlertTriangle, Lightbulb, Loader2, Sparkles, Snowflake } from 'lucide-react';
+import { Wrench, AlertTriangle, Lightbulb, Loader2, Sparkles, Snowflake, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
 import type { ParsedDTC } from '@/lib/dtcParser';
 import { getDTCInfo, getDefaultDTCInfo, type DTCInfo } from '@/lib/dtcDatabase';
+import { analyzeDTC, type AIProvider } from '@/lib/dtcAnalyzer';
 import { FreezeFrameData } from './FreezeFrameData';
+import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 
 interface DTCModalProps {
   dtc: ParsedDTC | null;
@@ -20,6 +21,7 @@ interface DTCModalProps {
   onClose: () => void;
   sendCommand?: (command: string, timeout?: number) => Promise<string>;
   addLog?: (message: string) => void;
+  vehicleContext?: string;
 }
 
 const severityConfig = {
@@ -28,10 +30,12 @@ const severityConfig = {
   high: { label: 'Alta', className: 'bg-destructive/20 text-destructive border-destructive/30' },
 };
 
-export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog }: DTCModalProps) {
+export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleContext = 'Ford Focus' }: DTCModalProps) {
+  const { settings } = useJarvisSettings();
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSource, setAiSource] = useState<'local' | 'openai'>('local');
 
   useEffect(() => {
     if (isOpen && dtc) {
@@ -39,32 +43,36 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog }: DTCModal
     } else {
       setAiExplanation(null);
       setAiError(null);
+      setAiSource('local');
     }
-  }, [isOpen, dtc?.code]);
+  }, [isOpen, dtc?.code, settings.aiProvider, settings.openaiApiKey]);
 
   const fetchAIExplanation = async (code: string) => {
     setIsLoadingAI(true);
     setAiError(null);
     
     try {
-      const info = getDTCInfo(code) || getDefaultDTCInfo(code);
+      const result = await analyzeDTC(
+        code,
+        settings.aiProvider as AIProvider,
+        settings.openaiApiKey,
+        vehicleContext
+      );
+
+      setAiExplanation(result.explanation);
+      setAiSource(result.source);
       
-      const { data, error } = await supabase.functions.invoke('explain-dtc', {
-        body: { dtcCode: code, dtcDescription: info.description }
-      });
-
-      if (error) {
-        throw new Error(error.message);
+      if (result.error) {
+        setAiError(`Fallback para IA local: ${result.error}`);
       }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      setAiExplanation(data.explanation);
     } catch (err) {
       console.error('AI explanation error:', err);
       setAiError(err instanceof Error ? err.message : 'Erro ao consultar IA');
+      
+      // Fallback final para banco local
+      const info = getDTCInfo(code) || getDefaultDTCInfo(code);
+      setAiExplanation(`📋 ${info.name}\n\n${info.description}\n\nCausas comuns:\n${info.causes.map((c, i) => `${i + 1}. ${c}`).join('\n')}`);
+      setAiSource('local');
     } finally {
       setIsLoadingAI(false);
     }
@@ -137,23 +145,34 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog }: DTCModal
               </ul>
             </div>
 
-            {/* Explicação IA Real */}
+            {/* Explicação IA */}
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 sm:p-4">
               <h4 className="text-xs sm:text-sm font-medium text-primary mb-1.5 sm:mb-2 flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                Análise do Mecânico IA
+                {aiSource === 'openai' ? (
+                  <>
+                    <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
+                    <span>Análise Premium (GPT-4o-mini)</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span>Análise do Mecânico IA</span>
+                  </>
+                )}
               </h4>
               
               {isLoadingAI && (
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground py-3 sm:py-4">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Consultando IA...
+                  {settings.aiProvider === 'openai' && settings.openaiApiKey 
+                    ? 'Consultando GPT-4o-mini...' 
+                    : 'Consultando IA...'}
                 </div>
               )}
               
               {aiError && (
-                <div className="text-xs sm:text-sm text-destructive">
-                  {aiError}
+                <div className="text-xs sm:text-sm text-yellow-500 mb-2">
+                  ⚠️ {aiError}
                 </div>
               )}
               

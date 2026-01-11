@@ -1,4 +1,6 @@
 export type FuelType = 'gasoline' | 'ethanol' | 'flex' | 'diesel';
+export type AIProvider = 'basic' | 'openai';
+export type OpenAIVoice = 'onyx' | 'alloy' | 'echo' | 'fable' | 'nova' | 'shimmer';
 
 export interface JarvisSettings {
   // Alertas
@@ -42,6 +44,12 @@ export interface JarvisSettings {
   rate: number;         // 0.5 a 2.0 (velocidade)
   pitch: number;        // 0.5 a 2.0 (tom)
   selectedVoiceURI: string | null;
+  
+  // Cérebro do Jarvis (IA Híbrida)
+  aiProvider: AIProvider;           // 'basic' ou 'openai'
+  openaiApiKey: string | null;      // Chave da OpenAI (ofuscada)
+  openaiVoice: OpenAIVoice;         // Voz do TTS OpenAI
+  openaiTTSEnabled: boolean;        // Usar TTS premium da OpenAI
 }
 
 export const defaultJarvisSettings: JarvisSettings = {
@@ -79,6 +87,11 @@ export const defaultJarvisSettings: JarvisSettings = {
   rate: 0.9,
   pitch: 0.95,
   selectedVoiceURI: null,
+  // Cérebro do Jarvis
+  aiProvider: 'basic',
+  openaiApiKey: null,
+  openaiVoice: 'onyx',
+  openaiTTSEnabled: true,
 };
 
 // Helper para obter redline padrão por tipo de combustível
