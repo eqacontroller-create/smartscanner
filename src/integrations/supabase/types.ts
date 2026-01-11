@@ -99,6 +99,117 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          ai_mode_enabled: boolean | null
+          auto_ride_enabled: boolean | null
+          auto_start_delay: number | null
+          auto_stop_delay: number | null
+          average_consumption: number | null
+          created_at: string | null
+          current_mileage: number | null
+          fuel_price: number | null
+          fuel_type: string | null
+          high_rpm_alert_enabled: boolean | null
+          high_temp_alert_enabled: boolean | null
+          high_temp_threshold: number | null
+          id: string
+          keep_awake_enabled: boolean | null
+          low_voltage_alert_enabled: boolean | null
+          low_voltage_threshold: number | null
+          lugging_alert_enabled: boolean | null
+          maintenance_alert_enabled: boolean | null
+          model_year: string | null
+          redline_rpm: number | null
+          selected_voice_uri: string | null
+          shift_light_enabled: boolean | null
+          speed_alert_enabled: boolean | null
+          speed_limit: number | null
+          speed_threshold: number | null
+          updated_at: string | null
+          vehicle_brand: string | null
+          vehicle_cost_per_km: number | null
+          vehicle_model: string | null
+          vin: string | null
+          voice_pitch: number | null
+          voice_rate: number | null
+          voice_volume: number | null
+          welcome_enabled: boolean | null
+        }
+        Insert: {
+          ai_mode_enabled?: boolean | null
+          auto_ride_enabled?: boolean | null
+          auto_start_delay?: number | null
+          auto_stop_delay?: number | null
+          average_consumption?: number | null
+          created_at?: string | null
+          current_mileage?: number | null
+          fuel_price?: number | null
+          fuel_type?: string | null
+          high_rpm_alert_enabled?: boolean | null
+          high_temp_alert_enabled?: boolean | null
+          high_temp_threshold?: number | null
+          id: string
+          keep_awake_enabled?: boolean | null
+          low_voltage_alert_enabled?: boolean | null
+          low_voltage_threshold?: number | null
+          lugging_alert_enabled?: boolean | null
+          maintenance_alert_enabled?: boolean | null
+          model_year?: string | null
+          redline_rpm?: number | null
+          selected_voice_uri?: string | null
+          shift_light_enabled?: boolean | null
+          speed_alert_enabled?: boolean | null
+          speed_limit?: number | null
+          speed_threshold?: number | null
+          updated_at?: string | null
+          vehicle_brand?: string | null
+          vehicle_cost_per_km?: number | null
+          vehicle_model?: string | null
+          vin?: string | null
+          voice_pitch?: number | null
+          voice_rate?: number | null
+          voice_volume?: number | null
+          welcome_enabled?: boolean | null
+        }
+        Update: {
+          ai_mode_enabled?: boolean | null
+          auto_ride_enabled?: boolean | null
+          auto_start_delay?: number | null
+          auto_stop_delay?: number | null
+          average_consumption?: number | null
+          created_at?: string | null
+          current_mileage?: number | null
+          fuel_price?: number | null
+          fuel_type?: string | null
+          high_rpm_alert_enabled?: boolean | null
+          high_temp_alert_enabled?: boolean | null
+          high_temp_threshold?: number | null
+          id?: string
+          keep_awake_enabled?: boolean | null
+          low_voltage_alert_enabled?: boolean | null
+          low_voltage_threshold?: number | null
+          lugging_alert_enabled?: boolean | null
+          maintenance_alert_enabled?: boolean | null
+          model_year?: string | null
+          redline_rpm?: number | null
+          selected_voice_uri?: string | null
+          shift_light_enabled?: boolean | null
+          speed_alert_enabled?: boolean | null
+          speed_limit?: number | null
+          speed_threshold?: number | null
+          updated_at?: string | null
+          vehicle_brand?: string | null
+          vehicle_cost_per_km?: number | null
+          vehicle_model?: string | null
+          vin?: string | null
+          voice_pitch?: number | null
+          voice_rate?: number | null
+          voice_volume?: number | null
+          welcome_enabled?: boolean | null
+        }
+        Relationships: []
+      }
       refuel_entries: {
         Row: {
           anomaly_details: string | null

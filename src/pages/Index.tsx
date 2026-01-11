@@ -40,7 +40,7 @@ import { TripHistory } from '@/components/financial/TripHistory';
 import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
 import { RideEndModal } from '@/components/financial/RideEndModal';
 import { TodayRides } from '@/components/financial/TodayRides';
-import { AuthModal } from '@/components/auth/AuthModal';
+// AuthModal removido - login agora é página dedicada
 import { RefuelButton } from '@/components/refuel/RefuelButton';
 import { RefuelModal } from '@/components/refuel/RefuelModal';
 import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
@@ -160,7 +160,7 @@ const Index = () => {
   });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // isAuthModalOpen removido - login agora é página dedicada
   const [mainTab, setMainTab] = useState('painel');
   const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
   
@@ -480,7 +480,7 @@ const Index = () => {
               {/* Status de Sincronização - sempre visível */}
               <SyncStatus 
                 synced={syncedRides.synced} 
-                onLoginClick={() => setIsAuthModalOpen(true)} 
+                lastSyncedAt={syncedRides.loading ? null : new Date()}
               />
               
               {/* Botões secundários - visíveis em telas >= xs */}
@@ -908,11 +908,7 @@ const Index = () => {
         onSkip={autoRide.skipAmountEntry}
       />
       
-      {/* Modal de Autenticação */}
-      <AuthModal
-        open={isAuthModalOpen}
-        onOpenChange={setIsAuthModalOpen}
-      />
+      {/* AuthModal removido - login agora é página dedicada via /login */}
       
       {/* Modal de Abastecimento */}
       <RefuelModal
@@ -923,7 +919,6 @@ const Index = () => {
         fuelLevelSupported={refuelMonitor.fuelLevelSupported}
         defaultPrice={tripCalculator.settings.fuelPrice}
         isAuthenticated={isAuthenticated}
-        onLoginClick={() => setIsAuthModalOpen(true)}
         onConfirm={(price, liters) => {
           refuelMonitor.confirmRefuel(price, liters);
           setIsRefuelModalOpen(false);
