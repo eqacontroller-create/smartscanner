@@ -16,6 +16,7 @@ import {
 import { RefuelEntry, getQualityLabel } from '@/types/refuelTypes';
 import { formatCurrency } from '@/types/tripSettings';
 import { cn } from '@/lib/utils';
+import { TankLevelCheck } from './TankLevelCheck';
 
 interface RefuelResultProps {
   refuel: Partial<RefuelEntry>;
@@ -121,8 +122,25 @@ export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
           </div>
         </div>
         
-        {/* Verificação da Bomba (se disponível) */}
-        {refuel.pumpAccuracyPercent !== undefined && (
+        {/* Verificação da Bomba - Card Completo */}
+        {refuel.fuelLevelBefore !== null && 
+         refuel.fuelLevelBefore !== undefined &&
+         refuel.fuelLevelAfter !== null && 
+         refuel.fuelLevelAfter !== undefined && 
+         refuel.litersAdded && 
+         refuel.tankCapacity && (
+          <TankLevelCheck
+            fuelLevelBefore={refuel.fuelLevelBefore}
+            fuelLevelAfter={refuel.fuelLevelAfter}
+            litersAdded={refuel.litersAdded}
+            tankCapacity={refuel.tankCapacity}
+          />
+        )}
+        
+        {/* Fallback: Mostrar apenas precisão quando não há dados de nível completos */}
+        {refuel.pumpAccuracyPercent !== undefined && 
+         (refuel.fuelLevelBefore === null || refuel.fuelLevelBefore === undefined ||
+          refuel.fuelLevelAfter === null || refuel.fuelLevelAfter === undefined) && (
           <div className="p-3 rounded-lg bg-muted/30 space-y-2">
             <div className="text-sm font-medium flex items-center gap-2">
               <Fuel className="h-4 w-4" />
@@ -134,12 +152,6 @@ export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
                 {refuel.pumpAccuracyPercent}%
               </Badge>
             </div>
-            {refuel.fuelLevelBefore !== null && refuel.fuelLevelAfter !== null && (
-              <div className="text-xs text-muted-foreground">
-                Nível: {refuel.fuelLevelBefore}% → {refuel.fuelLevelAfter}% 
-                (+{refuel.fuelLevelAfter - refuel.fuelLevelBefore}%)
-              </div>
-            )}
           </div>
         )}
         

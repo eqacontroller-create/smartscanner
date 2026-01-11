@@ -388,6 +388,19 @@ export function useRefuelMonitor({
       speak(`Atenção! Anomalia grave detectada. A injeção está corrigindo ${Math.abs(stftAverage).toFixed(0)} porcento. Combustível de baixa qualidade confirmado.`);
     }
     
+    // Feedback sobre precisão da bomba (se disponível)
+    if (pumpAccuracyPercent !== undefined) {
+      setTimeout(() => {
+        if (pumpAccuracyPercent < 85) {
+          speak(`Atenção: a bomba entregou ${100 - pumpAccuracyPercent} porcento menos que o indicado. Considere denunciar ao INMETRO.`);
+        } else if (pumpAccuracyPercent > 115) {
+          speak('Curioso: o sensor detectou mais combustível que o esperado. Pode ser calibração do sensor do veículo.');
+        } else {
+          speak('Bomba verificada. Quantidade entregue confere com o sensor do veículo.');
+        }
+      }, 3000);
+    }
+    
     // Feedback sobre salvamento na nuvem
     setTimeout(() => {
       if (userId) {
@@ -395,7 +408,7 @@ export function useRefuelMonitor({
       } else {
         speak('Faça login para salvar seu histórico de abastecimentos na nuvem.');
       }
-    }, 2000);
+    }, pumpAccuracyPercent !== undefined ? 6000 : 2000);
     
     setMode('completed');
   }, [currentRefuel, readFuelLevel, readLTFT, analyzeQuality, settings.tankCapacity, userId, speak]);
