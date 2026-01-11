@@ -5,6 +5,7 @@ import { HelpCard } from "@/components/help/HelpCard";
 import { StepByStep } from "@/components/help/StepByStep";
 import { GlossaryItem } from "@/components/help/GlossaryItem";
 import { FAQItem } from "@/components/help/FAQItem";
+import { BenefitCard } from "@/components/help/BenefitCard";
 import {
   ArrowLeft,
   Bluetooth,
@@ -36,6 +37,13 @@ import {
   Cloud,
   TrendingUp,
   Scale,
+  Sparkles,
+  PiggyBank,
+  Shield,
+  Brain,
+  Smartphone,
+  Users,
+  Star,
 } from "lucide-react";
 
 export default function Help() {
@@ -67,6 +75,107 @@ export default function Help() {
             Aqui você encontra tutoriais e explicações simples para aproveitar
             ao máximo o diagnóstico do seu veículo.
           </p>
+        </div>
+
+        {/* Benefícios - Seção Comercial */}
+        <div className="bg-gradient-to-br from-primary/5 via-primary/3 to-transparent rounded-2xl border border-primary/20 p-5 mb-6">
+          <div className="text-center mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3">
+              <Sparkles className="h-4 w-4" />
+              Por que usar nosso app?
+            </div>
+            <h2 className="text-lg font-bold text-foreground">
+              Diagnóstico Profissional no seu Bolso
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Tudo que você precisa para cuidar do seu veículo
+            </p>
+          </div>
+
+          {/* Grid de Benefícios */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            <BenefitCard 
+              icon={PiggyBank} 
+              title="Economize Dinheiro" 
+              description="Evite oficinas desnecessárias. Saiba exatamente o problema antes de gastar."
+              highlight
+            />
+            <BenefitCard 
+              icon={Shield} 
+              title="Previna Quebras" 
+              description="Monitore em tempo real e detecte falhas antes que se tornem graves."
+            />
+            <BenefitCard 
+              icon={Brain} 
+              title="IA Inteligente" 
+              description="Jarvis explica erros, dá dicas e responde suas dúvidas por voz."
+              highlight
+            />
+            <BenefitCard 
+              icon={Smartphone} 
+              title="Super Prático" 
+              description="Diagnóstico completo só com celular. Sem ferramentas caras."
+            />
+            <BenefitCard 
+              icon={Droplets} 
+              title="Detecte Fraudes" 
+              description="Analise qualidade do combustível e precisão das bombas de postos."
+            />
+            <BenefitCard 
+              icon={Cloud} 
+              title="Sincronização" 
+              description="Seus dados seguros na nuvem. Acesse de qualquer dispositivo."
+            />
+          </div>
+
+          {/* Funcionalidades Exclusivas */}
+          <div className="bg-background/60 backdrop-blur rounded-xl p-4 border border-border mb-4">
+            <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3 text-sm">
+              <Star className="h-4 w-4 text-yellow-500" />
+              Funcionalidades Exclusivas
+            </h4>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Assistente de voz Jarvis com IA</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Scanner de 8 módulos (ABS, Airbag...)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Monitor de qualidade de combustível</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Verificador de fraude em bombas</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>IA Híbrida (Grátis ou OpenAI)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Histórico sincronizado na nuvem</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Para quem é ideal */}
+          <div className="bg-background/40 rounded-lg p-3 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-foreground">Para quem é ideal:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">Motoristas de app (Uber, 99)</span>
+              <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">Entusiastas</span>
+              <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">Frotas</span>
+              <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">Taxistas</span>
+              <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">Quem quer economizar</span>
+            </div>
+          </div>
         </div>
 
         {/* Primeiros Passos */}
