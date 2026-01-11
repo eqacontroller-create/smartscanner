@@ -11,8 +11,10 @@ export type VehicleBrand =
   | 'fiat' 
   | 'toyota' 
   | 'hyundai' 
+  | 'kia'
   | 'renault'
   | 'nissan'
+  | 'mitsubishi'
   | 'jeep'
   | 'bmw'
   | 'mercedes'
@@ -354,43 +356,147 @@ export const VEHICLE_PROFILES: Record<VehicleBrand, VehicleProfile> = {
     slogan: 'New Thinking. New Possibilities.',
     colors: {
       primary: '212 100% 19%', // Azul marinho #002C5F
-      accent: '0 0% 75%',
+      accent: '195 85% 45%', // Azul claro secundário
       primaryForeground: '0 0% 100%',
     },
     specs: {
       typicalRedlineRPM: 6500,
       normalTempRange: [85, 100],
-      normalVoltageRange: [13.5, 14.5],
-      fuelTrimTolerance: 10,
-      shiftPointEco: 0.4,
-      shiftPointSport: 0.85,
+      normalVoltageRange: [13.6, 14.4],
+      fuelTrimTolerance: 8,
+      shiftPointEco: 0.38,
+      shiftPointSport: 0.88,
     },
     tips: [
       {
         id: 'hyundai-garantia-1',
         category: 'manutencao',
-        title: 'Garantia estendida',
-        description: 'Mantenha revisões em dia na rede autorizada para preservar a garantia de 5 anos.',
+        title: 'Garantia de 5 anos',
+        description: 'Mantenha revisões em dia na rede autorizada para preservar a garantia estendida. Hyundai oferece uma das melhores coberturas do mercado.',
         priority: 'alta',
       },
       {
         id: 'hyundai-turbo-1',
         category: 'desempenho',
-        title: 'Turbo GDI',
-        description: 'Motores turbo GDI precisam de óleo de qualidade. Use sempre sintético 5W30.',
+        title: 'Motor Turbo GDI',
+        description: 'Motores turbo GDI precisam de óleo sintético 5W30 de qualidade. Evite acelerações bruscas com motor frio.',
+        priority: 'alta',
+      },
+      {
+        id: 'hyundai-smartsense-1',
+        category: 'seguranca',
+        title: 'Hyundai SmartSense',
+        description: 'Calibre os sensores ADAS após trocar para-brisa ou realizar alinhamento. Sistema requer recalibração profissional.',
         priority: 'media',
+      },
+      {
+        id: 'hyundai-bluelink-1',
+        category: 'conectividade',
+        title: 'Bluelink',
+        description: 'Use o app Bluelink para monitorar o veículo remotamente, pré-climatizar e localizar em estacionamentos.',
+        priority: 'baixa',
       },
     ],
     knownIssues: [
       {
         id: 'hyundai-issue-1',
+        title: 'Motor Theta II GDI',
+        description: 'Alguns motores Theta II podem apresentar consumo de óleo elevado. Verifique o nível a cada 1.000 km.',
+        symptoms: ['Consumo de óleo elevado', 'Ruído no motor', 'Luz de óleo acendendo'],
+        affectedYears: '2011-2019',
+        severity: 'warning',
+      },
+      {
+        id: 'hyundai-issue-2',
         title: 'Sensor de detonação',
-        description: 'Use combustível de qualidade para evitar problemas com sensor de detonação.',
-        symptoms: ['Luz de motor acesa', 'Perda de potência'],
+        description: 'Use combustível de qualidade para evitar problemas com sensor de detonação em motores GDI.',
+        symptoms: ['Luz de motor acesa', 'Perda de potência', 'Ruído metálico'],
+        severity: 'info',
+      },
+      {
+        id: 'hyundai-issue-3',
+        title: 'Câmbio DCT',
+        description: 'Câmbio de dupla embreagem pode apresentar trancos em baixa velocidade. Atualize o software na concessionária.',
+        symptoms: ['Trancos ao arrancar', 'Hesitação em baixa velocidade'],
+        affectedYears: '2016-2021',
+        severity: 'warning',
+      },
+    ],
+    characteristics: 'Veículos coreanos modernos com excelente custo-benefício. Garantia de 5 anos líder de mercado. Motores GDI turbo eficientes. Tecnologia SmartSense e conectividade Bluelink. Design arrojado e esportivo.',
+  },
+  kia: {
+    brand: 'kia',
+    displayName: 'Kia',
+    slogan: 'Movement that Inspires',
+    colors: {
+      primary: '352 85% 45%', // Vermelho Kia
+      accent: '0 0% 20%', // Preto
+      primaryForeground: '0 0% 100%',
+    },
+    specs: {
+      typicalRedlineRPM: 6500,
+      normalTempRange: [85, 100],
+      normalVoltageRange: [13.6, 14.4],
+      fuelTrimTolerance: 8,
+      shiftPointEco: 0.38,
+      shiftPointSport: 0.88,
+    },
+    tips: [
+      {
+        id: 'kia-garantia-1',
+        category: 'manutencao',
+        title: 'Garantia de 7 anos',
+        description: 'Kia oferece garantia de até 7 anos ou 150.000 km. Mantenha o histórico de revisões para usufruir da cobertura completa.',
+        priority: 'alta',
+      },
+      {
+        id: 'kia-turbo-1',
+        category: 'desempenho',
+        title: 'Motor T-GDI',
+        description: 'Motores turbo T-GDI são potentes e econômicos. Use gasolina aditivada para manter os injetores limpos.',
+        priority: 'media',
+      },
+      {
+        id: 'kia-uvo-1',
+        category: 'conectividade',
+        title: 'UVO Connect',
+        description: 'O sistema UVO oferece navegação online, comandos de voz e integração com smartphones. Mantenha o software atualizado.',
+        priority: 'baixa',
+      },
+      {
+        id: 'kia-eco-1',
+        category: 'economia',
+        title: 'Modo ECO/Sport',
+        description: 'Alterne entre modos de condução conforme necessidade. Modo ECO pode economizar até 15% de combustível em cidade.',
+        priority: 'media',
+      },
+    ],
+    knownIssues: [
+      {
+        id: 'kia-issue-1',
+        title: 'Motor Theta II',
+        description: 'Similar ao Hyundai, alguns motores Theta II podem ter consumo de óleo. Recall disponível para alguns modelos.',
+        symptoms: ['Consumo de óleo', 'Ruído de biela', 'Motor travando'],
+        affectedYears: '2011-2019',
+        severity: 'critical',
+      },
+      {
+        id: 'kia-issue-2',
+        title: 'Bomba de combustível GDI',
+        description: 'A bomba de alta pressão pode apresentar falhas em motores GDI mais antigos.',
+        symptoms: ['Dificuldade de partida', 'Falhas em aceleração', 'Perda de potência'],
+        affectedYears: '2012-2017',
+        severity: 'warning',
+      },
+      {
+        id: 'kia-issue-3',
+        title: 'Sistema Start-Stop',
+        description: 'Bateria AGM específica requerida. Bateria comum causa falhas no sistema.',
+        symptoms: ['Start-Stop não funciona', 'Bateria descarregando'],
         severity: 'info',
       },
     ],
-    characteristics: 'Veículos modernos com boa relação custo-benefício. Garantia de 5 anos. Design contemporâneo. Tecnologia embarcada avançada.',
+    characteristics: 'Design premiado e inovador. Garantia líder de 7 anos. Compartilha plataformas com Hyundai, tecnologia equivalente. Excelente custo-benefício e acabamento refinado.',
   },
   renault: {
     brand: 'renault',
@@ -441,13 +547,87 @@ export const VEHICLE_PROFILES: Record<VehicleBrand, VehicleProfile> = {
     displayName: 'Nissan',
     slogan: 'Innovation that Excites',
     colors: {
-      primary: '0 0% 20%',
-      accent: '0 100% 50%',
+      primary: '352 100% 45%', // Vermelho Nissan
+      accent: '0 0% 85%', // Prata
       primaryForeground: '0 0% 100%',
     },
     specs: {
       typicalRedlineRPM: 6500,
-      normalTempRange: [85, 100],
+      normalTempRange: [82, 98],
+      normalVoltageRange: [13.5, 14.4],
+      fuelTrimTolerance: 8,
+      shiftPointEco: 0.38,
+      shiftPointSport: 0.85,
+    },
+    tips: [
+      {
+        id: 'nissan-cvt-1',
+        category: 'manutencao',
+        title: 'Câmbio CVT Xtronic',
+        description: 'Troque o fluido do CVT a cada 40.000 km. Use apenas NS-3 original para garantir durabilidade máxima.',
+        priority: 'alta',
+      },
+      {
+        id: 'nissan-eco-1',
+        category: 'economia',
+        title: 'Modo ECO',
+        description: 'O modo ECO ajusta acelerador e ar-condicionado para máxima economia. Ideal para trânsito urbano.',
+        priority: 'media',
+      },
+      {
+        id: 'nissan-safety-1',
+        category: 'seguranca',
+        title: 'Nissan Safety Shield',
+        description: 'Mantenha para-brisa limpo e sensores livres de obstrução para funcionamento correto do sistema.',
+        priority: 'media',
+      },
+      {
+        id: 'nissan-turbo-1',
+        category: 'desempenho',
+        title: 'Motor VC-Turbo',
+        description: 'Motores VC-Turbo ajustam taxa de compressão automaticamente. Gasolina premium recomendada para máximo desempenho.',
+        priority: 'baixa',
+      },
+    ],
+    knownIssues: [
+      {
+        id: 'nissan-issue-1',
+        title: 'Transmissão CVT Jatco',
+        description: 'CVTs mais antigos podem apresentar desgaste prematuro. Troque o fluido regularmente e evite acelerações bruscas.',
+        symptoms: ['Patinação em subida', 'Ruído de correia', 'Trancos em aceleração', 'Hesitação ao arrancar'],
+        affectedYears: '2010-2017',
+        severity: 'warning',
+      },
+      {
+        id: 'nissan-issue-2',
+        title: 'Sensor de posição do acelerador',
+        description: 'O sensor pode causar hesitação ou resposta irregular do acelerador.',
+        symptoms: ['Acelerador travando', 'Resposta irregular', 'Luz de motor acesa'],
+        severity: 'info',
+      },
+      {
+        id: 'nissan-issue-3',
+        title: 'Corrente de distribuição',
+        description: 'Alguns motores VQ podem ter desgaste prematuro da corrente em alta quilometragem.',
+        symptoms: ['Ruído metálico ao ligar', 'Luz de motor', 'Motor falhando'],
+        affectedYears: '2008-2015',
+        severity: 'warning',
+      },
+    ],
+    characteristics: 'Inovação japonesa com CVT Xtronic suave e eficiente. Tecnologia ProPILOT para condução semi-autônoma. Motores VC-Turbo com compressão variável. Confiabilidade japonesa com design moderno.',
+  },
+  mitsubishi: {
+    brand: 'mitsubishi',
+    displayName: 'Mitsubishi',
+    slogan: 'Drive your Ambition',
+    colors: {
+      primary: '352 100% 45%', // Vermelho Mitsubishi
+      accent: '0 0% 20%', // Preto
+      primaryForeground: '0 0% 100%',
+    },
+    specs: {
+      typicalRedlineRPM: 6500,
+      normalTempRange: [82, 100],
       normalVoltageRange: [13.5, 14.5],
       fuelTrimTolerance: 10,
       shiftPointEco: 0.4,
@@ -455,23 +635,59 @@ export const VEHICLE_PROFILES: Record<VehicleBrand, VehicleProfile> = {
     },
     tips: [
       {
-        id: 'nissan-cvt-1',
-        category: 'manutencao',
-        title: 'Câmbio CVT',
-        description: 'Troque o fluido do CVT a cada 40.000 km para garantir vida longa do câmbio.',
+        id: 'mitsu-4wd-1',
+        category: 'desempenho',
+        title: 'Sistema Super Select 4WD',
+        description: 'Use 4H para estradas de terra e 4HLc para trilhas. Em asfalto seco, mantenha em 2H para economia.',
         priority: 'alta',
+      },
+      {
+        id: 'mitsu-diesel-1',
+        category: 'manutencao',
+        title: 'Motor Diesel 2.4',
+        description: 'Troque filtro de combustível a cada 20.000 km. Use diesel S10 para melhor desempenho e longevidade.',
+        priority: 'alta',
+      },
+      {
+        id: 'mitsu-cvt-1',
+        category: 'manutencao',
+        title: 'CVT Jatco',
+        description: 'Troque o fluido CVT a cada 40.000 km. Evite reboque pesado com CVT.',
+        priority: 'media',
+      },
+      {
+        id: 'mitsu-eco-1',
+        category: 'economia',
+        title: 'Direção econômica',
+        description: 'Motores MIVEC são mais eficientes entre 2000-3500 RPM. Evite ultrapassar 3000 RPM em uso normal.',
+        priority: 'baixa',
       },
     ],
     knownIssues: [
       {
-        id: 'nissan-issue-1',
-        title: 'Transmissão CVT',
-        description: 'O câmbio CVT pode apresentar desgaste se não for mantido corretamente.',
-        symptoms: ['Trancos na troca', 'Ruído em aceleração'],
+        id: 'mitsu-issue-1',
+        title: 'Válvula EGR (Diesel)',
+        description: 'A válvula EGR pode acumular fuligem e causar perda de potência em motores diesel.',
+        symptoms: ['Perda de potência', 'Fumaça preta', 'Luz de motor acesa', 'Consumo elevado'],
+        affectedYears: '2015-2020',
         severity: 'warning',
       },
+      {
+        id: 'mitsu-issue-2',
+        title: 'DPF (Filtro de Partículas)',
+        description: 'O DPF pode entupir em uso exclusivamente urbano. Faça viagens longas periodicamente para regeneração.',
+        symptoms: ['Luz DPF acesa', 'Perda de potência', 'Modo de emergência'],
+        severity: 'warning',
+      },
+      {
+        id: 'mitsu-issue-3',
+        title: 'Sensor de temperatura do ar',
+        description: 'O sensor MAF/IAT pode apresentar leituras incorretas após longos períodos.',
+        symptoms: ['Consumo elevado', 'Marcha lenta irregular', 'Perda de potência'],
+        severity: 'info',
+      },
     ],
-    characteristics: 'Inovação japonesa. Câmbio CVT suave. Tecnologia ProPILOT em modelos novos. Confiabilidade típica japonesa.',
+    characteristics: 'Tradição japonesa em 4x4 e off-road. Sistema Super Select versátil. Motores diesel robustos e confiáveis. Picapes e SUVs resistentes para trabalho pesado. Tecnologia MIVEC para eficiência.',
   },
   jeep: {
     brand: 'jeep',
@@ -722,7 +938,11 @@ const WMI_TO_BRAND: Record<string, VehicleBrand> = {
   
   // Hyundai
   'KMH': 'hyundai', '5NP': 'hyundai', '2HM': 'hyundai',
-  'KMF': 'hyundai', 'MAL': 'hyundai',
+  'KMF': 'hyundai', 'MAL': 'hyundai', '5XY': 'hyundai',
+  
+  // Kia
+  'KNA': 'kia', 'KND': 'kia', 'KNE': 'kia', '5XX': 'kia',
+  'U5Y': 'kia', '3KP': 'kia',
   
   // Renault
   '93Y': 'renault', 'VF1': 'renault', 'VF2': 'renault',
@@ -730,7 +950,13 @@ const WMI_TO_BRAND: Record<string, VehicleBrand> = {
   
   // Nissan
   '94D': 'nissan', 'JN1': 'nissan', '1N4': 'nissan', '1N6': 'nissan',
-  '3N1': 'nissan', '5N1': 'nissan', 'JN8': 'nissan',
+  '3N1': 'nissan', '5N1': 'nissan', 'JN8': 'nissan', 'SJN': 'nissan',
+  
+  // Mitsubishi
+  'JA3': 'mitsubishi', 'JA4': 'mitsubishi', 'JA7': 'mitsubishi',
+  'JMB': 'mitsubishi', 'JMY': 'mitsubishi', 'JMZ': 'mitsubishi',
+  'MMB': 'mitsubishi', 'MMC': 'mitsubishi', 'MMT': 'mitsubishi',
+  '4A3': 'mitsubishi', '6MM': 'mitsubishi',
   
   // Jeep
   '1J4': 'jeep', '1J8': 'jeep', '1C4': 'jeep', 'WK2': 'jeep',
