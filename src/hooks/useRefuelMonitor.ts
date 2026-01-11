@@ -429,6 +429,10 @@ export function useRefuelMonitor({
       distanceRef.current = 0;
       speak('Monitoramento iniciado. Analisarei os primeiros 5 quilômetros.');
       
+      // Refs para controle de alertas de anomalia
+      let lastAnomalyAlertTime = 0;
+      let anomalyRecoveryAnnounced = false;
+      
       // Iniciar polling de Fuel Trim
       monitoringIntervalRef.current = setInterval(async () => {
         const stft = await readSTFT();
@@ -440,20 +444,42 @@ export function useRefuelMonitor({
           
           // Verificar anomalia
           const absSTFT = Math.abs(stft);
-          if (absSTFT > settings.stftWarningThreshold) {
+          const isCritical = absSTFT > settings.stftCriticalThreshold;
+          const isWarning = absSTFT > settings.stftWarningThreshold;
+          
+          if (isWarning) {
             if (!anomalyStartRef.current) {
               anomalyStartRef.current = Date.now();
+              anomalyRecoveryAnnounced = false;
             }
             const duration = (Date.now() - anomalyStartRef.current) / 1000;
             setAnomalyDuration(duration);
             setAnomalyActive(true);
             
-            // Alertar se duração exceder threshold
-            if (duration >= settings.anomalyDurationWarning && duration < settings.anomalyDurationWarning + 3) {
+            const now = Date.now();
+            const timeSinceLastAlert = (now - lastAnomalyAlertTime) / 1000;
+            
+            // Alertas diferenciados baseado na severidade
+            if (duration >= settings.anomalyDurationWarning && timeSinceLastAlert >= 30) {
+              lastAnomalyAlertTime = now;
               const direction = stft > 0 ? 'pobre' : 'rica';
-              speak(`Atenção. A injeção está fazendo correções excessivas de ${Math.abs(stft)} porcento. Mistura ${direction} detectada.`);
+              const progress = Math.round((distanceRef.current / settings.monitoringDistance) * 100);
+              
+              if (isCritical) {
+                speak(`Alerta crítico! STFT em ${Math.abs(stft).toFixed(0)} porcento. Mistura ${direction}. Progresso: ${progress} porcento. Combustível suspeito.`);
+              } else {
+                speak(`Atenção. Correção de ${Math.abs(stft).toFixed(0)} porcento detectada. Mistura ${direction}. Análise em ${progress} porcento.`);
+              }
             }
           } else {
+            // Voltou ao normal - anunciar recuperação se estava em anomalia
+            if (anomalyStartRef.current && !anomalyRecoveryAnnounced) {
+              const durationInAnomaly = (Date.now() - anomalyStartRef.current) / 1000;
+              if (durationInAnomaly >= 5) {
+                speak('Fuel Trim estabilizou. Valores normais restaurados.');
+                anomalyRecoveryAnnounced = true;
+              }
+            }
             anomalyStartRef.current = null;
             setAnomalyActive(false);
             setAnomalyDuration(0);
