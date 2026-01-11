@@ -97,12 +97,21 @@ const Index = () => {
   // Hook de calculadora de viagem (Taxímetro)
   const tripCalculator = useTripCalculator({ speed });
   
-  // Hook de detecção automática de corridas
+  // Hooks de autenticação e sincronização - CARREGA PRIMEIRO
+  const { isAuthenticated, user } = useAuth();
+  const syncedRides = useSyncedRides();
+  
+  // Hook de detecção automática de corridas - INTEGRADO COM CLOUD
   const autoRide = useAutoRide({
     speed,
     rpm,
     settings: tripCalculator.settings,
     speak: jarvisSettings.aiModeEnabled ? speak : undefined,
+    // Integração com Cloud
+    onSaveRide: syncedRides.saveRide,
+    onUpdateRide: syncedRides.updateRide,
+    onClearRides: syncedRides.clearTodayRides,
+    initialRides: syncedRides.todayRides,
   });
   
   // Hook de IA conversacional
@@ -125,10 +134,6 @@ const Index = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mainTab, setMainTab] = useState('painel');
   const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
-  
-  // Hooks de autenticação e sincronização
-  const { isAuthenticated, user } = useAuth();
-  const syncedRides = useSyncedRides();
   
   // Hook de monitoramento de abastecimento
   const refuelMonitor = useRefuelMonitor({

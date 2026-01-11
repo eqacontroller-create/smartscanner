@@ -6,6 +6,11 @@ interface UseAutoRideOptions {
   rpm: number | null;
   settings: TripSettings;
   speak?: (text: string) => void;
+  // Funções de sincronização com cloud
+  onSaveRide?: (ride: RideEntry) => Promise<void>;
+  onUpdateRide?: (id: string, updates: Partial<RideEntry>) => Promise<void>;
+  onClearRides?: () => Promise<void>;
+  initialRides?: RideEntry[];
 }
 
 interface UseAutoRideReturn {
@@ -56,11 +61,17 @@ export function useAutoRide({
   speed, 
   rpm, 
   settings,
-  speak 
+  speak,
+  onSaveRide,
+  onUpdateRide,
+  onClearRides,
+  initialRides,
 }: UseAutoRideOptions): UseAutoRideReturn {
   const [rideStatus, setRideStatus] = useState<RideStatus>('idle');
   const [currentRide, setCurrentRide] = useState<RideEntry | null>(null);
-  const [todayRides, setTodayRides] = useState<RideEntry[]>(() => loadTodayRides());
+  const [todayRides, setTodayRides] = useState<RideEntry[]>(() => 
+    initialRides ?? loadTodayRides()
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [finishedRide, setFinishedRide] = useState<RideEntry | null>(null);
   
@@ -71,6 +82,13 @@ export function useAutoRide({
   const totalDistanceRef = useRef<number>(0);
   const totalDurationRef = useRef<number>(0);
   const speedSamplesRef = useRef<number[]>([]);
+  
+  // Atualizar quando initialRides mudar (dados do cloud chegarem)
+  useEffect(() => {
+    if (initialRides && initialRides.length > 0) {
+      setTodayRides(initialRides);
+    }
+  }, [initialRides]);
   
   // Calcular custo baseado nas configurações
   const calculateCost = useCallback((distance: number): number => {
@@ -137,7 +155,7 @@ export function useAutoRide({
   }, [currentRide, calculateCost, speak]);
   
   // Salvar corrida com valor recebido
-  const saveRideWithAmount = useCallback((amountReceived: number) => {
+  const saveRideWithAmount = useCallback(async (amountReceived: number) => {
     if (!finishedRide) return;
     
     const profit = amountReceived - finishedRide.cost;
@@ -149,7 +167,14 @@ export function useAutoRide({
     
     const updatedRides = [...todayRides, rideWithProfit];
     setTodayRides(updatedRides);
-    saveTodayRides(updatedRides);
+    
+    // Usar callback de sincronização se disponível
+    if (onSaveRide) {
+      await onSaveRide(rideWithProfit);
+    } else {
+      saveTodayRides(updatedRides);
+    }
+    
     setIsModalOpen(false);
     setFinishedRide(null);
     
@@ -159,18 +184,25 @@ export function useAutoRide({
         : `Você teve prejuízo de ${Math.abs(profit).toFixed(2).replace('.', ' reais e ')} centavos nesta corrida.`;
       speak(profitText);
     }
-  }, [finishedRide, todayRides, speak]);
+  }, [finishedRide, todayRides, speak, onSaveRide]);
   
   // Pular entrada de valor
-  const skipAmountEntry = useCallback(() => {
+  const skipAmountEntry = useCallback(async () => {
     if (!finishedRide) return;
     
     const updatedRides = [...todayRides, finishedRide];
     setTodayRides(updatedRides);
-    saveTodayRides(updatedRides);
+    
+    // Usar callback de sincronização se disponível
+    if (onSaveRide) {
+      await onSaveRide(finishedRide);
+    } else {
+      saveTodayRides(updatedRides);
+    }
+    
     setIsModalOpen(false);
     setFinishedRide(null);
-  }, [finishedRide, todayRides]);
+  }, [finishedRide, todayRides, onSaveRide]);
   
   // Fechar modal
   const closeModal = useCallback(() => {
@@ -178,10 +210,15 @@ export function useAutoRide({
   }, []);
   
   // Limpar corridas do dia
-  const clearTodayRides = useCallback(() => {
+  const clearTodayRides = useCallback(async () => {
     setTodayRides([]);
-    localStorage.removeItem(STORAGE_KEY_RIDES);
-  }, []);
+    
+    if (onClearRides) {
+      await onClearRides();
+    } else {
+      localStorage.removeItem(STORAGE_KEY_RIDES);
+    }
+  }, [onClearRides]);
   
   // Calcular resumo do dia
   const dailySummary: DailySummary = {
