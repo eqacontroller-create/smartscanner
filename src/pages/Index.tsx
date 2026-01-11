@@ -10,6 +10,7 @@ import { useAutoRide } from '@/hooks/useAutoRide';
 import { useAuth } from '@/hooks/useAuth';
 import { useSyncedRides } from '@/hooks/useSyncedRides';
 import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
+import { useRefuelSettings } from '@/hooks/useRefuelSettings';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
@@ -40,6 +41,7 @@ import { RefuelButton } from '@/components/refuel/RefuelButton';
 import { RefuelModal } from '@/components/refuel/RefuelModal';
 import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
 import { RefuelResult } from '@/components/refuel/RefuelResult';
+import { RefuelSettingsSheet } from '@/components/refuel/RefuelSettingsSheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -135,6 +137,9 @@ const Index = () => {
   const [mainTab, setMainTab] = useState('painel');
   const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
   
+  // Hook de configurações de abastecimento
+  const refuelSettings = useRefuelSettings();
+  
   // Hook de monitoramento de abastecimento
   const refuelMonitor = useRefuelMonitor({
     speed,
@@ -143,6 +148,7 @@ const Index = () => {
     speak,
     onFuelPriceUpdate: (price) => tripCalculator.updateSettings({ fuelPrice: price }),
     userId: user?.id,
+    settings: refuelSettings.settings, // Passar configurações externas
   });
   
   // Verificar suporte de PIDs ao conectar
@@ -885,7 +891,7 @@ const Index = () => {
       
       {/* Botão Flutuante de Abastecimento */}
       {(status === 'ready' || status === 'reading') && (
-        <div className="fixed bottom-4 left-4 z-50 safe-area-bottom">
+        <div className="fixed bottom-4 left-4 z-50 safe-area-bottom flex items-center gap-2">
             <RefuelButton
               mode={refuelMonitor.mode}
               isConnected={status === 'ready' || status === 'reading'}
@@ -896,6 +902,14 @@ const Index = () => {
               }}
               onCancel={refuelMonitor.cancelRefuel}
             />
+            {/* Botão de configurações de abastecimento */}
+            {refuelMonitor.mode === 'inactive' && (
+              <RefuelSettingsSheet
+                settings={refuelSettings.settings}
+                onSettingsChange={refuelSettings.updateSettings}
+                onReset={refuelSettings.resetToDefaults}
+              />
+            )}
         </div>
       )}
     </div>
