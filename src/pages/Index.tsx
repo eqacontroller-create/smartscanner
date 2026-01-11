@@ -4,6 +4,7 @@ import { useJarvis } from '@/hooks/useJarvis';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 import { useJarvisAI } from '@/hooks/useJarvisAI';
 import { useVehicleTheme } from '@/hooks/useVehicleTheme';
+import { useVehicleBenefits } from '@/hooks/useVehicleBenefits';
 import { useShiftLight } from '@/hooks/useShiftLight';
 import { useTripCalculator } from '@/hooks/useTripCalculator';
 import { useAutoRide } from '@/hooks/useAutoRide';
@@ -26,6 +27,7 @@ import { RPMCard } from '@/components/dashboard/RPMCard';
 import { VehicleStats } from '@/components/dashboard/VehicleStats';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
 import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
+import { VehicleInfoCard } from '@/components/dashboard/VehicleInfoCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
 import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
@@ -95,6 +97,26 @@ const Index = () => {
     setVehicle, 
     resetToGeneric 
   } = useVehicleTheme();
+  
+  // Hook de benefícios específicos do veículo
+  const vehicleBenefits = useVehicleBenefits({
+    brand: themeVehicle?.brand || 'generic',
+    profile: currentProfile,
+    modelYear: themeVehicle?.modelYear,
+    currentSettings: {
+      redlineRPM: jarvisSettings.redlineRPM,
+      highTempThreshold: jarvisSettings.highTempThreshold,
+      lowVoltageThreshold: jarvisSettings.lowVoltageThreshold,
+      speedLimit: jarvisSettings.speedLimit,
+    },
+    onApplySettings: (settings) => {
+      updateSetting('redlineRPM', settings.redlineRPM);
+      updateSetting('highTempThreshold', settings.highTempThreshold);
+      updateSetting('lowVoltageThreshold', settings.lowVoltageThreshold);
+      updateSetting('speedLimit', settings.speedLimit);
+      speak(`Configurações otimizadas para ${currentProfile.displayName} aplicadas.`);
+    },
+  });
   
   // Hook de calculadora de viagem (Taxímetro)
   const tripCalculator = useTripCalculator({ speed });
@@ -282,7 +304,14 @@ const Index = () => {
           }
         }
         
-        speak(`Sistema do veículo conectado, piloto. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning} Pronto para rodar.`);
+        // Dica específica da marca
+        const brandTip = vehicleBenefits.getWelcomeTip();
+        const tipMessage = brandTip ? ` Dica: ${brandTip.substring(0, 80)}` : '';
+        
+        // Mensagem personalizada com nome da marca
+        const vehicleName = brandName !== 'Veículo' ? `${brandName}${themeVehicle?.modelYear ? ` ${themeVehicle.modelYear}` : ''}` : 'Veículo';
+        
+        speak(`${vehicleName} conectado, piloto. Motor a ${temp} graus. ${batteryStatus}.${maintenanceWarning}${tipMessage} Pronto para rodar.`);
       }, 4000);
       
       return () => clearTimeout(timer);

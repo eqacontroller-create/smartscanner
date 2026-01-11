@@ -14,6 +14,10 @@ interface VehicleContext {
   engineLoad: number | null;
   isConnected: boolean;
   isPolling: boolean;
+  // Novos campos para contexto da marca
+  brand?: string;
+  brandCharacteristics?: string;
+  modelYear?: string;
 }
 
 interface EngineProfile {
@@ -68,8 +72,11 @@ serve(async (req) => {
     const engineContext = buildEngineContext(engineProfile);
     const tripContext = buildTripContext(tripData);
     const autoRideContext = buildAutoRideContext(autoRideData);
+    const brandContext = buildBrandContext(vehicleContext);
 
     const systemPrompt = `Você é Jarvis, uma inteligência automotiva UNIVERSAL integrada a qualquer veículo. Seu papel é ser um copiloto inteligente e DIDÁTICO, explicando tudo de forma simples para pessoas leigas.
+
+${brandContext}
 
 DADOS DO VEÍCULO EM TEMPO REAL:
 ${vehicleStatus}
@@ -350,6 +357,26 @@ function buildVehicleStatus(ctx: VehicleContext): string {
   } else {
     lines.push(`- Carga do motor: Sem leitura`);
   }
+  
+  return lines.join('\n');
+}
+
+function buildBrandContext(ctx: VehicleContext): string {
+  if (!ctx.brand || ctx.brand === 'generic') {
+    return '';
+  }
+  
+  const lines = [
+    'CONTEXTO DO VEÍCULO DETECTADO:',
+    `- Marca: ${ctx.brand}${ctx.modelYear ? ` (${ctx.modelYear})` : ''}`,
+  ];
+  
+  if (ctx.brandCharacteristics) {
+    lines.push(`- Características: ${ctx.brandCharacteristics}`);
+  }
+  
+  lines.push('');
+  lines.push('IMPORTANTE: Use seu conhecimento sobre esta marca para dar dicas mais precisas. Mencione características específicas quando relevante.');
   
   return lines.join('\n');
 }
