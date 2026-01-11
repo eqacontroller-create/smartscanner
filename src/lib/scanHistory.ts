@@ -122,6 +122,8 @@ export async function saveScanResult(
 // Obter histórico de scans por VIN
 export async function getScanHistoryByVIN(vin: string): Promise<ScanHistoryEntry[]> {
   try {
+    console.log('[ScanHistory] Buscando histórico para VIN:', vin);
+    
     const { data: scans, error } = await supabase
       .from('dtc_scans')
       .select(`
@@ -131,7 +133,7 @@ export async function getScanHistoryByVIN(vin: string): Promise<ScanHistoryEntry
         total_dtcs,
         modules_scanned,
         scan_duration_ms,
-        vehicles (
+        vehicle:vehicles!dtc_scans_vehicle_id_fkey (
           manufacturer,
           country,
           model_year
@@ -146,29 +148,15 @@ export async function getScanHistoryByVIN(vin: string): Promise<ScanHistoryEntry
       .limit(20);
 
     if (error) {
-      console.error('Error fetching scan history:', error);
+      console.error('[ScanHistory] Erro ao buscar por VIN:', error);
       return [];
     }
 
-    return (scans || []).map(scan => ({
-      id: scan.id,
-      vin: scan.vin,
-      vehicleInfo: scan.vehicles ? {
-        manufacturer: (scan.vehicles as any).manufacturer,
-        country: (scan.vehicles as any).country,
-        modelYear: (scan.vehicles as any).model_year,
-      } : undefined,
-      scanDate: new Date(scan.scan_date),
-      totalDtcs: scan.total_dtcs,
-      modulesScanned: scan.modules_scanned,
-      scanDurationMs: scan.scan_duration_ms,
-      dtcs: (scan.dtc_findings || []).map((f: any) => ({
-        code: f.dtc_code,
-        moduleName: f.module_name,
-      })),
-    }));
+    console.log('[ScanHistory] Scans encontrados por VIN:', scans?.length || 0);
+
+    return mapScansToHistory(scans);
   } catch (error) {
-    console.error('Error in getScanHistoryByVIN:', error);
+    console.error('[ScanHistory] Exceção em getScanHistoryByVIN:', error);
     return [];
   }
 }
@@ -176,6 +164,8 @@ export async function getScanHistoryByVIN(vin: string): Promise<ScanHistoryEntry
 // Obter todos os scans recentes
 export async function getRecentScans(limit = 10): Promise<ScanHistoryEntry[]> {
   try {
+    console.log('[ScanHistory] Buscando scans recentes, limite:', limit);
+    
     const { data: scans, error } = await supabase
       .from('dtc_scans')
       .select(`
@@ -185,7 +175,7 @@ export async function getRecentScans(limit = 10): Promise<ScanHistoryEntry[]> {
         total_dtcs,
         modules_scanned,
         scan_duration_ms,
-        vehicles (
+        vehicle:vehicles!dtc_scans_vehicle_id_fkey (
           manufacturer,
           country,
           model_year
@@ -199,31 +189,49 @@ export async function getRecentScans(limit = 10): Promise<ScanHistoryEntry[]> {
       .limit(limit);
 
     if (error) {
-      console.error('Error fetching recent scans:', error);
+      console.error('[ScanHistory] Erro ao buscar recentes:', error);
       return [];
     }
 
-    return (scans || []).map(scan => ({
-      id: scan.id,
-      vin: scan.vin,
-      vehicleInfo: scan.vehicles ? {
-        manufacturer: (scan.vehicles as any).manufacturer,
-        country: (scan.vehicles as any).country,
-        modelYear: (scan.vehicles as any).model_year,
-      } : undefined,
-      scanDate: new Date(scan.scan_date),
-      totalDtcs: scan.total_dtcs,
-      modulesScanned: scan.modules_scanned,
-      scanDurationMs: scan.scan_duration_ms,
-      dtcs: (scan.dtc_findings || []).map((f: any) => ({
-        code: f.dtc_code,
-        moduleName: f.module_name,
-      })),
-    }));
+    console.log('[ScanHistory] Scans recentes encontrados:', scans?.length || 0);
+
+    return mapScansToHistory(scans);
   } catch (error) {
-    console.error('Error in getRecentScans:', error);
+    console.error('[ScanHistory] Exceção em getRecentScans:', error);
     return [];
   }
+}
+
+// Função auxiliar para mapear resultados do Supabase
+function mapScansToHistory(scans: any[] | null): ScanHistoryEntry[] {
+  if (!scans || scans.length === 0) {
+    return [];
+  }
+
+  return scans.map(scan => {
+    // Vehicle pode ser objeto, array ou null dependendo da query
+    const vehicle = Array.isArray(scan.vehicle) 
+      ? scan.vehicle[0] 
+      : scan.vehicle;
+
+    return {
+      id: scan.id,
+      vin: scan.vin,
+      vehicleInfo: vehicle ? {
+        manufacturer: vehicle.manufacturer || 'Desconhecido',
+        country: vehicle.country || 'Desconhecido',
+        modelYear: vehicle.model_year || 'N/A',
+      } : undefined,
+      scanDate: new Date(scan.scan_date),
+      totalDtcs: scan.total_dtcs ?? 0,
+      modulesScanned: scan.modules_scanned ?? 0,
+      scanDurationMs: scan.scan_duration_ms,
+      dtcs: (scan.dtc_findings || []).map((f: any) => ({
+        code: f.dtc_code || 'UNKNOWN',
+        moduleName: f.module_name || null,
+      })),
+    };
+  });
 }
 
 // Comparar dois scans

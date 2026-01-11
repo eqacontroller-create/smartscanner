@@ -1,6 +1,6 @@
 // Modal para entrada de dados do abastecimento
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,8 @@ import { formatCurrency } from '@/types/tripSettings';
 interface RefuelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  fuelLevelBefore: number | null; // CORREÇÃO 2: Nível ANTES de abastecer
-  currentFuelLevel: number | null; // Nível ATUAL (depois de abastecer)
+  fuelLevelBefore: number | null;
+  currentFuelLevel: number | null;
   fuelLevelSupported: boolean | null;
   defaultPrice?: number;
   isAuthenticated?: boolean;
@@ -27,7 +27,7 @@ interface RefuelModalProps {
   onConfirm: (pricePerLiter: number, litersAdded: number) => void;
 }
 
-export function RefuelModal({
+export const RefuelModal = forwardRef<HTMLDivElement, RefuelModalProps>(function RefuelModal({
   open,
   onOpenChange,
   fuelLevelBefore,
@@ -37,7 +37,7 @@ export function RefuelModal({
   isAuthenticated = false,
   onLoginClick,
   onConfirm,
-}: RefuelModalProps) {
+}, _ref) {
   const [pricePerLiter, setPricePerLiter] = useState(defaultPrice.toString());
   const [litersAdded, setLitersAdded] = useState('');
   
@@ -224,4 +224,6 @@ export function RefuelModal({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+RefuelModal.displayName = 'RefuelModal';
