@@ -480,8 +480,14 @@ export function useRefuelMonitor({
   }, [mode, currentRefuel, speed, settings.stftWarningThreshold, settings.anomalyDurationWarning, readSTFT, readLTFT, speak]);
   
   // Calcular distância percorrida - CORRIGIDO closure stale com speedRef
+  // Ref para rastrear quais alertas já foram anunciados
+  const announcedMilestonesRef = useRef<Set<number>>(new Set());
+  
   useEffect(() => {
     if (mode === 'monitoring' && !distanceIntervalRef.current) {
+      // Resetar milestones ao iniciar monitoramento
+      announcedMilestonesRef.current.clear();
+      
       distanceIntervalRef.current = setInterval(() => {
         // Usar speedRef para obter velocidade atual (evita closure stale)
         const currentSpeed = speedRef.current;
@@ -496,9 +502,24 @@ export function useRefuelMonitor({
           // Log para debug
           console.log(`[Refuel] Distance: ${newDistance.toFixed(2)} km @ ${currentSpeed} km/h`);
           
-          // Anunciar progresso a cada 2.5km
-          if (distanceRef.current - kmPerSecond < 2.5 && distanceRef.current >= 2.5) {
-            speak('Metade da análise concluída. Adaptação de combustível dentro do normal até agora.');
+          // Calcular progresso em porcentagem
+          const progressPercent = (newDistance / settings.monitoringDistance) * 100;
+          
+          // Alertas de progresso em 25%, 50% e 75%
+          const milestones = [25, 50, 75];
+          for (const milestone of milestones) {
+            if (progressPercent >= milestone && !announcedMilestonesRef.current.has(milestone)) {
+              announcedMilestonesRef.current.add(milestone);
+              
+              const messages: Record<number, string> = {
+                25: 'Vinte e cinco por cento da análise concluída. Fuel Trim estável até agora.',
+                50: 'Metade da análise concluída. Adaptação de combustível dentro do normal.',
+                75: 'Setenta e cinco por cento concluído. Quase finalizando a análise de qualidade.',
+              };
+              
+              speak(messages[milestone]);
+              break; // Só anuncia um milestone por iteração
+            }
           }
           
           // Finalizar análise ao atingir distância configurada
