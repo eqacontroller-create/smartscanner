@@ -19,17 +19,41 @@ export function TankLevelCheck({
   litersAdded,
   tankCapacity,
 }: TankLevelCheckProps) {
+  // CORREÇÃO 3: Validação de dados - verificar se faz sentido
+  if (fuelLevelAfter <= fuelLevelBefore) {
+    return (
+      <Card className="border border-yellow-500/50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <span className="text-sm">
+              Dados de nível inconsistentes. O nível depois ({fuelLevelAfter}%) não é maior que antes ({fuelLevelBefore}%).
+              Verifique se o sensor atualizou corretamente.
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Calcular expectativa vs realidade
   const actualIncrease = fuelLevelAfter - fuelLevelBefore;
   const expectedIncrease = (litersAdded / tankCapacity) * 100;
   const expectedLiters = litersAdded;
   const actualLiters = (actualIncrease / 100) * tankCapacity;
   const difference = actualLiters - expectedLiters;
-  const accuracy = Math.round((actualIncrease / expectedIncrease) * 100);
+  
+  // Validação adicional para evitar divisão por zero
+  const accuracy = expectedIncrease > 0 
+    ? Math.round((actualIncrease / expectedIncrease) * 100)
+    : 100;
+  
+  // Limitar accuracy a valores razoáveis (50% a 150%)
+  const displayAccuracy = Math.max(50, Math.min(150, accuracy));
   
   // Determinar status
-  const isAccurate = accuracy >= 85 && accuracy <= 115;
-  const isLow = accuracy < 85;
+  const isAccurate = displayAccuracy >= 85 && displayAccuracy <= 115;
+  const isLow = displayAccuracy < 85;
   
   return (
     <Card className={cn(
@@ -43,7 +67,7 @@ export function TankLevelCheck({
             Verificação da Bomba
           </span>
           <Badge variant={isAccurate ? 'default' : 'destructive'} className="text-xs">
-            {accuracy}% precisão
+            {displayAccuracy}% precisão
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -99,13 +123,13 @@ export function TankLevelCheck({
         {!isAccurate && (
           <div className={cn(
             'p-2 rounded-lg flex items-center gap-2 text-xs',
-            isLow ? 'bg-yellow-500/20 text-yellow-600' : 'bg-blue-500/20 text-blue-600'
+            isLow ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
           )}>
             {isLow ? (
               <>
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>
-                  Diferença de ~{Math.abs(difference).toFixed(1)}L ({100 - accuracy}%). 
+                  Diferença de ~{Math.abs(difference).toFixed(1)}L ({100 - displayAccuracy}%). 
                   Possível imprecisão na bomba.
                 </span>
               </>

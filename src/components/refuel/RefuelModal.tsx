@@ -18,7 +18,8 @@ import { formatCurrency } from '@/types/tripSettings';
 interface RefuelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  currentFuelLevel: number | null;
+  fuelLevelBefore: number | null; // CORREÇÃO 2: Nível ANTES de abastecer
+  currentFuelLevel: number | null; // Nível ATUAL (depois de abastecer)
   fuelLevelSupported: boolean | null;
   defaultPrice?: number;
   isAuthenticated?: boolean;
@@ -29,6 +30,7 @@ interface RefuelModalProps {
 export function RefuelModal({
   open,
   onOpenChange,
+  fuelLevelBefore,
   currentFuelLevel,
   fuelLevelSupported,
   defaultPrice = 6.00,
@@ -147,20 +149,51 @@ export function RefuelModal({
             </span>
           </div>
           
-          {/* Nível de Combustível Atual (se suportado) */}
-          {fuelLevelSupported && currentFuelLevel !== null && (
-            <div className="p-3 rounded-lg bg-muted/30 flex items-center gap-3">
-              <Gauge className="h-5 w-5 text-blue-500" />
-              <div className="flex-1">
-                <div className="text-xs text-muted-foreground">Nível Atual do Tanque</div>
-                <div className="text-lg font-bold">{currentFuelLevel}%</div>
+          {/* CORREÇÃO 2: Mostrar níveis ANTES e DEPOIS do abastecimento */}
+          {fuelLevelSupported && (fuelLevelBefore !== null || currentFuelLevel !== null) && (
+            <div className="p-3 rounded-lg bg-muted/30 space-y-3">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-5 w-5 text-blue-500" />
+                <span className="text-sm font-medium">Nível do Tanque</span>
               </div>
-              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-500 transition-all"
-                  style={{ width: `${currentFuelLevel}%` }}
-                />
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Nível ANTES (registrado em startRefuelMode) */}
+                {fuelLevelBefore !== null && (
+                  <div className="p-2 rounded bg-muted/50">
+                    <div className="text-xs text-muted-foreground">Antes de abastecer</div>
+                    <div className="text-lg font-bold">{fuelLevelBefore}%</div>
+                    <div className="mt-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-muted-foreground/40 transition-all"
+                        style={{ width: `${fuelLevelBefore}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Nível ATUAL (depois de abastecer) */}
+                {currentFuelLevel !== null && (
+                  <div className="p-2 rounded bg-primary/10">
+                    <div className="text-xs text-muted-foreground">Agora (após abastecer)</div>
+                    <div className="text-lg font-bold text-primary">{currentFuelLevel}%</div>
+                    <div className="mt-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${currentFuelLevel}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
+              
+              {/* Mostrar aumento detectado */}
+              {fuelLevelBefore !== null && currentFuelLevel !== null && currentFuelLevel > fuelLevelBefore && (
+                <div className="flex items-center justify-between p-2 rounded bg-green-500/10 text-green-600 dark:text-green-400">
+                  <span className="text-xs">Aumento detectado:</span>
+                  <span className="text-sm font-bold">+{currentFuelLevel - fuelLevelBefore}%</span>
+                </div>
+              )}
             </div>
           )}
           
