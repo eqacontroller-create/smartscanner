@@ -1,26 +1,48 @@
 import { useState, useEffect, useCallback } from 'react';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
+import { useSyncedProfile } from '@/hooks/useSyncedProfile';
+import { useAuth } from '@/hooks/useAuth';
 
 const STORAGE_KEY = 'jarvis-settings';
 
 export function useJarvisSettings() {
-  const [settings, setSettings] = useState<JarvisSettings>(defaultJarvisSettings);
+  const { isAuthenticated } = useAuth();
+  const syncedProfile = useSyncedProfile();
+  
+  const [localSettings, setLocalSettings] = useState<JarvisSettings>(defaultJarvisSettings);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Carregar configurações do localStorage
+  // Usa configurações do Cloud se autenticado, senão do localStorage
+  const settings = isAuthenticated && !syncedProfile.loading 
+    ? syncedProfile.profile.jarvisSettings 
+    : localSettings;
+
+  // Carregar configurações do localStorage (fallback offline)
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setSettings({ ...defaultJarvisSettings, ...parsed });
+        setLocalSettings({ ...defaultJarvisSettings, ...parsed });
       }
     } catch (error) {
       console.error('Erro ao carregar configurações do Jarvis:', error);
     }
     setIsLoaded(true);
   }, []);
+
+  // Sincroniza settings locais quando Cloud carrega (para manter backup local)
+  useEffect(() => {
+    if (isAuthenticated && !syncedProfile.loading && syncedProfile.synced) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(syncedProfile.profile.jarvisSettings));
+        setLocalSettings(syncedProfile.profile.jarvisSettings);
+      } catch (error) {
+        console.error('Erro ao atualizar cache local:', error);
+      }
+    }
+  }, [isAuthenticated, syncedProfile.loading, syncedProfile.synced, syncedProfile.profile.jarvisSettings]);
 
   // Carregar vozes disponíveis
   useEffect(() => {
@@ -43,15 +65,21 @@ export function useJarvisSettings() {
     };
   }, []);
 
-  // Salvar configurações no localStorage
-  const saveSettings = useCallback((newSettings: JarvisSettings) => {
-    setSettings(newSettings);
+  // Salvar configurações (Cloud + localStorage)
+  const saveSettings = useCallback(async (newSettings: JarvisSettings) => {
+    // Sempre salva localmente primeiro (offline-first)
+    setLocalSettings(newSettings);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Erro ao salvar configurações do Jarvis:', error);
+      console.error('Erro ao salvar configurações locais:', error);
     }
-  }, []);
+    
+    // Se autenticado, sincroniza com Cloud
+    if (isAuthenticated) {
+      await syncedProfile.updateJarvisSettings(newSettings);
+    }
+  }, [isAuthenticated, syncedProfile]);
 
   // Atualizar configuração específica
   const updateSetting = useCallback(<K extends keyof JarvisSettings>(
@@ -78,6 +106,8 @@ export function useJarvisSettings() {
     resetToDefaults,
     availableVoices,
     portugueseVoices,
-    isLoaded,
+    isLoaded: isLoaded && (!isAuthenticated || !syncedProfile.loading),
+    synced: syncedProfile.synced,
+    loading: syncedProfile.loading,
   };
 }
