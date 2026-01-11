@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { History, ChevronRight, CheckCircle2, AlertCircle, Clock, Car } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { History, ChevronRight, CheckCircle2, AlertCircle, Clock, Car, RefreshCw, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,24 +22,32 @@ interface ScanHistoryProps {
 export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
   const [history, setHistory] = useState<ScanHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadHistory();
-  }, [currentVIN]);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
+      console.log('[ScanHistory] Carregando histórico...', { currentVIN });
+      
       const scans = currentVIN 
         ? await getScanHistoryByVIN(currentVIN)
         : await getRecentScans(15);
+      
+      console.log('[ScanHistory] Scans carregados:', scans.length);
       setHistory(scans);
-    } catch (error) {
-      console.error('Error loading history:', error);
+    } catch (err) {
+      console.error('[ScanHistory] Erro ao carregar:', err);
+      setError('Erro ao carregar histórico. Verifique sua conexão.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentVIN]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const getComparisonWithPrevious = (index: number) => {
     if (index >= history.length - 1) return null;
@@ -56,8 +64,37 @@ export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-          <div className="flex items-center justify-center py-6 sm:py-8">
-            <div className="animate-pulse text-muted-foreground text-sm">Carregando...</div>
+          <div className="flex flex-col items-center justify-center py-6 sm:py-8 gap-2">
+            <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+            <div className="text-muted-foreground text-sm">Carregando histórico...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            Histórico de Scans
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+          <div className="text-center py-6 sm:py-8">
+            <WifiOff className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-3 text-destructive opacity-50" />
+            <p className="text-xs sm:text-sm text-destructive">{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-3 gap-2"
+              onClick={loadHistory}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar Novamente
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -68,10 +105,21 @@ export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
     return (
       <Card>
         <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            Histórico de Scans
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              Histórico de Scans
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={loadHistory}
+              className="h-8 text-xs sm:text-sm gap-1"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Atualizar
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
           <div className="text-center py-6 sm:py-8 text-muted-foreground">
