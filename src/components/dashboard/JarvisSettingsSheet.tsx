@@ -1,4 +1,5 @@
-import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio, Fuel, Zap, Moon, Wifi } from 'lucide-react';
+import { useState } from 'react';
+import { Volume2, RotateCcw, Bell, Mic2, Thermometer, Gauge, Wrench, Brain, Radio, Fuel, Zap, Moon, Wifi, Sparkles, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -18,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { JarvisSettings, FuelType, getDefaultRedlineForFuelType, getShiftPoints } from '@/types/jarvisSettings';
+import { JarvisSettings, FuelType, AIProvider, OpenAIVoice, getDefaultRedlineForFuelType, getShiftPoints } from '@/types/jarvisSettings';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { encryptApiKey, decryptApiKey, isValidOpenAIKey, maskApiKey } from '@/lib/encryption';
 
 interface JarvisSettingsSheetProps {
   open: boolean;
@@ -47,6 +49,9 @@ export function JarvisSettingsSheet({
   isSpeaking,
   isWakeLockActive = false,
 }: JarvisSettingsSheetProps) {
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  
   const voicesToShow = portugueseVoices.length > 0 ? portugueseVoices : availableVoices;
 
   const getSelectedVoiceName = () => {
@@ -68,6 +73,26 @@ export function JarvisSettingsSheet({
     onUpdateSetting('fuelType', value);
     onUpdateSetting('redlineRPM', getDefaultRedlineForFuelType(value));
   };
+
+  // Handler para salvar API key
+  const handleSaveApiKey = () => {
+    if (apiKeyInput.trim()) {
+      const encrypted = encryptApiKey(apiKeyInput.trim());
+      onUpdateSetting('openaiApiKey', encrypted);
+      setApiKeyInput('');
+    }
+  };
+
+  // Handler para remover API key
+  const handleRemoveApiKey = () => {
+    onUpdateSetting('openaiApiKey', null);
+    setApiKeyInput('');
+  };
+
+  // Verifica se API key está configurada e válida
+  const hasApiKey = !!settings.openaiApiKey;
+  const decryptedKey = settings.openaiApiKey ? decryptApiKey(settings.openaiApiKey) : '';
+  const isApiKeyValid = decryptedKey ? isValidOpenAIKey(decryptedKey) : false;
 
   // Calcular pontos de shift para exibição
   const shiftPoints = getShiftPoints(settings.redlineRPM);
@@ -529,7 +554,191 @@ export function JarvisSettingsSheet({
 
             <Separator />
 
-            {/* Seção Modo Insônia (Keep Awake) */}
+            {/* Seção Cérebro do Jarvis (IA Híbrida) */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                Cérebro do Jarvis
+              </div>
+              
+              <div className="space-y-4 pl-6">
+                {/* Seletor de Provedor de IA */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Provedor de Inteligência</Label>
+                  
+                  <div className="space-y-2">
+                    <div 
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        settings.aiProvider === 'basic' 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
+                      onClick={() => onUpdateSetting('aiProvider', 'basic')}
+                    >
+                      <input 
+                        type="radio" 
+                        checked={settings.aiProvider === 'basic'} 
+                        onChange={() => onUpdateSetting('aiProvider', 'basic')}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">IA Básica</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">Grátis</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Análises locais, voz do navegador
+                        </p>
+                      </div>
+                    </div>
+
+                    <div 
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        settings.aiProvider === 'openai' 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
+                      onClick={() => onUpdateSetting('aiProvider', 'openai')}
+                    >
+                      <input 
+                        type="radio" 
+                        checked={settings.aiProvider === 'openai'} 
+                        onChange={() => onUpdateSetting('aiProvider', 'openai')}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">IA Avançada</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-500">OpenAI</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          GPT-4o-mini, voz premium Onyx
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Configurações OpenAI */}
+                {settings.aiProvider === 'openai' && (
+                  <div className="space-y-4 pt-2 border-l-2 border-purple-500/30 pl-4">
+                    {/* API Key */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        Chave da API OpenAI
+                        {hasApiKey && (
+                          isApiKeyValid 
+                            ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                            : <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        )}
+                      </Label>
+                      
+                      {hasApiKey ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                            <code className="text-xs flex-1 font-mono">
+                              {showApiKey ? decryptedKey : maskApiKey(decryptedKey)}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="h-7 w-7 p-0"
+                            >
+                              {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemoveApiKey}
+                            className="w-full text-destructive hover:text-destructive"
+                          >
+                            Remover chave
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              type="password"
+                              value={apiKeyInput}
+                              onChange={(e) => setApiKeyInput(e.target.value)}
+                              placeholder="sk-..."
+                              className="h-9 font-mono text-xs"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={handleSaveApiKey}
+                              disabled={!apiKeyInput.trim()}
+                              className="h-9"
+                            >
+                              Salvar
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Obtenha em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">platform.openai.com</a>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* TTS Premium */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="openai-tts" className="text-sm font-medium">
+                          Voz Premium (TTS)
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Usar síntese de voz da OpenAI
+                        </p>
+                      </div>
+                      <Switch
+                        id="openai-tts"
+                        checked={settings.openaiTTSEnabled}
+                        onCheckedChange={(checked) => onUpdateSetting('openaiTTSEnabled', checked)}
+                        disabled={!hasApiKey}
+                      />
+                    </div>
+
+                    {/* Seleção de Voz OpenAI */}
+                    {settings.openaiTTSEnabled && hasApiKey && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Voz Premium</Label>
+                        <Select
+                          value={settings.openaiVoice}
+                          onValueChange={(value: OpenAIVoice) => onUpdateSetting('openaiVoice', value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="onyx">Onyx (grave, confiante)</SelectItem>
+                            <SelectItem value="alloy">Alloy (neutro, versátil)</SelectItem>
+                            <SelectItem value="echo">Echo (média, clara)</SelectItem>
+                            <SelectItem value="fable">Fable (expressivo, narrativo)</SelectItem>
+                            <SelectItem value="nova">Nova (feminino, suave)</SelectItem>
+                            <SelectItem value="shimmer">Shimmer (feminino, caloroso)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {!hasApiKey && (
+                      <p className="text-xs text-yellow-500">
+                        ⚠️ Configure a API key para usar recursos avançados
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  💡 IA Avançada usa sua chave pessoal da OpenAI (custo por uso)
+                </p>
+              </div>
+            </div>
+
+            <Separator />
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Moon className="h-4 w-4 text-blue-500" />

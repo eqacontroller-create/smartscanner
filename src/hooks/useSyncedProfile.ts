@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { JarvisSettings, defaultJarvisSettings, FuelType } from '@/types/jarvisSettings';
+import { JarvisSettings, defaultJarvisSettings, FuelType, AIProvider, OpenAIVoice } from '@/types/jarvisSettings';
 import { TripSettings, defaultTripSettings } from '@/types/tripSettings';
 import { toast } from 'sonner';
 
@@ -84,6 +84,11 @@ function dbToProfile(dbData: Record<string, unknown>): SyncedProfile {
       rate: (dbData.voice_rate as number) || 0.9,
       pitch: (dbData.voice_pitch as number) || 0.95,
       selectedVoiceURI: dbData.selected_voice_uri as string | null || null,
+      // Cérebro do Jarvis (IA Híbrida)
+      aiProvider: (dbData.ai_provider as AIProvider) || 'basic',
+      openaiApiKey: dbData.openai_api_key as string | null || null,
+      openaiVoice: (dbData.openai_voice as OpenAIVoice) || 'onyx',
+      openaiTTSEnabled: dbData.openai_tts_enabled !== false,
     },
     tripSettings: {
       fuelPrice: (dbData.fuel_price as number) || 6.00,
@@ -138,6 +143,11 @@ function profileToDb(profile: SyncedProfile, userId: string): Record<string, unk
     voice_rate: profile.jarvisSettings.rate,
     voice_pitch: profile.jarvisSettings.pitch,
     selected_voice_uri: profile.jarvisSettings.selectedVoiceURI,
+    // Cérebro do Jarvis (IA Híbrida)
+    ai_provider: profile.jarvisSettings.aiProvider,
+    openai_api_key: profile.jarvisSettings.openaiApiKey,
+    openai_voice: profile.jarvisSettings.openaiVoice,
+    openai_tts_enabled: profile.jarvisSettings.openaiTTSEnabled,
   };
 }
 
