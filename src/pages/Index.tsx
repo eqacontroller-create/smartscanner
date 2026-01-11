@@ -150,6 +150,9 @@ const Index = () => {
       engineLoad,
       isConnected: status === 'ready' || status === 'reading',
       isPolling,
+      brand: currentProfile.displayName,
+      brandCharacteristics: currentProfile.characteristics,
+      modelYear: themeVehicle?.modelYear,
     },
     tripData: tripCalculator.tripData,
   });
@@ -719,6 +722,16 @@ const Index = () => {
                     isConnected={isReady || isReading}
                     addLog={addLog}
                   />
+                  
+                  {/* Vehicle Info Card - Mostra benefícios específicos da marca */}
+                  {themeVehicle && (
+                    <VehicleInfoCard
+                      brand={themeVehicle.brand}
+                      profile={currentProfile}
+                      modelYear={themeVehicle.modelYear}
+                      benefits={vehicleBenefits}
+                    />
+                  )}
                   
                   <DTCScanner 
                     sendCommand={sendRawCommand}

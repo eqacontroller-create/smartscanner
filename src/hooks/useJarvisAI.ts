@@ -14,6 +14,9 @@ interface VehicleContext {
   engineLoad: number | null;
   isConnected: boolean;
   isPolling: boolean;
+  brand?: string;
+  brandCharacteristics?: string;
+  modelYear?: string;
 }
 
 interface Message {
