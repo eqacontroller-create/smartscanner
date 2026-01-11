@@ -11,7 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Fuel, DollarSign, Droplets, Gauge } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Fuel, DollarSign, Droplets, Gauge, Cloud, CloudOff, LogIn } from 'lucide-react';
 import { formatCurrency } from '@/types/tripSettings';
 
 interface RefuelModalProps {
@@ -20,6 +21,8 @@ interface RefuelModalProps {
   currentFuelLevel: number | null;
   fuelLevelSupported: boolean | null;
   defaultPrice?: number;
+  isAuthenticated?: boolean;
+  onLoginClick?: () => void;
   onConfirm: (pricePerLiter: number, litersAdded: number) => void;
 }
 
@@ -29,6 +32,8 @@ export function RefuelModal({
   currentFuelLevel,
   fuelLevelSupported,
   defaultPrice = 6.00,
+  isAuthenticated = false,
+  onLoginClick,
   onConfirm,
 }: RefuelModalProps) {
   const [pricePerLiter, setPricePerLiter] = useState(defaultPrice.toString());
@@ -65,6 +70,35 @@ export function RefuelModal({
             Registre os dados do abastecimento para análise de qualidade.
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Badge de Status de Autenticação */}
+        {isAuthenticated ? (
+          <Badge variant="outline" className="w-fit gap-1.5 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
+            <Cloud className="h-3 w-3" />
+            Histórico será salvo na nuvem
+          </Badge>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="gap-1.5 border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              <CloudOff className="h-3 w-3" />
+              Histórico não será salvo
+            </Badge>
+            {onLoginClick && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-xs gap-1"
+                onClick={() => {
+                  onOpenChange(false);
+                  onLoginClick();
+                }}
+              >
+                <LogIn className="h-3 w-3" />
+                Entrar
+              </Button>
+            )}
+          </div>
+        )}
         
         <div className="space-y-4 pt-4">
           {/* Preço por Litro */}

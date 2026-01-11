@@ -1,14 +1,21 @@
 // Botão flutuante "Vou Abastecer"
 // Ativa o modo de auditoria de combustível
 
-import { Fuel, X } from 'lucide-react';
+import { Fuel, X, Cloud, CloudOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RefuelMode } from '@/types/refuelTypes';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface RefuelButtonProps {
   mode: RefuelMode;
   isConnected: boolean;
+  isAuthenticated?: boolean;
   onStart: () => void;
   onCancel: () => void;
 }
@@ -16,6 +23,7 @@ interface RefuelButtonProps {
 export function RefuelButton({
   mode,
   isConnected,
+  isAuthenticated = false,
   onStart,
   onCancel,
 }: RefuelButtonProps) {
@@ -57,18 +65,38 @@ export function RefuelButton({
   
   return (
     <div className="flex items-center gap-2">
-      <Button
-        onClick={isActive ? undefined : onStart}
-        disabled={mode === 'analyzing'}
-        className={cn(
-          'gap-2 min-h-[44px] transition-all duration-300',
-          getModeStyles()
-        )}
-        size="sm"
-      >
-        <Fuel className="h-4 w-4" />
-        <span className="hidden xs:inline">{getModeLabel()}</span>
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={isActive ? undefined : onStart}
+              disabled={mode === 'analyzing'}
+              className={cn(
+                'gap-2 min-h-[44px] transition-all duration-300',
+                getModeStyles()
+              )}
+              size="sm"
+            >
+              <Fuel className="h-4 w-4" />
+              <span className="hidden xs:inline">{getModeLabel()}</span>
+              {/* Indicador de sync no botão */}
+              {!isActive && (
+                isAuthenticated ? (
+                  <Cloud className="h-3 w-3 opacity-60" />
+                ) : (
+                  <CloudOff className="h-3 w-3 opacity-60" />
+                )
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isAuthenticated 
+              ? 'Histórico será salvo na nuvem' 
+              : 'Faça login para salvar histórico'
+            }
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       
       {isActive && mode !== 'completed' && (
         <Button

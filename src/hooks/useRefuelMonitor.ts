@@ -388,6 +388,15 @@ export function useRefuelMonitor({
       speak(`Atenção! Anomalia grave detectada. A injeção está corrigindo ${Math.abs(stftAverage).toFixed(0)} porcento. Combustível de baixa qualidade confirmado.`);
     }
     
+    // Feedback sobre salvamento na nuvem
+    setTimeout(() => {
+      if (userId) {
+        speak('Dados salvos no seu histórico de abastecimentos.');
+      } else {
+        speak('Faça login para salvar seu histórico de abastecimentos na nuvem.');
+      }
+    }, 2000);
+    
     setMode('completed');
   }, [currentRefuel, readFuelLevel, readLTFT, analyzeQuality, settings.tankCapacity, userId, speak]);
   

@@ -848,6 +848,8 @@ const Index = () => {
         currentFuelLevel={refuelMonitor.currentFuelLevel}
         fuelLevelSupported={refuelMonitor.fuelLevelSupported}
         defaultPrice={tripCalculator.settings.fuelPrice}
+        isAuthenticated={isAuthenticated}
+        onLoginClick={() => setIsAuthModalOpen(true)}
         onConfirm={(price, liters) => {
           refuelMonitor.confirmRefuel(price, liters);
           setIsRefuelModalOpen(false);
@@ -883,15 +885,16 @@ const Index = () => {
       {/* Botão Flutuante de Abastecimento */}
       {(status === 'ready' || status === 'reading') && (
         <div className="fixed bottom-4 left-4 z-50 safe-area-bottom">
-          <RefuelButton
-            mode={refuelMonitor.mode}
-            isConnected={status === 'ready' || status === 'reading'}
-            onStart={() => {
-              refuelMonitor.startRefuelMode();
-              setIsRefuelModalOpen(true);
-            }}
-            onCancel={refuelMonitor.cancelRefuel}
-          />
+            <RefuelButton
+              mode={refuelMonitor.mode}
+              isConnected={status === 'ready' || status === 'reading'}
+              isAuthenticated={isAuthenticated}
+              onStart={() => {
+                refuelMonitor.startRefuelMode();
+                setIsRefuelModalOpen(true);
+              }}
+              onCancel={refuelMonitor.cancelRefuel}
+            />
         </div>
       )}
     </div>
