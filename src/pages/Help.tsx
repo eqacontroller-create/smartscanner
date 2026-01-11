@@ -32,6 +32,10 @@ import {
   XCircle,
   Info,
   Key,
+  Droplets,
+  Cloud,
+  TrendingUp,
+  Scale,
 } from "lucide-react";
 
 export default function Help() {
@@ -406,6 +410,111 @@ export default function Help() {
           />
         </HelpSection>
 
+        {/* Monitor de Abastecimento */}
+        <HelpSection id="abastecimento" title="Monitor de Abastecimento" icon={Droplets}>
+          <HelpCard
+            title="O que é o Monitor de Abastecimento?"
+            description="Uma ferramenta inteligente que analisa a qualidade do combustível após abastecer, detectando possível adulteração e verificando a precisão da bomba do posto."
+            icon={Droplets}
+            variant="info"
+          />
+
+          <StepByStep
+            steps={[
+              {
+                title: "Abasteça o veículo",
+                description: "Vá ao posto e abasteça normalmente. Anote (ou lembre) o preço por litro e a quantidade de litros.",
+                icon: Fuel,
+              },
+              {
+                title: "Clique em 'Abastecer'",
+                description: "Com o OBD conectado, um botão verde 'Abastecer' aparece no canto inferior da tela. Clique nele.",
+                icon: Droplets,
+              },
+              {
+                title: "Preencha os dados",
+                description: "Informe o preço por litro e a quantidade de litros. O app calcula o total automaticamente.",
+                icon: Scale,
+              },
+              {
+                title: "Inicie o monitoramento",
+                description: "Clique em 'Iniciar Monitoramento'. O Jarvis vai confirmar que os dados foram registrados e a análise iniciará.",
+                icon: Activity,
+              },
+              {
+                title: "Dirija normalmente",
+                description: "Dirija por 5 km (configurável). O sistema monitora os sensores Fuel Trim em tempo real durante o trajeto.",
+                icon: Car,
+              },
+              {
+                title: "Veja o resultado",
+                description: "Após a distância, o sistema mostra a qualidade do combustível (verde/amarelo/vermelho) e a precisão da bomba.",
+                icon: CheckCircle,
+              },
+            ]}
+          />
+
+          <HelpCard
+            title="O que é Fuel Trim (STFT/LTFT)?"
+            description="Fuel Trim é a correção que o motor faz na mistura ar/combustível. STFT é a correção imediata, LTFT é a de longo prazo. Se o combustível é ruim, o motor precisa corrigir mais."
+            icon={TrendingUp}
+            variant="default"
+          >
+            <div className="text-xs space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span>-10% a +10%: Combustível normal</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                <span>±10% a ±15%: Atenção, qualidade suspeita</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500" />
+                <span>Fora de ±15%: Combustível adulterado</span>
+              </div>
+            </div>
+          </HelpCard>
+
+          <HelpCard
+            title="Verificação de Precisão da Bomba"
+            description="O sistema compara os litros que você disse ter abastecido com a variação real no sensor de combustível do veículo. Assim detectamos se a bomba entregou menos que o marcado."
+            icon={Scale}
+            variant="default"
+          >
+            <div className="text-xs mt-2 p-2 bg-background rounded border border-border">
+              <strong>⚠️ Limitação:</strong> Funciona apenas em veículos que disponibilizam 
+              leitura do nível de combustível via OBD-II (PID 012F). 
+              Nem todos os carros suportam essa leitura.
+            </div>
+          </HelpCard>
+
+          <HelpCard
+            title="Sincronização na Nuvem"
+            description="Se você estiver logado, o histórico de abastecimentos é salvo automaticamente na nuvem. Você pode acessar de qualquer dispositivo e acompanhar a qualidade do combustível ao longo do tempo."
+            icon={Cloud}
+            variant="success"
+          >
+            <div className="text-xs mt-2 text-muted-foreground">
+              O ícone de nuvem no botão "Abastecer" indica que a sincronização está ativa.
+            </div>
+          </HelpCard>
+
+          <HelpCard
+            title="Alertas do Jarvis"
+            description="Durante e após o monitoramento, o Jarvis anuncia: início da análise, detecção de anomalias, resultado da qualidade do combustível, precisão da bomba e status de salvamento na nuvem."
+            icon={Bot}
+            variant="default"
+          />
+
+          <HelpCard
+            title="Limitações do Sistema"
+            description="O monitor de qualidade (Fuel Trim) funciona em praticamente todos os veículos. Já a verificação da bomba depende do suporte ao sensor de nível de combustível, que varia por modelo."
+            icon={Info}
+            variant="warning"
+          />
+        </HelpSection>
+
         {/* FAQ */}
         <HelpSection id="faq" title="Perguntas Frequentes" icon={HelpCircle}>
           <div className="space-y-1">
@@ -448,6 +557,31 @@ export default function Help() {
               id="faq-8"
               question="O adaptador esquenta muito, é normal?"
               answer="É normal ficar morno, mas não deveria ficar muito quente. Se estiver muito quente, desconecte e verifique se o adaptador é de boa qualidade. Adaptadores baratos podem ter problemas."
+            />
+            <FAQItem
+              id="faq-9"
+              question="Como saber se o combustível é adulterado?"
+              answer="O Monitor de Abastecimento analisa o Fuel Trim (STFT) após você abastecer. Se o STFT médio ficar acima de ±15% durante os primeiros quilômetros, há indícios de adulteração. O resultado aparece em verde (ok), amarelo (atenção) ou vermelho (crítico)."
+            />
+            <FAQItem
+              id="faq-10"
+              question="Por que não aparece a verificação da bomba?"
+              answer="A verificação de precisão da bomba só funciona se seu veículo enviar o nível de combustível via OBD-II (PID 012F). Muitos carros não suportam essa leitura. O monitor de qualidade (Fuel Trim) funciona em todos os veículos."
+            />
+            <FAQItem
+              id="faq-11"
+              question="Preciso estar logado para usar o monitor de abastecimento?"
+              answer="Não, você pode usar sem login. Porém, se estiver logado, o histórico de abastecimentos é salvo na nuvem para consulta futura em qualquer dispositivo."
+            />
+            <FAQItem
+              id="faq-12"
+              question="O que significa a % de precisão da bomba?"
+              answer="É a comparação entre os litros que você disse ter abastecido e o que o sensor do carro detectou. 100% significa que bateu exato. Abaixo de 85% indica possível fraude na bomba - considere denunciar ao INMETRO."
+            />
+            <FAQItem
+              id="faq-13"
+              question="Quanto tempo leva a análise do combustível?"
+              answer="O padrão é monitorar por 5 km. Você pode ajustar essa distância nas configurações de abastecimento. Quanto mais distância, mais precisa é a análise."
             />
           </div>
         </HelpSection>
@@ -494,6 +628,21 @@ export default function Help() {
               term="BLE"
               definition="Bluetooth Low Energy - Versão do Bluetooth que consome menos energia."
               analogy="É um Bluetooth mais econômico, ideal para dispositivos pequenos como adaptadores."
+            />
+            <GlossaryItem
+              term="STFT"
+              definition="Short Term Fuel Trim - Correção imediata da mistura ar/combustível feita pelo motor em tempo real."
+              analogy="É como ajustar o tempero de uma comida enquanto você está cozinhando."
+            />
+            <GlossaryItem
+              term="LTFT"
+              definition="Long Term Fuel Trim - Correção de longo prazo que o motor memoriza baseado no histórico."
+              analogy="É como seu paladar se adaptar a um tempero ao longo do tempo."
+            />
+            <GlossaryItem
+              term="Fuel Trim"
+              definition="Ajuste que o motor faz na quantidade de combustível injetado para manter a mistura ideal."
+              analogy="É o motor 'compensando' quando o combustível é diferente do ideal esperado."
             />
           </div>
         </HelpSection>
