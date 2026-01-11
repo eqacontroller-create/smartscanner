@@ -89,6 +89,12 @@ export function useRefuelMonitor({
   const initialLTFTRef = useRef<number | null>(null);
   const distanceRef = useRef(0);
   const isMonitoringActiveRef = useRef(false);
+  const speedRef = useRef(0);
+  
+  // Manter speedRef atualizado para evitar closure stale no intervalo de distância
+  useEffect(() => {
+    speedRef.current = speed;
+  }, [speed]);
   
   // Verificar suporte de PIDs
   const checkPIDSupport = useCallback(async () => {
@@ -473,24 +479,32 @@ export function useRefuelMonitor({
     };
   }, [mode, currentRefuel, speed, settings.stftWarningThreshold, settings.anomalyDurationWarning, readSTFT, readLTFT, speak]);
   
-  // Calcular distância percorrida - CORRIGIDO para evitar memory leaks
+  // Calcular distância percorrida - CORRIGIDO closure stale com speedRef
   useEffect(() => {
     if (mode === 'monitoring' && !distanceIntervalRef.current) {
       distanceIntervalRef.current = setInterval(() => {
-        // Calcular distância baseada na velocidade atual
-        const kmPerSecond = speed / 3600;
-        distanceRef.current += kmPerSecond;
-        const newDistance = distanceRef.current;
-        setDistanceMonitored(newDistance);
+        // Usar speedRef para obter velocidade atual (evita closure stale)
+        const currentSpeed = speedRef.current;
         
-        // Anunciar progresso a cada 2.5km
-        if (distanceRef.current - kmPerSecond < 2.5 && distanceRef.current >= 2.5) {
-          speak('Metade da análise concluída. Adaptação de combustível dentro do normal até agora.');
-        }
-        
-        // Finalizar análise aos 5km
-        if (newDistance >= settings.monitoringDistance) {
-          finalizeAnalysis();
+        // Só acumula distância se estiver em movimento (>= 3 km/h)
+        if (currentSpeed >= 3) {
+          const kmPerSecond = currentSpeed / 3600;
+          distanceRef.current += kmPerSecond;
+          const newDistance = distanceRef.current;
+          setDistanceMonitored(newDistance);
+          
+          // Log para debug
+          console.log(`[Refuel] Distance: ${newDistance.toFixed(2)} km @ ${currentSpeed} km/h`);
+          
+          // Anunciar progresso a cada 2.5km
+          if (distanceRef.current - kmPerSecond < 2.5 && distanceRef.current >= 2.5) {
+            speak('Metade da análise concluída. Adaptação de combustível dentro do normal até agora.');
+          }
+          
+          // Finalizar análise ao atingir distância configurada
+          if (newDistance >= settings.monitoringDistance) {
+            finalizeAnalysis();
+          }
         }
       }, 1000);
     }
@@ -498,7 +512,7 @@ export function useRefuelMonitor({
     return () => {
       // NÃO limpar aqui - será limpo no cancelRefuel ou finalizeAnalysis
     };
-  }, [mode, speed, settings.monitoringDistance, finalizeAnalysis, speak]);
+  }, [mode, settings.monitoringDistance, finalizeAnalysis, speak]);
   
   // Ler nível de combustível atual - CORRIGIDO para polling condicional
   useEffect(() => {
