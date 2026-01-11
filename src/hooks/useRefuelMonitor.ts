@@ -19,6 +19,7 @@ interface UseRefuelMonitorOptions {
   speak: (text: string) => void;
   onFuelPriceUpdate?: (price: number) => void;
   userId?: string;
+  settings?: RefuelSettings; // Configurações externas opcionais
 }
 
 interface UseRefuelMonitorReturn {
@@ -58,12 +59,15 @@ export function useRefuelMonitor({
   speak,
   onFuelPriceUpdate,
   userId,
+  settings: externalSettings,
 }: UseRefuelMonitorOptions): UseRefuelMonitorReturn {
   // Estados principais
   const [mode, setMode] = useState<RefuelMode>('inactive');
   const [currentRefuel, setCurrentRefuel] = useState<Partial<RefuelEntry> | null>(null);
   const [fuelTrimHistory, setFuelTrimHistory] = useState<FuelTrimSample[]>([]);
-  const [settings] = useState<RefuelSettings>(defaultRefuelSettings);
+  
+  // Usar settings externas ou padrão
+  const settings = externalSettings || defaultRefuelSettings;
   
   // Suporte de PIDs
   const [fuelLevelSupported, setFuelLevelSupported] = useState<boolean | null>(null);
