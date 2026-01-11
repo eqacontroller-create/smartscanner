@@ -11,7 +11,7 @@ export interface VehicleSpecs {
 
 export interface VehicleTip {
   id: string;
-  category: 'combustivel' | 'manutencao' | 'desempenho' | 'seguranca' | 'economia';
+  category: 'combustivel' | 'manutencao' | 'desempenho' | 'seguranca' | 'economia' | 'conectividade';
   title: string;
   description: string;
   priority: 'baixa' | 'media' | 'alta';
