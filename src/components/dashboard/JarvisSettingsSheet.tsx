@@ -151,7 +151,8 @@ export function JarvisSettingsSheet({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="gasoline">Gasolina</SelectItem>
-                      <SelectItem value="ethanol">Etanol / Flex</SelectItem>
+                      <SelectItem value="ethanol">Etanol</SelectItem>
+                      <SelectItem value="flex">Flex (Gasolina/Etanol)</SelectItem>
                       <SelectItem value="diesel">Diesel</SelectItem>
                     </SelectContent>
                   </Select>

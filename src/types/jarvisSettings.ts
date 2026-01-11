@@ -1,4 +1,4 @@
-export type FuelType = 'gasoline' | 'ethanol' | 'diesel';
+export type FuelType = 'gasoline' | 'ethanol' | 'flex' | 'diesel';
 
 export interface JarvisSettings {
   // Alertas
@@ -86,6 +86,7 @@ export function getDefaultRedlineForFuelType(fuelType: FuelType): number {
   switch (fuelType) {
     case 'diesel':
       return 4500;
+    case 'flex':
     case 'gasoline':
     case 'ethanol':
     default:

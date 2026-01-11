@@ -17,7 +17,7 @@ interface VehicleContext {
 }
 
 interface EngineProfile {
-  fuelType: 'gasoline' | 'ethanol' | 'diesel';
+  fuelType: 'gasoline' | 'ethanol' | 'flex' | 'diesel';
   redlineRPM: number;
 }
 
@@ -242,7 +242,8 @@ function buildEngineContext(profile?: EngineProfile): string {
   
   const fuelTypeNames: Record<string, string> = {
     gasoline: 'Gasolina',
-    ethanol: 'Etanol/Flex',
+    ethanol: 'Etanol',
+    flex: 'Flex (Gasolina/Etanol)',
     diesel: 'Diesel'
   };
   
