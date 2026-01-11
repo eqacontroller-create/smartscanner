@@ -199,10 +199,17 @@ export function useRefuelMonitor({
     return null;
   }, [sendRawCommand]);
   
-  // Iniciar modo abastecimento
-  const startRefuelMode = useCallback(() => {
+  // CORREÇÃO 1: Iniciar modo abastecimento - captura nível ANTES de abastecer
+  const startRefuelMode = useCallback(async () => {
+    // Capturar nível ANTES do usuário abastecer fisicamente
+    const levelBefore = await readFuelLevel();
+    
+    console.log('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
+    
     setMode('waiting');
-    setCurrentRefuel(null);
+    setCurrentRefuel({
+      fuelLevelBefore: levelBefore, // Armazena imediatamente (antes de ir à bomba)
+    });
     setFuelTrimHistory([]);
     setDistanceMonitored(0);
     distanceRef.current = 0;
@@ -218,10 +225,14 @@ export function useRefuelMonitor({
     announcedMilestonesRef.current.clear();
     readFailureCountRef.current = 0;
     
-    speak('Modo abastecimento ativado. Monitorando parâmetros de injeção. Abasteça e inicie o trajeto.');
-  }, [speak]);
+    if (levelBefore !== null) {
+      speak(`Modo abastecimento ativado. Nível atual: ${levelBefore} porcento. Abasteça e confirme os dados.`);
+    } else {
+      speak('Modo abastecimento ativado. Abasteça e confirme os dados quando terminar.');
+    }
+  }, [readFuelLevel, speak]);
   
-  // Confirmar dados do abastecimento
+  // CORREÇÃO 1: Confirmar dados do abastecimento - NÃO sobrescreve fuelLevelBefore
   const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number) => {
     // Verificar se STFT é suportado antes de continuar
     if (!stftSupported) {
@@ -271,23 +282,35 @@ export function useRefuelMonitor({
     }
     
     const totalPaid = pricePerLiter * litersAdded;
-    const fuelLevelBefore = await readFuelLevel();
     
-    setCurrentRefuel({
+    // CORREÇÃO 1: Capturar nível DEPOIS do abastecimento físico (antes de dirigir)
+    const fuelLevelAfterRefuel = await readFuelLevel();
+    
+    // Manter o fuelLevelBefore capturado em startRefuelMode
+    const savedLevelBefore = currentRefuel?.fuelLevelBefore ?? null;
+    
+    console.log('[Refuel] confirmRefuel - Níveis:', {
+      antes: savedLevelBefore,
+      depois: fuelLevelAfterRefuel,
+      litrosInformados: litersAdded,
+      tanque: settings.tankCapacity,
+    });
+    
+    setCurrentRefuel(prev => ({
+      ...prev, // Mantém fuelLevelBefore do startRefuelMode
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       pricePerLiter,
       litersAdded,
       totalPaid,
-      fuelLevelBefore,
-      fuelLevelAfter: null,
+      fuelLevelAfter: fuelLevelAfterRefuel, // Nível DEPOIS de abastecer
       tankCapacity: settings.tankCapacity,
       quality: 'unknown',
       stftAverage: 0,
       ltftDelta: 0,
       distanceMonitored: 0,
       anomalyDetected: false,
-    });
+    }));
     
     // Atualizar preço do combustível nas configurações
     if (onFuelPriceUpdate) {
@@ -297,8 +320,14 @@ export function useRefuelMonitor({
     // Ler LTFT inicial para comparação
     initialLTFTRef.current = await readLTFT();
     
-    speak('Dados registrados. Quando iniciar o trajeto, começarei a análise do combustível.');
-  }, [stftSupported, readFuelLevel, readLTFT, settings.tankCapacity, onFuelPriceUpdate, userId, speak]);
+    // Feedback com níveis se disponíveis
+    if (savedLevelBefore !== null && fuelLevelAfterRefuel !== null) {
+      const increase = fuelLevelAfterRefuel - savedLevelBefore;
+      speak(`Dados registrados. Tanque subiu de ${savedLevelBefore} para ${fuelLevelAfterRefuel} porcento. Inicie o trajeto para análise.`);
+    } else {
+      speak('Dados registrados. Quando iniciar o trajeto, começarei a análise do combustível.');
+    }
+  }, [stftSupported, currentRefuel, readFuelLevel, readLTFT, settings.tankCapacity, onFuelPriceUpdate, userId, speak]);
   
   // Cancelar modo abastecimento
   const cancelRefuel = useCallback(() => {
@@ -335,7 +364,7 @@ export function useRefuelMonitor({
     return 'critical';
   }, [settings.stftWarningThreshold, settings.stftCriticalThreshold]);
   
-  // Finalizar análise
+  // CORREÇÃO 5: Finalizar análise com validação de dados
   const finalizeAnalysis = useCallback(async () => {
     if (!currentRefuel) return;
     
@@ -352,7 +381,8 @@ export function useRefuelMonitor({
       distanceIntervalRef.current = null;
     }
     
-    const fuelLevelAfter = await readFuelLevel();
+    // Ler nível final (após rodar 5km - só para registro, não usado no cálculo da bomba)
+    const fuelLevelAfterDriving = await readFuelLevel();
     const currentLTFTValue = await readLTFT();
     
     const samples = stftSamplesRef.current;
@@ -367,17 +397,49 @@ export function useRefuelMonitor({
     const quality = analyzeQuality();
     const finalDistance = distanceRef.current;
     
-    // Calcular precisão da bomba
+    // CORREÇÃO 5: Calcular precisão da bomba com validação
+    // Usa fuelLevelBefore (antes de abastecer) e fuelLevelAfter (depois de abastecer, antes de dirigir)
     let pumpAccuracyPercent: number | undefined;
-    if (currentRefuel.fuelLevelBefore !== null && fuelLevelAfter !== null && currentRefuel.litersAdded) {
+    const levelBefore = currentRefuel.fuelLevelBefore;
+    const levelAfter = currentRefuel.fuelLevelAfter; // Capturado em confirmRefuel
+    
+    console.log('[Refuel] finalizeAnalysis - Cálculo precisão bomba:', {
+      levelBefore,
+      levelAfter,
+      litersAdded: currentRefuel.litersAdded,
+      tankCapacity: settings.tankCapacity,
+      levelAfterDriving: fuelLevelAfterDriving,
+    });
+    
+    if (
+      levelBefore !== null && 
+      levelBefore !== undefined &&
+      levelAfter !== null && 
+      levelAfter !== undefined &&
+      currentRefuel.litersAdded &&
+      levelAfter > levelBefore // VALIDAÇÃO: nível deve ter aumentado
+    ) {
       const expectedIncrease = (currentRefuel.litersAdded / settings.tankCapacity) * 100;
-      const actualIncrease = fuelLevelAfter - currentRefuel.fuelLevelBefore;
-      pumpAccuracyPercent = Math.round((actualIncrease / expectedIncrease) * 100);
+      const actualIncrease = levelAfter - levelBefore;
+      
+      // Só calcula se valores fazem sentido
+      if (expectedIncrease > 0 && actualIncrease > 0) {
+        pumpAccuracyPercent = Math.round((actualIncrease / expectedIncrease) * 100);
+        
+        // CORREÇÃO 5: Limitar a valores razoáveis (50% a 150%)
+        pumpAccuracyPercent = Math.max(50, Math.min(150, pumpAccuracyPercent));
+        
+        console.log('[Refuel] Precisão calculada:', {
+          expectedIncrease: expectedIncrease.toFixed(1),
+          actualIncrease,
+          accuracy: pumpAccuracyPercent,
+        });
+      }
     }
     
     const finalEntry: RefuelEntry = {
       ...(currentRefuel as RefuelEntry),
-      fuelLevelAfter,
+      // Mantém fuelLevelAfter como o nível logo após abastecer (para cálculo da bomba)
       quality,
       stftAverage: Math.round(stftAverage * 10) / 10,
       ltftDelta: Math.round(ltftDelta * 10) / 10,
@@ -427,12 +489,12 @@ export function useRefuelMonitor({
       speak(`Atenção! Anomalia grave detectada. A injeção está corrigindo ${Math.abs(stftAverage).toFixed(0)} porcento. Combustível de baixa qualidade confirmado.`);
     }
     
-    // Feedback sobre precisão da bomba (se disponível)
-    if (pumpAccuracyPercent !== undefined) {
+    // Feedback sobre precisão da bomba (se disponível e válido)
+    if (pumpAccuracyPercent !== undefined && pumpAccuracyPercent >= 50) {
       setTimeout(() => {
-        if (pumpAccuracyPercent < 85) {
-          speak(`Atenção: a bomba entregou ${100 - pumpAccuracyPercent} porcento menos que o indicado. Considere denunciar ao INMETRO.`);
-        } else if (pumpAccuracyPercent > 115) {
+        if (pumpAccuracyPercent! < 85) {
+          speak(`Atenção: a bomba entregou ${100 - pumpAccuracyPercent!} porcento menos que o indicado. Considere denunciar ao INMETRO.`);
+        } else if (pumpAccuracyPercent! > 115) {
           speak('Curioso: o sensor detectou mais combustível que o esperado. Pode ser calibração do sensor do veículo.');
         } else {
           speak('Bomba verificada. Quantidade entregue confere com o sensor do veículo.');

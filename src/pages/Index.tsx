@@ -845,6 +845,7 @@ const Index = () => {
       <RefuelModal
         open={isRefuelModalOpen}
         onOpenChange={setIsRefuelModalOpen}
+        fuelLevelBefore={refuelMonitor.currentRefuel?.fuelLevelBefore ?? null}
         currentFuelLevel={refuelMonitor.currentFuelLevel}
         fuelLevelSupported={refuelMonitor.fuelLevelSupported}
         defaultPrice={tripCalculator.settings.fuelPrice}
