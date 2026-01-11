@@ -13,6 +13,7 @@ import { useSyncedRides } from '@/hooks/useSyncedRides';
 import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
 import { useRefuelSettings } from '@/hooks/useRefuelSettings';
 import { useWakeLock } from '@/hooks/useWakeLock';
+import { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
@@ -28,6 +29,7 @@ import { VehicleStats } from '@/components/dashboard/VehicleStats';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
 import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
 import { VehicleInfoCard } from '@/components/dashboard/VehicleInfoCard';
+import { MaintenanceCard } from '@/components/dashboard/MaintenanceCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { DTCScanner } from '@/components/mechanic/DTCScanner';
 import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
@@ -165,6 +167,15 @@ const Index = () => {
   // Hook de configurações de abastecimento
   const refuelSettings = useRefuelSettings();
   
+  // Hook de manutenção inteligente por marca
+  const maintenanceSchedule = useMaintenanceSchedule({
+    brand: themeVehicle?.brand || 'generic',
+    currentMileage: jarvisSettings.currentMileage,
+    onAlertSpeak: jarvisSettings.maintenanceAlertEnabled && jarvisSettings.aiModeEnabled 
+      ? speak 
+      : undefined,
+  });
+  
   // Hook de monitoramento de abastecimento
   const refuelMonitor = useRefuelMonitor({
     speed,
@@ -175,7 +186,7 @@ const Index = () => {
     userId: user?.id,
     settings: refuelSettings.settings, // Passar configurações externas
   });
-  
+
   // Verificar suporte de PIDs ao conectar
   // CORRIGIDO: Comentário eslint para ignorar dependência intencionalmente
   useEffect(() => {
@@ -732,6 +743,20 @@ const Index = () => {
                       benefits={vehicleBenefits}
                     />
                   )}
+                  
+                  {/* Maintenance Card - Cronograma de manutenção por marca */}
+                  <MaintenanceCard
+                    alerts={maintenanceSchedule.alerts}
+                    intervals={maintenanceSchedule.intervals}
+                    currentMileage={jarvisSettings.currentMileage}
+                    brandName={currentProfile.displayName}
+                    onRecordMaintenance={maintenanceSchedule.recordMaintenance}
+                    onSpeakAlerts={() => {
+                      const message = maintenanceSchedule.getVoiceMessage();
+                      if (message) speak(message);
+                    }}
+                    isSpeaking={isSpeaking}
+                  />
                   
                   <DTCScanner 
                     sendCommand={sendRawCommand}
