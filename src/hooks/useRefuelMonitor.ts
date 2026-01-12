@@ -1,5 +1,6 @@
 // Hook para monitoramento de qualidade de combustível
 // Analisa Fuel Trim após abastecimento para detectar adulteração
+// Arquitetura: Loop unificado de 500ms com cálculo preciso baseado em timestamp
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { 
@@ -12,6 +13,13 @@ import {
 } from '@/types/refuelTypes';
 import { supabase } from '@/integrations/supabase/client';
 
+// Constantes de timing
+const MONITORING_INTERVAL = 500;      // Loop principal: 500ms para precisão
+const UI_UPDATE_THROTTLE = 1000;      // Atualizar UI a cada 1s
+const FUEL_TRIM_THROTTLE = 2000;      // Ler Fuel Trim a cada 2s
+const FUEL_LEVEL_THROTTLE = 5000;     // Ler nível de combustível a cada 5s
+const MILESTONE_ANNOUNCE_DELAY = 500; // Delay entre anúncios de milestone
+
 interface UseRefuelMonitorOptions {
   speed: number;
   sendRawCommand: (command: string, timeout?: number) => Promise<string>;
@@ -19,33 +27,22 @@ interface UseRefuelMonitorOptions {
   speak: (text: string) => void;
   onFuelPriceUpdate?: (price: number) => void;
   userId?: string;
-  settings?: RefuelSettings; // Configurações externas opcionais
+  settings?: RefuelSettings;
 }
 
 interface UseRefuelMonitorReturn {
-  // Estado do modo
   mode: RefuelMode;
   currentRefuel: Partial<RefuelEntry> | null;
   fuelTrimHistory: FuelTrimSample[];
-  
-  // Suporte de PIDs
   fuelLevelSupported: boolean | null;
   stftSupported: boolean | null;
-  
-  // Dados atuais
   currentSTFT: number | null;
   currentLTFT: number | null;
   currentFuelLevel: number | null;
   distanceMonitored: number;
-  
-  // Anomalias
   anomalyActive: boolean;
   anomalyDuration: number;
-  
-  // Configurações
   settings: RefuelSettings;
-  
-  // Ações
   startRefuelMode: () => void;
   confirmRefuel: (pricePerLiter: number, litersAdded: number) => void;
   cancelRefuel: () => void;
@@ -69,6 +66,9 @@ export function useRefuelMonitor({
   // Usar settings externas ou padrão
   const settings = externalSettings || defaultRefuelSettings;
   
+  // CRÍTICO: Ref para settings - evita stale closure nos intervalos
+  const settingsRef = useRef(settings);
+  
   // Suporte de PIDs
   const [fuelLevelSupported, setFuelLevelSupported] = useState<boolean | null>(null);
   const [stftSupported, setStftSupported] = useState<boolean | null>(null);
@@ -85,7 +85,6 @@ export function useRefuelMonitor({
   
   // Refs para monitoramento (evitar re-renders e memory leaks)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const distanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const fuelLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startOdometerRef = useRef(0);
   const anomalyStartRef = useRef<number | null>(null);
@@ -95,30 +94,38 @@ export function useRefuelMonitor({
   const isMonitoringActiveRef = useRef(false);
   const speedRef = useRef(0);
   
-  // CORREÇÃO 2: Converter variáveis de alerta para useRef (persistentes entre renders)
+  // Refs para timing preciso
+  const lastUpdateTimestampRef = useRef<number | null>(null);
+  const lastUIUpdateRef = useRef(0);
+  const lastFuelTrimReadRef = useRef(0);
+  const lastFuelLevelReadRef = useRef(0);
+  
+  // Refs para controle de alertas
   const lastAnomalyAlertTimeRef = useRef(0);
   const anomalyRecoveryAnnouncedRef = useRef(false);
   const announcedMilestonesRef = useRef<Set<number>>(new Set());
   
-  // CORREÇÃO 5: Contador de falhas de leitura OBD
+  // Contador de falhas de leitura OBD
   const readFailureCountRef = useRef(0);
   const MAX_READ_FAILURES = 5;
   
-  // Manter speedRef atualizado para evitar closure stale no intervalo de distância
+  // Manter settingsRef sincronizado - CRÍTICO para evitar stale closure
+  useEffect(() => {
+    settingsRef.current = settings;
+    console.log('[Refuel] Settings atualizadas:', settings.monitoringDistance, 'km');
+  }, [settings]);
+  
+  // Manter speedRef atualizado
   useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
   
-  // CORREÇÃO 3: Cleanup geral no unmount do componente
+  // Cleanup geral no unmount do componente
   useEffect(() => {
     return () => {
       if (monitoringIntervalRef.current) {
         clearInterval(monitoringIntervalRef.current);
         monitoringIntervalRef.current = null;
-      }
-      if (distanceIntervalRef.current) {
-        clearInterval(distanceIntervalRef.current);
-        distanceIntervalRef.current = null;
       }
       if (fuelLevelIntervalRef.current) {
         clearInterval(fuelLevelIntervalRef.current);
@@ -132,14 +139,12 @@ export function useRefuelMonitor({
     if (!isConnected) return;
     
     try {
-      // Verificar PID 012F (Fuel Level)
       const fuelResponse = await sendRawCommand('012F', 2500);
       const fuelSupported = !fuelResponse.includes('NODATA') && 
                            !fuelResponse.includes('ERROR') &&
                            !fuelResponse.includes('UNABLE');
       setFuelLevelSupported(fuelSupported);
       
-      // Verificar PID 0106 (STFT Bank 1)
       const stftResponse = await sendRawCommand('0106', 2500);
       const stftOk = !stftResponse.includes('NODATA') && 
                      !stftResponse.includes('ERROR') &&
@@ -169,7 +174,7 @@ export function useRefuelMonitor({
     return null;
   }, [fuelLevelSupported, sendRawCommand]);
   
-  // Ler STFT (PID 0106) - Precisão melhorada com 1 casa decimal
+  // Ler STFT (PID 0106)
   const readSTFT = useCallback(async (): Promise<number | null> => {
     if (!stftSupported) return null;
     
@@ -178,7 +183,6 @@ export function useRefuelMonitor({
       const match = response.match(/41\s*06\s*([0-9A-Fa-f]{2})/i);
       if (match) {
         const a = parseInt(match[1], 16);
-        // Manter 1 casa decimal para precisão na detecção de anomalias
         return Math.round(((a - 128) * 100 / 128) * 10) / 10;
       }
     } catch (error) {
@@ -187,14 +191,13 @@ export function useRefuelMonitor({
     return null;
   }, [stftSupported, sendRawCommand]);
   
-  // Ler LTFT (PID 0107) - Precisão melhorada com 1 casa decimal
+  // Ler LTFT (PID 0107)
   const readLTFT = useCallback(async (): Promise<number | null> => {
     try {
       const response = await sendRawCommand('0107', 2000);
       const match = response.match(/41\s*07\s*([0-9A-Fa-f]{2})/i);
       if (match) {
         const a = parseInt(match[1], 16);
-        // Manter 1 casa decimal para precisão
         return Math.round(((a - 128) * 100 / 128) * 10) / 10;
       }
     } catch (error) {
@@ -203,16 +206,15 @@ export function useRefuelMonitor({
     return null;
   }, [sendRawCommand]);
   
-  // CORREÇÃO 1: Iniciar modo abastecimento - captura nível ANTES de abastecer
+  // Iniciar modo abastecimento
   const startRefuelMode = useCallback(async () => {
-    // Capturar nível ANTES do usuário abastecer fisicamente
     const levelBefore = await readFuelLevel();
     
     console.log('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
     
     setMode('waiting');
     setCurrentRefuel({
-      fuelLevelBefore: levelBefore, // Armazena imediatamente (antes de ir à bomba)
+      fuelLevelBefore: levelBefore,
     });
     setFuelTrimHistory([]);
     setDistanceMonitored(0);
@@ -222,6 +224,12 @@ export function useRefuelMonitor({
     stftSamplesRef.current = [];
     initialLTFTRef.current = null;
     anomalyStartRef.current = null;
+    
+    // Resetar refs de timing
+    lastUpdateTimestampRef.current = null;
+    lastUIUpdateRef.current = 0;
+    lastFuelTrimReadRef.current = 0;
+    lastFuelLevelReadRef.current = 0;
     
     // Resetar refs de alerta
     lastAnomalyAlertTimeRef.current = 0;
@@ -236,13 +244,11 @@ export function useRefuelMonitor({
     }
   }, [readFuelLevel, speak]);
   
-  // CORREÇÃO 1: Confirmar dados do abastecimento - NÃO sobrescreve fuelLevelBefore
+  // Confirmar dados do abastecimento
   const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number) => {
-    // Verificar se STFT é suportado antes de continuar
     if (!stftSupported) {
       speak('Este veículo não suporta monitoramento de Fuel Trim. Registrando abastecimento sem análise de qualidade.');
       
-      // Salvar entrada sem análise
       const entry: Partial<RefuelEntry> = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
@@ -256,7 +262,6 @@ export function useRefuelMonitor({
         anomalyDetected: false,
       };
       
-      // Salvar no banco se usuário logado
       if (userId) {
         try {
           await supabase.from('refuel_entries').insert({
@@ -276,7 +281,6 @@ export function useRefuelMonitor({
         }
       }
       
-      // Atualizar preço do combustível
       if (onFuelPriceUpdate) {
         onFuelPriceUpdate(pricePerLiter);
       }
@@ -286,29 +290,25 @@ export function useRefuelMonitor({
     }
     
     const totalPaid = pricePerLiter * litersAdded;
-    
-    // CORREÇÃO 1: Capturar nível DEPOIS do abastecimento físico (antes de dirigir)
     const fuelLevelAfterRefuel = await readFuelLevel();
-    
-    // Manter o fuelLevelBefore capturado em startRefuelMode
     const savedLevelBefore = currentRefuel?.fuelLevelBefore ?? null;
     
     console.log('[Refuel] confirmRefuel - Níveis:', {
       antes: savedLevelBefore,
       depois: fuelLevelAfterRefuel,
       litrosInformados: litersAdded,
-      tanque: settings.tankCapacity,
+      tanque: settingsRef.current.tankCapacity,
     });
     
     setCurrentRefuel(prev => ({
-      ...prev, // Mantém fuelLevelBefore do startRefuelMode
+      ...prev,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       pricePerLiter,
       litersAdded,
       totalPaid,
-      fuelLevelAfter: fuelLevelAfterRefuel, // Nível DEPOIS de abastecer
-      tankCapacity: settings.tankCapacity,
+      fuelLevelAfter: fuelLevelAfterRefuel,
+      tankCapacity: settingsRef.current.tankCapacity,
       quality: 'unknown',
       stftAverage: 0,
       ltftDelta: 0,
@@ -316,22 +316,18 @@ export function useRefuelMonitor({
       anomalyDetected: false,
     }));
     
-    // Atualizar preço do combustível nas configurações
     if (onFuelPriceUpdate) {
       onFuelPriceUpdate(pricePerLiter);
     }
     
-    // Ler LTFT inicial para comparação
     initialLTFTRef.current = await readLTFT();
     
-    // Feedback com níveis se disponíveis
     if (savedLevelBefore !== null && fuelLevelAfterRefuel !== null) {
-      const increase = fuelLevelAfterRefuel - savedLevelBefore;
       speak(`Dados registrados. Tanque subiu de ${savedLevelBefore} para ${fuelLevelAfterRefuel} porcento. Inicie o trajeto para análise.`);
     } else {
       speak('Dados registrados. Quando iniciar o trajeto, começarei a análise do combustível.');
     }
-  }, [stftSupported, currentRefuel, readFuelLevel, readLTFT, settings.tankCapacity, onFuelPriceUpdate, userId, speak]);
+  }, [stftSupported, currentRefuel, readFuelLevel, readLTFT, onFuelPriceUpdate, userId, speak]);
   
   // Cancelar modo abastecimento
   const cancelRefuel = useCallback(() => {
@@ -348,13 +344,9 @@ export function useRefuelMonitor({
       clearInterval(monitoringIntervalRef.current);
       monitoringIntervalRef.current = null;
     }
-    if (distanceIntervalRef.current) {
-      clearInterval(distanceIntervalRef.current);
-      distanceIntervalRef.current = null;
-    }
   }, []);
   
-  // CORREÇÃO 6: Simplificar analyzeQuality - remover redundância
+  // Analisar qualidade do combustível
   const analyzeQuality = useCallback((): FuelQuality => {
     const samples = stftSamplesRef.current;
     if (samples.length === 0) return 'unknown';
@@ -362,30 +354,43 @@ export function useRefuelMonitor({
     const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
     const absAvg = Math.abs(avg);
     
-    // Lógica simplificada sem redundância
-    if (absAvg <= settings.stftWarningThreshold) return 'ok';
-    if (absAvg <= settings.stftCriticalThreshold) return 'warning';
+    // Usa settingsRef para ter valores atuais
+    if (absAvg <= settingsRef.current.stftWarningThreshold) return 'ok';
+    if (absAvg <= settingsRef.current.stftCriticalThreshold) return 'warning';
     return 'critical';
-  }, [settings.stftWarningThreshold, settings.stftCriticalThreshold]);
+  }, []);
   
-  // CORREÇÃO 5: Finalizar análise com validação de dados
+  // Helper para mensagens de progresso contextuais
+  const getProgressMessage = useCallback((milestone: number, hasAnomaly: boolean): string => {
+    if (hasAnomaly) {
+      const messages: Record<number, string> = {
+        25: 'Vinte e cinco por cento. Correções elevadas detectadas. Continuando análise.',
+        50: 'Metade da análise. Anomalias persistem. Recomendo atenção.',
+        75: 'Setenta e cinco por cento. Finalizando com observações de irregularidade.',
+      };
+      return messages[milestone] || '';
+    }
+    
+    const messages: Record<number, string> = {
+      25: 'Vinte e cinco por cento da análise concluída. Fuel Trim estável até agora.',
+      50: 'Metade da análise concluída. Adaptação de combustível dentro do normal.',
+      75: 'Setenta e cinco por cento concluído. Quase finalizando. Tudo normal.',
+    };
+    return messages[milestone] || '';
+  }, []);
+  
+  // Finalizar análise
   const finalizeAnalysis = useCallback(async () => {
     if (!currentRefuel) return;
     
     setMode('analyzing');
     isMonitoringActiveRef.current = false;
     
-    // Limpar intervalos
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
       monitoringIntervalRef.current = null;
     }
-    if (distanceIntervalRef.current) {
-      clearInterval(distanceIntervalRef.current);
-      distanceIntervalRef.current = null;
-    }
     
-    // Ler nível final (após rodar 5km - só para registro, não usado no cálculo da bomba)
     const fuelLevelAfterDriving = await readFuelLevel();
     const currentLTFTValue = await readLTFT();
     
@@ -401,17 +406,16 @@ export function useRefuelMonitor({
     const quality = analyzeQuality();
     const finalDistance = distanceRef.current;
     
-    // CORREÇÃO 5: Calcular precisão da bomba com validação
-    // Usa fuelLevelBefore (antes de abastecer) e fuelLevelAfter (depois de abastecer, antes de dirigir)
+    // Calcular precisão da bomba
     let pumpAccuracyPercent: number | undefined;
     const levelBefore = currentRefuel.fuelLevelBefore;
-    const levelAfter = currentRefuel.fuelLevelAfter; // Capturado em confirmRefuel
+    const levelAfter = currentRefuel.fuelLevelAfter;
     
     console.log('[Refuel] finalizeAnalysis - Cálculo precisão bomba:', {
       levelBefore,
       levelAfter,
       litersAdded: currentRefuel.litersAdded,
-      tankCapacity: settings.tankCapacity,
+      tankCapacity: settingsRef.current.tankCapacity,
       levelAfterDriving: fuelLevelAfterDriving,
     });
     
@@ -421,16 +425,13 @@ export function useRefuelMonitor({
       levelAfter !== null && 
       levelAfter !== undefined &&
       currentRefuel.litersAdded &&
-      levelAfter > levelBefore // VALIDAÇÃO: nível deve ter aumentado
+      levelAfter > levelBefore
     ) {
-      const expectedIncrease = (currentRefuel.litersAdded / settings.tankCapacity) * 100;
+      const expectedIncrease = (currentRefuel.litersAdded / settingsRef.current.tankCapacity) * 100;
       const actualIncrease = levelAfter - levelBefore;
       
-      // Só calcula se valores fazem sentido
       if (expectedIncrease > 0 && actualIncrease > 0) {
         pumpAccuracyPercent = Math.round((actualIncrease / expectedIncrease) * 100);
-        
-        // CORREÇÃO 5: Limitar a valores razoáveis (50% a 150%)
         pumpAccuracyPercent = Math.max(50, Math.min(150, pumpAccuracyPercent));
         
         console.log('[Refuel] Precisão calculada:', {
@@ -443,7 +444,6 @@ export function useRefuelMonitor({
     
     const finalEntry: RefuelEntry = {
       ...(currentRefuel as RefuelEntry),
-      // Mantém fuelLevelAfter como o nível logo após abastecer (para cálculo da bomba)
       quality,
       stftAverage: Math.round(stftAverage * 10) / 10,
       ltftDelta: Math.round(ltftDelta * 10) / 10,
@@ -459,7 +459,6 @@ export function useRefuelMonitor({
     
     setCurrentRefuel(finalEntry);
     
-    // Salvar no banco se usuário logado
     if (userId) {
       try {
         await supabase.from('refuel_entries').insert({
@@ -493,7 +492,7 @@ export function useRefuelMonitor({
       speak(`Atenção! Anomalia grave detectada. A injeção está corrigindo ${Math.abs(stftAverage).toFixed(0)} porcento. Combustível de baixa qualidade confirmado.`);
     }
     
-    // Feedback sobre precisão da bomba (se disponível e válido)
+    // Feedback sobre precisão da bomba (usa fila de voz, não setTimeout)
     if (pumpAccuracyPercent !== undefined && pumpAccuracyPercent >= 50) {
       setTimeout(() => {
         if (pumpAccuracyPercent! < 85) {
@@ -506,7 +505,7 @@ export function useRefuelMonitor({
       }, 3000);
     }
     
-    // Feedback sobre salvamento na nuvem
+    // Feedback sobre salvamento
     setTimeout(() => {
       if (userId) {
         speak('Dados salvos no seu histórico de abastecimentos.');
@@ -516,178 +515,169 @@ export function useRefuelMonitor({
     }, pumpAccuracyPercent !== undefined ? 6000 : 2000);
     
     setMode('completed');
-  }, [currentRefuel, readFuelLevel, readLTFT, analyzeQuality, settings.tankCapacity, userId, speak]);
+  }, [currentRefuel, readFuelLevel, readLTFT, analyzeQuality, userId, speak]);
   
-  // CORREÇÃO 4: Helper para mensagens de progresso contextuais
-  const getProgressMessage = useCallback((milestone: number, hasAnomaly: boolean): string => {
-    if (hasAnomaly) {
-      const messages: Record<number, string> = {
-        25: 'Vinte e cinco por cento. Correções elevadas detectadas. Continuando análise.',
-        50: 'Metade da análise. Anomalias persistem. Recomendo atenção.',
-        75: 'Setenta e cinco por cento. Finalizando com observações de irregularidade.',
-      };
-      return messages[milestone] || '';
-    }
-    
-    const messages: Record<number, string> = {
-      25: 'Vinte e cinco por cento da análise concluída. Fuel Trim estável até agora.',
-      50: 'Metade da análise concluída. Adaptação de combustível dentro do normal.',
-      75: 'Setenta e cinco por cento concluído. Quase finalizando. Tudo normal.',
-    };
-    return messages[milestone] || '';
-  }, []);
-  
-  // CORREÇÃO 7: Detectar início de movimento (waiting -> monitoring) - useEffect separado
+  // Detectar início de movimento (waiting -> monitoring)
   useEffect(() => {
     if (mode === 'waiting' && currentRefuel && speed > 5 && !isMonitoringActiveRef.current) {
       isMonitoringActiveRef.current = true;
       setMode('monitoring');
       startOdometerRef.current = 0;
       distanceRef.current = 0;
+      lastUpdateTimestampRef.current = Date.now();
       
-      // Resetar refs de alerta ao iniciar monitoramento
+      // Resetar refs de alerta
       lastAnomalyAlertTimeRef.current = 0;
       anomalyRecoveryAnnouncedRef.current = false;
       announcedMilestonesRef.current.clear();
       readFailureCountRef.current = 0;
       
-      speak('Monitoramento iniciado. Analisarei os primeiros 5 quilômetros.');
+      // Anunciar com a distância configurada ATUAL
+      speak(`Monitoramento iniciado. Analisarei os primeiros ${settingsRef.current.monitoringDistance} quilômetros.`);
     }
   }, [mode, currentRefuel, speed, speak]);
   
-  // CORREÇÃO 1: useEffect unificado para monitoramento (Fuel Trim + Distância juntos)
+  // LOOP UNIFICADO DE MONITORAMENTO (500ms)
   useEffect(() => {
     if (mode !== 'monitoring') return;
+    if (monitoringIntervalRef.current) return; // Já tem intervalo ativo
     
-    // Só inicia se ainda não tiver intervalos ativos
-    if (monitoringIntervalRef.current || distanceIntervalRef.current) return;
+    console.log('[Refuel] Iniciando loop unificado de monitoramento (500ms)');
     
-    console.log('[Refuel] Iniciando monitoramento unificado');
+    // Inicializar timestamps
+    lastUpdateTimestampRef.current = Date.now();
+    lastUIUpdateRef.current = Date.now();
+    lastFuelTrimReadRef.current = 0;
+    lastFuelLevelReadRef.current = 0;
     
-    // Iniciar polling de Fuel Trim
     monitoringIntervalRef.current = setInterval(async () => {
-      const stft = await readSTFT();
-      const ltft = await readLTFT();
-      
-      // CORREÇÃO 5: Tratamento de falhas de leitura
-      if (stft === null) {
-        readFailureCountRef.current++;
-        if (readFailureCountRef.current === MAX_READ_FAILURES) {
-          speak('Atenção. Dificuldade na leitura do Fuel Trim. Verifique a conexão com o adaptador.');
-        }
-      } else {
-        readFailureCountRef.current = 0; // Reset no sucesso
-        setCurrentSTFT(stft);
-        stftSamplesRef.current.push(stft);
-        
-        // Verificar anomalia
-        const absSTFT = Math.abs(stft);
-        const isCritical = absSTFT > settings.stftCriticalThreshold;
-        const isWarning = absSTFT > settings.stftWarningThreshold;
-        
-        if (isWarning) {
-          if (!anomalyStartRef.current) {
-            anomalyStartRef.current = Date.now();
-            anomalyRecoveryAnnouncedRef.current = false;
-          }
-          const duration = (Date.now() - anomalyStartRef.current) / 1000;
-          setAnomalyDuration(duration);
-          setAnomalyActive(true);
-          
-          const now = Date.now();
-          const timeSinceLastAlert = (now - lastAnomalyAlertTimeRef.current) / 1000;
-          
-          // Alertas diferenciados baseado na severidade (com rate limiting de 30s)
-          if (duration >= settings.anomalyDurationWarning && timeSinceLastAlert >= 30) {
-            lastAnomalyAlertTimeRef.current = now;
-            const direction = stft > 0 ? 'pobre' : 'rica';
-            const progress = Math.round((distanceRef.current / settings.monitoringDistance) * 100);
-            
-            if (isCritical) {
-              speak(`Alerta crítico! STFT em ${Math.abs(stft).toFixed(0)} porcento. Mistura ${direction}. Progresso: ${progress} porcento. Combustível suspeito.`);
-            } else {
-              speak(`Atenção. Correção de ${Math.abs(stft).toFixed(0)} porcento detectada. Mistura ${direction}. Análise em ${progress} porcento.`);
-            }
-          }
-        } else {
-          // Voltou ao normal - anunciar recuperação se estava em anomalia por >= 5s
-          if (anomalyStartRef.current && !anomalyRecoveryAnnouncedRef.current) {
-            const durationInAnomaly = (Date.now() - anomalyStartRef.current) / 1000;
-            if (durationInAnomaly >= 5) {
-              speak('Fuel Trim estabilizou. Valores normais restaurados.');
-              anomalyRecoveryAnnouncedRef.current = true;
-            }
-          }
-          anomalyStartRef.current = null;
-          setAnomalyActive(false);
-          setAnomalyDuration(0);
-        }
-      }
-      
-      if (ltft !== null) {
-        setCurrentLTFT(ltft);
-      }
-      
-      // Adicionar ao histórico
-      setFuelTrimHistory(prev => [...prev, {
-        timestamp: Date.now(),
-        stft: stft ?? 0,
-        ltft: ltft ?? 0,
-        distance: distanceRef.current,
-      }]);
-    }, 2000);
-    
-    // Iniciar cálculo de distância (no mesmo useEffect para sincronizar)
-    distanceIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const currentSettings = settingsRef.current; // Sempre pega settings atuais
       const currentSpeed = speedRef.current;
       
-      // Só acumula distância se estiver em movimento (>= 3 km/h)
-      if (currentSpeed >= 3) {
-        const kmPerSecond = currentSpeed / 3600;
-        distanceRef.current += kmPerSecond;
+      // ========== 1. CALCULAR DISTÂNCIA (TIMESTAMP-BASED) ==========
+      if (currentSpeed >= 3 && lastUpdateTimestampRef.current) {
+        const deltaTime = (now - lastUpdateTimestampRef.current) / 1000; // segundos
+        const kmThisTick = (currentSpeed / 3600) * deltaTime;
+        distanceRef.current += kmThisTick;
+      }
+      lastUpdateTimestampRef.current = now;
+      
+      // ========== 2. ATUALIZAR UI (THROTTLED 1s) ==========
+      if (now - lastUIUpdateRef.current >= UI_UPDATE_THROTTLE) {
         const newDistance = distanceRef.current;
         setDistanceMonitored(newDistance);
+        lastUIUpdateRef.current = now;
         
         // Log para debug
-        console.log(`[Refuel] Distance: ${newDistance.toFixed(2)} km @ ${currentSpeed} km/h`);
+        const progressPercent = (newDistance / currentSettings.monitoringDistance) * 100;
+        console.log(`[Refuel] Distance: ${newDistance.toFixed(3)} km / ${currentSettings.monitoringDistance} km (${progressPercent.toFixed(1)}%) @ ${currentSpeed} km/h`);
+      }
+      
+      // ========== 3. LER FUEL TRIM (THROTTLED 2s) ==========
+      if (now - lastFuelTrimReadRef.current >= FUEL_TRIM_THROTTLE) {
+        lastFuelTrimReadRef.current = now;
         
-        // Calcular progresso em porcentagem
-        const progressPercent = (newDistance / settings.monitoringDistance) * 100;
+        const stft = await readSTFT();
+        const ltft = await readLTFT();
         
-        // CORREÇÃO 4: Alertas de progresso contextuais (verificando estado de anomalia)
-        const milestones = [25, 50, 75];
-        for (const milestone of milestones) {
-          if (progressPercent >= milestone && !announcedMilestonesRef.current.has(milestone)) {
-            announcedMilestonesRef.current.add(milestone);
+        if (stft === null) {
+          readFailureCountRef.current++;
+          if (readFailureCountRef.current === MAX_READ_FAILURES) {
+            speak('Atenção. Dificuldade na leitura do Fuel Trim. Verifique a conexão com o adaptador.');
+          }
+        } else {
+          readFailureCountRef.current = 0;
+          setCurrentSTFT(stft);
+          stftSamplesRef.current.push(stft);
+          
+          // Verificar anomalia
+          const absSTFT = Math.abs(stft);
+          const isCritical = absSTFT > currentSettings.stftCriticalThreshold;
+          const isWarning = absSTFT > currentSettings.stftWarningThreshold;
+          
+          if (isWarning) {
+            if (!anomalyStartRef.current) {
+              anomalyStartRef.current = Date.now();
+              anomalyRecoveryAnnouncedRef.current = false;
+            }
+            const duration = (Date.now() - anomalyStartRef.current) / 1000;
+            setAnomalyDuration(duration);
+            setAnomalyActive(true);
             
-            // Verificar se há anomalia ativa para mensagem contextual
-            const hasActiveAnomaly = anomalyStartRef.current !== null;
-            speak(getProgressMessage(milestone, hasActiveAnomaly));
-            break; // Só anuncia um milestone por iteração
+            const timeSinceLastAlert = (now - lastAnomalyAlertTimeRef.current) / 1000;
+            
+            if (duration >= currentSettings.anomalyDurationWarning && timeSinceLastAlert >= 30) {
+              lastAnomalyAlertTimeRef.current = now;
+              const direction = stft > 0 ? 'pobre' : 'rica';
+              const progress = Math.round((distanceRef.current / currentSettings.monitoringDistance) * 100);
+              
+              if (isCritical) {
+                speak(`Alerta crítico! STFT em ${Math.abs(stft).toFixed(0)} porcento. Mistura ${direction}. Progresso: ${progress} porcento. Combustível suspeito.`);
+              } else {
+                speak(`Atenção. Correção de ${Math.abs(stft).toFixed(0)} porcento detectada. Mistura ${direction}. Análise em ${progress} porcento.`);
+              }
+            }
+          } else {
+            if (anomalyStartRef.current && !anomalyRecoveryAnnouncedRef.current) {
+              const durationInAnomaly = (Date.now() - anomalyStartRef.current) / 1000;
+              if (durationInAnomaly >= 5) {
+                speak('Fuel Trim estabilizou. Valores normais restaurados.');
+                anomalyRecoveryAnnouncedRef.current = true;
+              }
+            }
+            anomalyStartRef.current = null;
+            setAnomalyActive(false);
+            setAnomalyDuration(0);
           }
         }
         
-        // Finalizar análise ao atingir distância configurada
-        if (newDistance >= settings.monitoringDistance) {
-          finalizeAnalysis();
+        if (ltft !== null) {
+          setCurrentLTFT(ltft);
+        }
+        
+        // Adicionar ao histórico
+        setFuelTrimHistory(prev => [...prev, {
+          timestamp: Date.now(),
+          stft: stft ?? 0,
+          ltft: ltft ?? 0,
+          distance: distanceRef.current,
+        }]);
+      }
+      
+      // ========== 4. VERIFICAR MILESTONES (DINÂMICO) ==========
+      const progressPercent = (distanceRef.current / currentSettings.monitoringDistance) * 100;
+      const milestones = [25, 50, 75];
+      
+      for (const milestone of milestones) {
+        if (progressPercent >= milestone && !announcedMilestonesRef.current.has(milestone)) {
+          announcedMilestonesRef.current.add(milestone);
+          const hasActiveAnomaly = anomalyStartRef.current !== null;
+          speak(getProgressMessage(milestone, hasActiveAnomaly));
+          break; // Só anuncia um milestone por iteração
         }
       }
-    }, 1000);
+      
+      // ========== 5. VERIFICAR CONCLUSÃO ==========
+      if (distanceRef.current >= currentSettings.monitoringDistance) {
+        console.log(`[Refuel] Distância alcançada: ${distanceRef.current.toFixed(3)} km >= ${currentSettings.monitoringDistance} km`);
+        finalizeAnalysis();
+      }
+      
+    }, MONITORING_INTERVAL);
     
-    // Cleanup quando sair do modo monitoring
     return () => {
-      // NÃO limpar aqui - será limpo no cleanup geral ou finalizeAnalysis
+      // Cleanup é feito no finalizeAnalysis ou cancelRefuel
     };
-  }, [mode, settings, readSTFT, readLTFT, speak, getProgressMessage, finalizeAnalysis]);
+  }, [mode, readSTFT, readLTFT, speak, getProgressMessage, finalizeAnalysis]);
   
-  // Ler nível de combustível atual - polling condicional
+  // Polling de nível de combustível
   useEffect(() => {
-    // Só faz polling quando está em modo de monitoramento ou waiting
     if (fuelLevelSupported && isConnected && (mode === 'monitoring' || mode === 'waiting')) {
       fuelLevelIntervalRef.current = setInterval(async () => {
         const level = await readFuelLevel();
         setCurrentFuelLevel(level);
-      }, 5000);
+      }, FUEL_LEVEL_THROTTLE);
       
       return () => {
         if (fuelLevelIntervalRef.current) {
@@ -698,7 +688,7 @@ export function useRefuelMonitor({
     }
   }, [fuelLevelSupported, isConnected, mode, readFuelLevel]);
   
-  // Cleanup geral quando modo muda para inactive ou completed
+  // Cleanup quando modo muda para inactive ou completed
   useEffect(() => {
     if (mode === 'inactive' || mode === 'completed') {
       isMonitoringActiveRef.current = false;
@@ -706,10 +696,6 @@ export function useRefuelMonitor({
       if (monitoringIntervalRef.current) {
         clearInterval(monitoringIntervalRef.current);
         monitoringIntervalRef.current = null;
-      }
-      if (distanceIntervalRef.current) {
-        clearInterval(distanceIntervalRef.current);
-        distanceIntervalRef.current = null;
       }
     }
   }, [mode]);
