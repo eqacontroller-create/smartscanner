@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useBluetooth } from '@/hooks/useBluetooth';
+import { useOBD } from '@/hooks/useOBD';
 import { useJarvis } from '@/hooks/useJarvis';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
 import { useJarvisAI } from '@/hooks/useJarvisAI';
@@ -40,7 +40,7 @@ import { TripHistory } from '@/components/financial/TripHistory';
 import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
 import { RideEndModal } from '@/components/financial/RideEndModal';
 import { TodayRides } from '@/components/financial/TodayRides';
-// AuthModal removido - login agora é página dedicada
+import { RideRecoveryDialog } from '@/components/financial/RideRecoveryDialog';
 import { RefuelButton } from '@/components/refuel/RefuelButton';
 import { RefuelModal } from '@/components/refuel/RefuelModal';
 import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
@@ -59,14 +59,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const Index = () => {
+  // Dados OBD via contexto global (persiste entre navegações)
   const {
     status,
-    rpm,
-    speed,
-    temperature,
-    voltage,
-    fuelLevel,
-    engineLoad,
+    vehicleData,
     detectedVehicle,
     error,
     logs,
@@ -80,7 +76,10 @@ const Index = () => {
     isSupported,
     reconnect,
     hasLastDevice,
-  } = useBluetooth();
+  } = useOBD();
+
+  // Extrair dados do veículo para compatibilidade
+  const { rpm, speed, temperature, voltage, fuelLevel, engineLoad } = vehicleData;
 
   const {
     settings: jarvisSettings,
@@ -906,6 +905,13 @@ const Index = () => {
         onClose={autoRide.closeModal}
         onSave={autoRide.saveRideWithAmount}
         onSkip={autoRide.skipAmountEntry}
+      />
+      
+      {/* Dialog de recuperação de corrida */}
+      <RideRecoveryDialog
+        pendingRide={autoRide.pendingRecovery}
+        onRecover={autoRide.recoverRide}
+        onDiscard={autoRide.discardRecovery}
       />
       
       {/* AuthModal removido - login agora é página dedicada via /login */}
