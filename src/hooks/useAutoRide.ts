@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { RideStatus, RideEntry, DailySummary, TripSettings } from '@/types/tripSettings';
 
+// Constantes para backup
+const BACKUP_KEY = 'current_trip_backup';
+const BACKUP_INTERVAL = 10000; // 10 segundos
+const BACKUP_MAX_AGE = 600000; // 10 minutos
+
 interface UseAutoRideOptions {
   speed: number | null;
   rpm: number | null;
@@ -25,6 +30,10 @@ interface UseAutoRideReturn {
   skipAmountEntry: () => void;
   clearTodayRides: () => void;
   getVoiceReport: () => string;
+  // Novas funções de recuperação
+  pendingRecovery: RideEntry | null;
+  recoverRide: () => void;
+  discardRecovery: () => void;
 }
 
 const STORAGE_KEY_RIDES = 'obd2-today-rides';
@@ -74,6 +83,7 @@ export function useAutoRide({
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [finishedRide, setFinishedRide] = useState<RideEntry | null>(null);
+  const [pendingRecovery, setPendingRecovery] = useState<RideEntry | null>(null);
   
   // Refs para controle de tempo
   const detectionStartRef = useRef<number | null>(null);
@@ -82,6 +92,101 @@ export function useAutoRide({
   const totalDistanceRef = useRef<number>(0);
   const totalDurationRef = useRef<number>(0);
   const speedSamplesRef = useRef<number[]>([]);
+  const backupIntervalRef = useRef<number | null>(null);
+  
+  // Verificar backup ao iniciar
+  useEffect(() => {
+    try {
+      const backup = localStorage.getItem(BACKUP_KEY);
+      if (backup) {
+        const { ride, timestamp } = JSON.parse(backup);
+        const age = Date.now() - timestamp;
+        
+        if (age < BACKUP_MAX_AGE && ride.endTime === 0) {
+          // Corrida não finalizada encontrada
+          console.log('[AutoRide] Backup encontrado:', ride);
+          setPendingRecovery(ride);
+        } else {
+          // Backup expirado, limpar
+          console.log('[AutoRide] Backup expirado, removendo');
+          localStorage.removeItem(BACKUP_KEY);
+        }
+      }
+    } catch (err) {
+      console.error('[AutoRide] Erro ao verificar backup:', err);
+      localStorage.removeItem(BACKUP_KEY);
+    }
+  }, []);
+  
+  // Auto-backup durante corrida (a cada 10 segundos)
+  useEffect(() => {
+    if (rideStatus !== 'in_ride' || !currentRide) {
+      // Limpar intervalo se não estiver em corrida
+      if (backupIntervalRef.current) {
+        clearInterval(backupIntervalRef.current);
+        backupIntervalRef.current = null;
+      }
+      return;
+    }
+    
+    // Criar intervalo de backup
+    backupIntervalRef.current = window.setInterval(() => {
+      const backupData = {
+        ride: {
+          ...currentRide,
+          distance: totalDistanceRef.current,
+          duration: totalDurationRef.current,
+        },
+        timestamp: Date.now(),
+      };
+      
+      try {
+        localStorage.setItem(BACKUP_KEY, JSON.stringify(backupData));
+        console.log('[AutoRide] Backup salvo:', backupData.ride.distance.toFixed(2), 'km');
+      } catch (err) {
+        console.error('[AutoRide] Erro ao salvar backup:', err);
+      }
+    }, BACKUP_INTERVAL);
+    
+    return () => {
+      if (backupIntervalRef.current) {
+        clearInterval(backupIntervalRef.current);
+        backupIntervalRef.current = null;
+      }
+    };
+  }, [rideStatus, currentRide]);
+  
+  // Função para recuperar corrida
+  const recoverRide = useCallback(() => {
+    if (!pendingRecovery) return;
+    
+    console.log('[AutoRide] Recuperando corrida:', pendingRecovery);
+    
+    // Restaurar refs
+    totalDistanceRef.current = pendingRecovery.distance;
+    totalDurationRef.current = pendingRecovery.duration;
+    lastUpdateRef.current = Date.now();
+    speedSamplesRef.current = pendingRecovery.averageSpeed > 0 
+      ? [pendingRecovery.averageSpeed] 
+      : [];
+    
+    setCurrentRide(pendingRecovery);
+    setRideStatus('in_ride');
+    setPendingRecovery(null);
+    
+    // Não remove o backup ainda - será mantido até finalizar
+    
+    if (speak) {
+      speak('Corrida anterior restaurada, piloto. Continuando de onde parou.');
+    }
+  }, [pendingRecovery, speak]);
+  
+  // Função para descartar recuperação
+  const discardRecovery = useCallback(() => {
+    console.log('[AutoRide] Descartando recuperação');
+    setPendingRecovery(null);
+    localStorage.removeItem(BACKUP_KEY);
+  }, []);
   
   // Atualizar quando initialRides mudar (dados do cloud chegarem)
   useEffect(() => {
@@ -143,6 +248,9 @@ export function useAutoRide({
       duration,
       averageSpeed: avgSpeed,
     };
+    
+    // Limpar backup ao finalizar
+    localStorage.removeItem(BACKUP_KEY);
     
     setFinishedRide(finishedRideData);
     setIsModalOpen(true);
@@ -333,5 +441,9 @@ export function useAutoRide({
     skipAmountEntry,
     clearTodayRides,
     getVoiceReport,
+    // Novas funções de recuperação
+    pendingRecovery,
+    recoverRide,
+    discardRecovery,
   };
 }
