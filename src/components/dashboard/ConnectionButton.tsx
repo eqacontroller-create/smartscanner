@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ConnectionStatus } from '@/hooks/useBluetooth';
+import { ConnectionStatus } from '@/contexts/OBDContext';
 import { Bluetooth, BluetoothOff, Loader2 } from 'lucide-react';
 
 interface ConnectionButtonProps {

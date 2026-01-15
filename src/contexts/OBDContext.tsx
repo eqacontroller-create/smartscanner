@@ -4,8 +4,16 @@ const SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
 const WRITE_CHARACTERISTIC_UUID = '0000fff2-0000-1000-8000-00805f9b34fb';
 const NOTIFY_CHARACTERISTIC_UUID = '0000fff1-0000-1000-8000-00805f9b34fb';
 
-// Throttle de 200ms para atualização da UI
-const UI_THROTTLE_MS = 200;
+// Adaptive throttle values for UI updates
+const THROTTLE_IDLE_MS = 500;    // Vehicle stopped (RPM = 0)
+const THROTTLE_NORMAL_MS = 200;  // Normal driving
+const THROTTLE_SPORT_MS = 100;   // High RPM (> 4000)
+
+// Polling interval for OBD reads
+const POLLING_INTERVAL_MS = 600;
+
+// Max consecutive failures before reconnect attempt
+const MAX_CONSECUTIVE_FAILURES = 5;
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'initializing' | 'ready' | 'reading' | 'error';
 
@@ -88,6 +96,9 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   const isPollingRef = useRef(false);
   const isReadingRef = useRef(false);
   const isReconnectingRef = useRef(false);
+  
+  // Contador de falhas consecutivas para auto-reconnect
+  const consecutiveFailuresRef = useRef<number>(0);
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 
@@ -100,11 +111,21 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   const addLogRef = useRef(addLog);
   addLogRef.current = addLog;
 
-  // Throttled UI update - atualiza estado público apenas a cada 200ms
+  // Get adaptive throttle based on current RPM
+  const getAdaptiveThrottle = useCallback(() => {
+    const rpm = vehicleDataRef.current.rpm;
+    if (rpm === null || rpm === 0) return THROTTLE_IDLE_MS;
+    if (rpm > 4000) return THROTTLE_SPORT_MS;
+    return THROTTLE_NORMAL_MS;
+  }, []);
+
+  // Throttled UI update - atualiza estado público com throttle adaptativo
   useEffect(() => {
-    const throttleInterval = setInterval(() => {
+    const checkAndUpdate = () => {
       const now = Date.now();
-      if (now - lastUIUpdateRef.current >= UI_THROTTLE_MS) {
+      const throttle = getAdaptiveThrottle();
+      
+      if (now - lastUIUpdateRef.current >= throttle) {
         const current = vehicleDataRef.current;
         setVehicleData(prev => {
           // Só atualiza se houver mudanças reais
@@ -122,10 +143,13 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
           return prev;
         });
       }
-    }, UI_THROTTLE_MS);
+    };
+
+    // Use the fastest throttle to check frequently, actual update respects adaptive throttle
+    const throttleInterval = setInterval(checkAndUpdate, THROTTLE_SPORT_MS);
 
     return () => clearInterval(throttleInterval);
-  }, []);
+  }, [getAdaptiveThrottle]);
 
   // Handle BLE notifications
   const handleNotification = useCallback((event: Event) => {
@@ -416,6 +440,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
     if (!writeCharRef.current || isReadingRef.current) return false;
 
     isReadingRef.current = true;
+    let readSuccess = false;
 
     try {
       // Read RPM (PID 010C)
@@ -428,8 +453,10 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
           const A = parseInt(rpmMatch[1], 16);
           const B = parseInt(rpmMatch[2], 16);
           vehicleDataRef.current.rpm = Math.round(((A * 256) + B) / 4);
+          readSuccess = true;
         } else if (cleanRpm.includes('NODATA')) {
           vehicleDataRef.current.rpm = 0;
+          readSuccess = true;
         }
       } catch {
         addLogRef.current('⚠️ Erro lendo RPM');
@@ -445,8 +472,10 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         
         if (speedMatch) {
           vehicleDataRef.current.speed = parseInt(speedMatch[1], 16);
+          readSuccess = true;
         } else if (cleanSpeed.includes('NODATA')) {
           vehicleDataRef.current.speed = 0;
+          readSuccess = true;
         }
       } catch {
         addLogRef.current('⚠️ Erro lendo velocidade');
@@ -462,6 +491,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         
         if (tempMatch) {
           vehicleDataRef.current.temperature = parseInt(tempMatch[1], 16) - 40;
+          readSuccess = true;
         } else if (cleanTemp.includes('NODATA')) {
           vehicleDataRef.current.temperature = null;
         }
@@ -481,6 +511,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
           const A = parseInt(voltMatch[1], 16);
           const B = parseInt(voltMatch[2], 16);
           vehicleDataRef.current.voltage = Math.round(((A * 256) + B) / 1000 * 10) / 10;
+          readSuccess = true;
         } else if (cleanVolt.includes('NODATA')) {
           vehicleDataRef.current.voltage = null;
         }
@@ -498,6 +529,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         
         if (fuelMatch) {
           vehicleDataRef.current.fuelLevel = Math.round(parseInt(fuelMatch[1], 16) * 100 / 255);
+          readSuccess = true;
         } else if (cleanFuel.includes('NODATA')) {
           vehicleDataRef.current.fuelLevel = null;
         }
@@ -515,6 +547,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         
         if (loadMatch) {
           vehicleDataRef.current.engineLoad = Math.round(parseInt(loadMatch[1], 16) * 100 / 255);
+          readSuccess = true;
         } else if (cleanLoad.includes('NODATA')) {
           vehicleDataRef.current.engineLoad = null;
         }
@@ -522,8 +555,19 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         addLogRef.current('⚠️ Erro lendo carga do motor');
       }
 
-      return true;
+      // Track consecutive failures
+      if (readSuccess) {
+        consecutiveFailuresRef.current = 0;
+      } else {
+        consecutiveFailuresRef.current++;
+        if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+          addLogRef.current(`⚠️ ${MAX_CONSECUTIVE_FAILURES} falhas consecutivas - verificando conexão...`);
+        }
+      }
+
+      return readSuccess;
     } catch {
+      consecutiveFailuresRef.current++;
       return false;
     } finally {
       isReadingRef.current = false;
