@@ -14,6 +14,7 @@ import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
 import { useRefuelSettings } from '@/hooks/useRefuelSettings';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
+import { useAlerts } from '@/hooks/useAlerts';
 import { getShiftPoints } from '@/types/jarvisSettings';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';

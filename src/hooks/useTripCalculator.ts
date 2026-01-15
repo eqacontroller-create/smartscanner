@@ -45,7 +45,7 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
   const totalDistanceRef = useRef<number>(0);
   const totalDurationRef = useRef<number>(0);
   const speedSamplesRef = useRef<number[]>([]);
-  const animationFrameRef = useRef<number | null>(null);
+  const updateIntervalRef = useRef<number | null>(null);
   
   // Carregar configurações do localStorage
   useEffect(() => {
@@ -84,7 +84,7 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
     return fuelCost + additionalCost;
   }, [settings]);
   
-  // Atualizar dados da viagem
+  // Atualizar dados da viagem (chamado a cada 500ms quando ativo)
   const updateTripData = useCallback(() => {
     if (!tripData.isActive) return;
     
@@ -103,6 +103,10 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
     // Amostras de velocidade para média
     if (currentSpeed > 0) {
       speedSamplesRef.current.push(currentSpeed);
+      // Limitar amostras para evitar crescimento infinito
+      if (speedSamplesRef.current.length > 1000) {
+        speedSamplesRef.current = speedSamplesRef.current.slice(-500);
+      }
     }
     
     // Calcular velocidade média
@@ -124,21 +128,20 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
       costPerKm,
       averageSpeed: avgSpeed,
     }));
-    
-    // Continuar atualizando
-    animationFrameRef.current = requestAnimationFrame(updateTripData);
   }, [tripData.isActive, speed, calculateCost]);
   
-  // Iniciar loop de atualização quando viagem ativa
+  // Iniciar loop de atualização quando viagem ativa (usando setInterval em vez de RAF)
   useEffect(() => {
     if (tripData.isActive) {
       lastUpdateRef.current = Date.now();
-      animationFrameRef.current = requestAnimationFrame(updateTripData);
+      // Usar setInterval de 500ms para atualização estável
+      updateIntervalRef.current = window.setInterval(updateTripData, 500);
     }
     
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
       }
     };
   }, [tripData.isActive, updateTripData]);
