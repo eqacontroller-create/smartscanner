@@ -1,15 +1,19 @@
+import { lazy, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DTCScanner } from '@/components/mechanic/DTCScanner';
-import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
 import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
 import { VehicleInfoCard } from '@/components/dashboard/VehicleInfoCard';
 import { MaintenanceCard } from '@/components/dashboard/MaintenanceCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { SectionHeader } from '@/components/common/SectionHeader';
+import { ScannerSkeleton, LiveDataSkeleton } from '@/components/mechanic/ScannerSkeleton';
 import { AlertTriangle, Activity, Wrench, Car, Calendar } from 'lucide-react';
 import type { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
 import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
 import type { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
+
+// Lazy load heavy components
+const DTCScanner = lazy(() => import('@/components/mechanic/DTCScanner').then(m => ({ default: m.DTCScanner })));
+const LiveDataMonitor = lazy(() => import('@/components/mechanic/LiveDataMonitor').then(m => ({ default: m.LiveDataMonitor })));
 
 interface MechanicTabProps {
   sendCommand: (cmd: string) => Promise<string>;
@@ -81,14 +85,16 @@ export function MechanicTab({
         {/* Diagnóstico (DTCs) */}
         <TabsContent value="diagnostico" className="space-y-4 mt-4 tab-content-enter">
           <div className="card-hover rounded-xl">
-            <DTCScanner 
-              sendCommand={sendCommand}
-              isConnected={isConnected}
-              addLog={addLog}
-              stopPolling={stopPolling}
-              isPolling={isPolling}
-              onSpeakAlert={aiModeEnabled ? speak : undefined}
-            />
+            <Suspense fallback={<ScannerSkeleton />}>
+              <DTCScanner 
+                sendCommand={sendCommand}
+                isConnected={isConnected}
+                addLog={addLog}
+                stopPolling={stopPolling}
+                isPolling={isPolling}
+                onSpeakAlert={aiModeEnabled ? speak : undefined}
+              />
+            </Suspense>
           </div>
           <div className="animate-fade-in stagger-1">
             <LogPanel logs={logs} />
@@ -98,13 +104,15 @@ export function MechanicTab({
         {/* Live Data (Sensores) */}
         <TabsContent value="live" className="space-y-4 mt-4 tab-content-enter">
           <div className="card-hover rounded-xl">
-            <LiveDataMonitor
-              sendCommand={sendCommand}
-              isConnected={isConnected}
-              addLog={addLog}
-              stopPolling={stopPolling}
-              isPolling={isPolling}
-            />
+            <Suspense fallback={<LiveDataSkeleton />}>
+              <LiveDataMonitor
+                sendCommand={sendCommand}
+                isConnected={isConnected}
+                addLog={addLog}
+                stopPolling={stopPolling}
+                isPolling={isPolling}
+              />
+            </Suspense>
           </div>
           <div className="animate-fade-in stagger-1">
             <LogPanel logs={logs} />
