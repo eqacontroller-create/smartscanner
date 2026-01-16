@@ -47,3 +47,21 @@ export function LiveDataSkeleton() {
     </Card>
   );
 }
+
+export function VisualMechanicSkeleton() {
+  return (
+    <Card className="glass border-border/50">
+      <CardHeader className="text-center space-y-2">
+        <Skeleton className="h-16 w-16 rounded-full mx-auto" />
+        <Skeleton className="h-6 w-56 mx-auto" />
+        <Skeleton className="h-4 w-72 mx-auto" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Skeleton className="h-32 flex-1 max-w-[200px] rounded-lg" />
+          <Skeleton className="h-32 flex-1 max-w-[200px] rounded-lg" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
