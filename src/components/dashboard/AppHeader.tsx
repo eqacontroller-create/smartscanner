@@ -1,0 +1,127 @@
+import { Link } from 'react-router-dom';
+import { Car, Download, HelpCircle, MoreVertical, Volume2, Moon, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
+import { SyncStatus } from '@/components/dashboard/SyncStatus';
+import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
+import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
+import { JarvisSettingsButton } from '@/components/dashboard/JarvisSettingsButton';
+import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
+import type { VehicleProfile, VehicleBrand, DetectedVehicle } from '@/lib/vehicleProfiles';
+import type { ConnectionStatus } from '@/contexts/OBDContext';
+
+interface AppHeaderProps {
+  themeVehicle: DetectedVehicle | null;
+  currentProfile: VehicleProfile;
+  syncStatus: { synced: boolean; loading: boolean };
+  status: ConnectionStatus;
+  jarvisEnabled: boolean;
+  isJarvisSupported: boolean;
+  isSpeaking: boolean;
+  isListening: boolean;
+  isProcessing: boolean;
+  isAISupported: boolean;
+  aiError: string | null;
+  isWakeLockActive: boolean;
+  onOpenSettings: () => void;
+  onTestAudio: () => void;
+  onToggleListening: () => void;
+}
+
+export function AppHeader({
+  themeVehicle,
+  currentProfile,
+  syncStatus,
+  status,
+  jarvisEnabled,
+  isJarvisSupported,
+  isSpeaking,
+  isListening,
+  isProcessing,
+  isAISupported,
+  aiError,
+  isWakeLockActive,
+  onOpenSettings,
+  onTestAudio,
+  onToggleListening,
+}: AppHeaderProps) {
+  return (
+    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 safe-area-top">
+      <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {themeVehicle ? (
+              <VehicleBadge 
+                brand={themeVehicle.brand} 
+                profile={themeVehicle.profile}
+                modelYear={themeVehicle.modelYear}
+                compact
+              />
+            ) : (
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
+                {themeVehicle ? 'Scanner OBD-II' : 'OBD-II Scanner'}
+              </h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">
+                {themeVehicle ? currentProfile.slogan : 'Scanner Universal Didático'}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1 sm:gap-2">
+            <SyncStatus synced={syncStatus.synced} lastSyncedAt={syncStatus.loading ? null : new Date()} />
+            
+            <div className="hidden xs:flex items-center gap-1 sm:gap-2">
+              <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
+                <Link to="/instalar"><Download className="h-4 w-4 sm:h-5 sm:w-5" /></Link>
+              </Button>
+              <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
+                <Link to="/ajuda"><HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" /></Link>
+              </Button>
+            </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild className="xs:hidden">
+                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[180px]">
+                <DropdownMenuItem asChild>
+                  <Link to="/instalar" className="flex items-center gap-2"><Download className="h-4 w-4" />Instalar App</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/ajuda" className="flex items-center gap-2"><HelpCircle className="h-4 w-4" />Central de Ajuda</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onOpenSettings}><Settings className="h-4 w-4 mr-2" />Configurações Jarvis</DropdownMenuItem>
+                <DropdownMenuItem onClick={onTestAudio} disabled={!isJarvisSupported || isSpeaking}>
+                  <Volume2 className="h-4 w-4 mr-2" />Testar Áudio
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {jarvisEnabled && (
+              <JarvisVoiceButton isListening={isListening} isProcessing={isProcessing} isSpeaking={isSpeaking} isSupported={isAISupported} error={aiError} onToggle={onToggleListening} />
+            )}
+            
+            <div className="hidden xs:flex items-center gap-1 sm:gap-2">
+              <JarvisSettingsButton onClick={onOpenSettings} disabled={!isJarvisSupported} />
+              <JarvisTestButton onTest={onTestAudio} isSpeaking={isSpeaking} isSupported={isJarvisSupported} />
+            </div>
+            
+            {isWakeLockActive && <div className="flex items-center text-blue-400" title="Modo Insônia ativo"><Moon className="h-4 w-4" /></div>}
+            <StatusIndicator status={status} />
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
