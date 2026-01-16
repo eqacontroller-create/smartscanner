@@ -393,8 +393,8 @@ export function useRefuelMonitor({
     console.log('[Refuel] startQuickTest - Iniciando teste rápido');
     console.log('[Refuel] Função speak recebida:', typeof speak);
     
-    // Verificar se STFT é suportado
-    if (!stftSupported) {
+    // Verificar se STFT é suportado (bloqueia apenas se explicitamente false)
+    if (stftSupported === false) {
       await speak('Este veículo não suporta leitura de Fuel Trim. Teste não disponível.');
       return;
     }

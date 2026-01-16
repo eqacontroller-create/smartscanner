@@ -59,7 +59,7 @@ interface FinancialTabProps {
   frozenSettings: RefuelSettings | null;
   currentRefuel: Partial<RefuelEntry> | null;
   isSyncing: boolean;
-  stftSupported: boolean;
+  stftSupported: boolean | null;
   isConnected: boolean;
   isAuthenticated: boolean;
   onStartRefuelMode: () => void;

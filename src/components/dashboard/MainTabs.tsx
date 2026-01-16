@@ -83,7 +83,7 @@ interface MainTabsProps {
   frozenSettings: RefuelSettings | null;
   currentRefuel: Partial<RefuelEntry> | null;
   isSyncing: boolean;
-  stftSupported: boolean;
+  stftSupported: boolean | null;
   isAuthenticated: boolean;
   onStartRefuelMode: () => void;
   onStartQuickTest: () => void;
