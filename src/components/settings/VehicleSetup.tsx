@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Car, CheckCircle2, Loader2, AlertTriangle, Sparkles, Wrench } from 'lucide-react';
+import { Car, CheckCircle2, Loader2, AlertTriangle, Sparkles, Wrench, Search } from 'lucide-react';
 import { VehicleModelsService, type VehicleModelData, type CommonIssue } from '@/services/supabase/VehicleModelsService';
 import { cn } from '@/lib/utils';
+import { VehicleSelector, type VehicleConfig as SelectorConfig } from '@/components/vehicle';
 
 export interface VehicleConfig {
   brand: string;
@@ -61,6 +62,7 @@ export function VehicleSetup({
   const [engine, setEngine] = useState(currentConfig?.engine || '');
   const [transmission, setTransmission] = useState(currentConfig?.transmission || 'manual');
   const [nickname, setNickname] = useState(currentConfig?.nickname || '');
+  const [selectorOpen, setSelectorOpen] = useState(false);
 
   // Load brands on mount
   useEffect(() => {
@@ -150,8 +152,41 @@ export function VehicleSetup({
     return b.charAt(0).toUpperCase() + b.slice(1);
   };
 
+  const handleSelectorSelect = async (config: SelectorConfig) => {
+    setBrand(config.brand);
+    setModel(config.model);
+    setYear(config.year);
+    setEngine(config.engine);
+    setTransmission(config.transmission.toLowerCase().includes('auto') ? 'automatic' : 'manual');
+    setNickname(config.nickname);
+    await onSave(config);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Quick Search Button */}
+      <Button
+        variant="outline"
+        onClick={() => setSelectorOpen(true)}
+        className="w-full h-12 gap-3 text-base border-dashed border-2 hover:border-primary hover:bg-primary/5"
+      >
+        <Search className="h-5 w-5 text-primary" />
+        <span>Buscar veículo no catálogo</span>
+      </Button>
+
+      <VehicleSelector
+        open={selectorOpen}
+        onOpenChange={setSelectorOpen}
+        currentVehicle={currentConfig as SelectorConfig}
+        onSelect={handleSelectorSelect}
+      />
+
+      <div className="relative flex items-center gap-2 my-4">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground px-2">ou preencha manualmente</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
       {/* VIN Detection Badge */}
       {detectedVin && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
