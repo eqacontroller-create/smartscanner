@@ -1,12 +1,14 @@
 /**
  * DiagnosisCard - Card premium didático com resultado do diagnóstico
- * Inclui badge do veículo, busca contextualizada e opção de salvar
+ * Inclui badge do veículo, busca contextualizada, opção de salvar e celebração
  */
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { RiskBadge } from './RiskBadge';
+import { Confetti } from '@/components/ui/confetti';
 import { VisionService } from '@/services/ai/VisionService';
 import { 
   ShoppingCart, 
@@ -20,7 +22,8 @@ import {
   Car,
   Save,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  PartyPopper
 } from 'lucide-react';
 import { RISK_CONFIG, type VisionAnalysisResult, type VehicleContextForVision } from '@/types/visionTypes';
 import { cn } from '@/lib/utils';
@@ -70,7 +73,19 @@ export function DiagnosisCard({
   isSaving,
   isSaved
 }: DiagnosisCardProps) {
+  const [showConfetti, setShowConfetti] = useState(false);
   const riskConfig = RISK_CONFIG[result.riskLevel];
+  
+  // Trigger confetti for safe results
+  useEffect(() => {
+    if (result.riskLevel === 'safe') {
+      // Small delay for better UX
+      const timer = setTimeout(() => {
+        setShowConfetti(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [result.riskLevel]);
   
   // Verifica se tem contexto de veículo válido
   const hasVehicle = vehicleContext && (vehicleContext.brand || vehicleContext.model);
@@ -139,14 +154,25 @@ export function DiagnosisCard({
   };
   
   return (
-    <Card className="overflow-hidden border-2 border-border/50 bg-card/90 backdrop-blur-sm">
+    <>
+      {/* Confetti celebration for safe results */}
+      <Confetti active={showConfetti} duration={3000} particleCount={40} />
+      
+      <Card className="overflow-hidden border-2 border-border/50 bg-card/90 backdrop-blur-sm">
       {/* Premium gradient header */}
       <div className={cn('relative p-5 overflow-hidden bg-gradient-to-r', getRiskGradient())}>
         {/* Decorative orb */}
         <div className={cn('absolute -right-12 -top-12 w-32 h-32 rounded-full blur-3xl', getRiskOrb())} />
         
         <div className="relative flex items-center justify-between gap-4">
-          <RiskBadge level={result.riskLevel} size="lg" />
+          <div className="flex items-center gap-3">
+            <RiskBadge level={result.riskLevel} size="lg" />
+            {result.riskLevel === 'safe' && (
+              <div className="animate-celebrate-pop">
+                <PartyPopper className="h-6 w-6 text-emerald-400 drop-shadow-[0_0_8px_hsl(142_76%_45%/0.5)]" />
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {onSpeak && (
               <Button
@@ -318,5 +344,6 @@ export function DiagnosisCard({
         )}
       </CardContent>
     </Card>
+    </>
   );
 }
