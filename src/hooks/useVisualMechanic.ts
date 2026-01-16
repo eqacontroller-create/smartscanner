@@ -23,6 +23,7 @@ export interface UseVisualMechanicReturn {
   
   // Ações
   startCapture: (type: AnalysisType) => void;
+  stopCapturing: () => void;
   handleFileSelect: (file: File) => void;
   addFile: (file: File) => void;
   removeFile: (index: number) => void;
@@ -217,6 +218,11 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     }
   }, [mediaFiles]);
   
+  // Para o modo de captura (volta ao preview)
+  const stopCapturing = useCallback(() => {
+    setIsCapturing(false);
+  }, []);
+
   // Reseta estado
   const reset = useCallback(() => {
     // Limpa URLs das previews
@@ -243,6 +249,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     progressMessage,
     canAddMore,
     startCapture,
+    stopCapturing,
     handleFileSelect,
     addFile,
     removeFile,

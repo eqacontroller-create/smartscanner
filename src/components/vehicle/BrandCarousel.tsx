@@ -27,7 +27,7 @@ function BrandItem({ brand, asset, isSelected, modelCount, onClick }: BrandItemP
         "min-w-[80px] touch-target",
         isSelected 
           ? "bg-primary/10 ring-2 ring-primary scale-105" 
-          : "bg-card hover:bg-accent/50 hover:scale-102",
+          : "bg-card hover:bg-accent/50 hover:scale-[1.02]",
         asset.premium && "relative"
       )}
       style={{

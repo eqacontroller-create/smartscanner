@@ -49,6 +49,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
     progressMessage,
     canAddMore,
     startCapture,
+    stopCapturing,
     handleFileSelect,
     addFile,
     removeFile,
@@ -78,13 +79,17 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
     refresh: refreshHistory,
   } = useDiagnosisHistory();
   
+  // Helper para capitalizar primeira letra com safe navigation
+  const capitalizeFirst = (str?: string | null) => 
+    str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+
   // Verifica se tem veículo configurado
   const hasVehicle = vehicleContext && (vehicleContext.brand || vehicleContext.model);
   const vehicleDisplayName = hasVehicle 
     ? [
-        vehicleContext.brand?.charAt(0).toUpperCase() + vehicleContext.brand?.slice(1),
-        vehicleContext.model,
-        vehicleContext.year
+        capitalizeFirst(vehicleContext?.brand),
+        vehicleContext?.model,
+        vehicleContext?.year
       ].filter(Boolean).join(' ')
     : null;
   
@@ -287,7 +292,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
                 <FileCapture
                   analysisType={analysisType}
                   onFileSelect={mediaFiles.length > 0 ? addFile : handleFileSelect}
-                  onCancel={mediaFiles.length > 0 ? () => {} : handleReset}
+                  onCancel={mediaFiles.length > 0 ? stopCapturing : handleReset}
                   isAddingMore={mediaFiles.length > 0}
                 />
               )}

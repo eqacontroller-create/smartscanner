@@ -18,21 +18,13 @@ import {
   Star,
   Sparkles
 } from 'lucide-react';
+import type { VehicleConfig } from './VehicleSelector';
 
 interface VehicleDetailProps {
   model: VehicleModelData;
   onBack: () => void;
   onConfirm: (config: VehicleConfig) => void;
   isLoading?: boolean;
-}
-
-interface VehicleConfig {
-  brand: string;
-  model: string;
-  year: string;
-  engine: string;
-  transmission: string;
-  nickname: string;
 }
 
 export function VehicleDetail({ model, onBack, onConfirm, isLoading }: VehicleDetailProps) {

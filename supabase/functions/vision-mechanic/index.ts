@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAX_IMAGES = 4;
+
 // Gera prompt da persona "Amigo Mecânico" com contexto do veículo
 function getMechanicSystemPrompt(vehicleContext?: { brand?: string; model?: string; year?: string; engine?: string }, imageCount?: number): string {
   let vehicleInfo = '';
@@ -76,6 +78,14 @@ serve(async (req) => {
       if (!media || media.length === 0) {
         return new Response(
           JSON.stringify({ success: false, error: 'Nenhuma mídia fornecida' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Valida limite de imagens
+      if (media.length > MAX_IMAGES) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Máximo de ${MAX_IMAGES} imagens permitidas` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

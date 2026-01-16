@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 import { useVehicleSearch } from '@/hooks/useVehicleSearch';
 import { VehicleModelData } from '@/services/supabase/VehicleModelsService';
 import { BrandCarousel } from './BrandCarousel';
@@ -10,7 +9,8 @@ import { FilterChips } from './FilterChips';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { X, Car, Sparkles } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { X, Car, Sparkles, AlertTriangle } from 'lucide-react';
 
 export interface VehicleConfig {
   brand: string;
@@ -177,6 +177,14 @@ export function VehicleSelector({
         onClearAll={clearFilters}
         className="px-4 py-2"
       />
+
+      {/* Error display */}
+      {error && (
+        <Alert variant="destructive" className="mx-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Vehicle grid */}
       <div className="flex-1 overflow-auto p-4">
