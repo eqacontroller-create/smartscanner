@@ -1,5 +1,4 @@
 import { JarvisFloatingWidget } from '@/components/dashboard/JarvisFloatingWidget';
-import { JarvisSettingsSheet } from '@/components/dashboard/JarvisSettingsSheet';
 import { RideEndModal } from '@/components/financial/RideEndModal';
 import { RideRecoveryDialog } from '@/components/financial/RideRecoveryDialog';
 import { RefuelButton } from '@/components/refuel/RefuelButton';
@@ -34,7 +33,7 @@ interface FloatingControlsProps {
   onToggleListening: () => void;
   onToggleContinuousMode: () => void;
   onClearHistory: () => void;
-  // Jarvis Settings Sheet
+  // Jarvis Settings (not used anymore - settings moved to SettingsTab)
   isSettingsOpen: boolean;
   onSettingsChange: (open: boolean) => void;
   jarvisSettings: JarvisSettings;
@@ -92,7 +91,7 @@ export function FloatingControls(props: FloatingControlsProps) {
     <>
       <JarvisFloatingWidget isListening={props.isListening} isContinuousMode={props.isContinuousMode} isWakeWordDetected={props.isWakeWordDetected} isProcessing={props.isProcessing} isSpeaking={props.isSpeakingAI} isSupported={props.isAISupported} isEnabled={props.aiEnabled} continuousListeningEnabled={props.continuousListeningEnabled} wakeWord={props.wakeWord} error={props.aiError} lastTranscript={props.lastTranscript} interimTranscript={props.interimTranscript} lastResponse={props.lastResponse} conversationHistory={props.conversationHistory} onToggleListening={props.onToggleListening} onToggleContinuousMode={props.onToggleContinuousMode} onClearHistory={props.onClearHistory} />
 
-      <JarvisSettingsSheet open={props.isSettingsOpen} onOpenChange={props.onSettingsChange} settings={props.jarvisSettings} onUpdateSetting={props.onUpdateJarvisSetting} onResetToDefaults={props.onResetJarvisSettings} availableVoices={props.availableVoices} portugueseVoices={props.portugueseVoices} onTestVoice={props.onTestVoice} isSpeaking={props.isSpeaking} isWakeLockActive={props.isWakeLockActive} />
+      {/* JarvisSettingsSheet removed - all settings now in SettingsTab */}
       
       <RideEndModal isOpen={props.autoRide.isModalOpen} ride={props.autoRide.finishedRide} onClose={props.autoRide.closeModal} onSave={props.autoRide.saveRideWithAmount} onSkip={props.autoRide.skipAmountEntry} />
       
