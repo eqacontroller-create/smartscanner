@@ -8,7 +8,7 @@ import { LogPanel } from '@/components/dashboard/LogPanel';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { AlertTriangle, Activity, Wrench, Car, Calendar } from 'lucide-react';
 import { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
-import { MaintenanceAlert, MaintenanceInterval } from '@/types/maintenanceTypes';
+import type { MaintenanceAlert, MaintenanceInterval, MaintenanceType } from '@/types/maintenanceTypes';
 
 interface MechanicTabProps {
   sendCommand: (cmd: string) => Promise<string>;
@@ -27,7 +27,7 @@ interface MechanicTabProps {
   maintenanceSchedule: {
     alerts: MaintenanceAlert[];
     intervals: MaintenanceInterval[];
-    recordMaintenance: (type: string) => void;
+    recordMaintenance: (type: MaintenanceType, mileage: number, notes?: string) => void;
     getVoiceMessage: () => string | null;
   };
   currentMileage: number;
