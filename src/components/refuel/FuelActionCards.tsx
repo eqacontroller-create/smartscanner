@@ -95,13 +95,14 @@ export function FuelActionCards({
       </Card>
 
       {/* Card Teste Rápido */}
+      {/* BUG FIX 2: stftSupported pode ser null (ainda verificando), só desabilita se false */}
       <Card 
         className={cn(
           'cursor-pointer transition-all duration-200 hover:shadow-lg group',
           'border-blue-500/30 hover:border-blue-500/60 bg-gradient-to-br from-blue-500/5 to-transparent',
-          !stftSupported && 'opacity-60 cursor-not-allowed'
+          stftSupported === false && 'opacity-60 cursor-not-allowed'
         )}
-        onClick={stftSupported ? onStartQuickTest : undefined}
+        onClick={stftSupported !== false ? onStartQuickTest : undefined}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
@@ -134,13 +135,13 @@ export function FuelActionCards({
           
           <Button 
             className="w-full mt-4 gap-2 bg-blue-500 hover:bg-blue-600"
-            disabled={!stftSupported}
+            disabled={stftSupported === false}
           >
             <Zap className="h-4 w-4" />
-            {stftSupported ? 'Iniciar' : 'STFT Indisponível'}
+            {stftSupported === false ? 'STFT Indisponível' : stftSupported === null ? 'Verificando...' : 'Iniciar'}
           </Button>
           
-          {!stftSupported && (
+          {stftSupported === false && (
             <p className="text-[10px] text-muted-foreground text-center mt-2">
               Seu veículo não suporta leitura de Fuel Trim
             </p>
