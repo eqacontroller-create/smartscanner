@@ -5,8 +5,8 @@ import { VehicleInfoCard } from '@/components/dashboard/VehicleInfoCard';
 import { MaintenanceCard } from '@/components/dashboard/MaintenanceCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { SectionHeader } from '@/components/common/SectionHeader';
-import { ScannerSkeleton, LiveDataSkeleton } from '@/components/mechanic/ScannerSkeleton';
-import { AlertTriangle, Activity, Wrench, Car, Calendar } from 'lucide-react';
+import { ScannerSkeleton, LiveDataSkeleton, VisualMechanicSkeleton } from '@/components/mechanic/ScannerSkeleton';
+import { AlertTriangle, Activity, Wrench, Car, Calendar, Eye } from 'lucide-react';
 import type { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
 import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
 import type { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
@@ -14,7 +14,7 @@ import type { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
 // Lazy load heavy components
 const DTCScanner = lazy(() => import('@/components/mechanic/DTCScanner').then(m => ({ default: m.DTCScanner })));
 const LiveDataMonitor = lazy(() => import('@/components/mechanic/LiveDataMonitor').then(m => ({ default: m.LiveDataMonitor })));
-
+const VisualMechanic = lazy(() => import('@/components/mechanic/visual/VisualMechanic'));
 interface MechanicTabProps {
   sendCommand: (cmd: string) => Promise<string>;
   isConnected: boolean;
@@ -62,8 +62,12 @@ export function MechanicTab({
         />
       </div>
 
-      <Tabs defaultValue="diagnostico" className="w-full animate-fade-in stagger-1">
-        <TabsList className="grid w-full grid-cols-4 h-auto tabs-scroll glass">
+      <Tabs defaultValue="visual" className="w-full animate-fade-in stagger-1">
+        <TabsList className="grid w-full grid-cols-5 h-auto tabs-scroll glass">
+          <TabsTrigger value="visual" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
+            <Eye className="h-4 w-4" />
+            <span className="hidden xs:inline">Visual</span>
+          </TabsTrigger>
           <TabsTrigger value="diagnostico" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <AlertTriangle className="h-4 w-4" />
             <span className="hidden xs:inline">DTCs</span>
@@ -81,6 +85,18 @@ export function MechanicTab({
             <span className="hidden xs:inline">Veículo</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Visual Mechanic - Diagnóstico por Foto/Vídeo */}
+        <TabsContent value="visual" className="space-y-4 mt-4 tab-content-enter">
+          <div className="card-hover rounded-xl">
+            <Suspense fallback={<VisualMechanicSkeleton />}>
+              <VisualMechanic
+                onSpeak={aiModeEnabled ? speak : undefined}
+                isSpeaking={isSpeaking}
+              />
+            </Suspense>
+          </div>
+        </TabsContent>
 
         {/* Diagnóstico (DTCs) */}
         <TabsContent value="diagnostico" className="space-y-4 mt-4 tab-content-enter">

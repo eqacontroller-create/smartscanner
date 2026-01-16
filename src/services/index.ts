@@ -14,6 +14,7 @@ export { ScanHistoryService } from './supabase/ScanHistoryService';
 // AI Services
 export { JarvisService } from './ai/JarvisService';
 export { TTSService } from './ai/TTSService';
+export { VisionService } from './ai/VisionService';
 
 // Re-export types
 export type { ProfileData } from './supabase/ProfileService';

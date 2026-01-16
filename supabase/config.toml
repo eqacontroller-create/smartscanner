@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.jarvis-ai]
 verify_jwt = false
+
+[functions.vision-mechanic]
+verify_jwt = false
