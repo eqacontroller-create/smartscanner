@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
-import { decryptApiKey } from '@/lib/encryption';
+import { TTSService } from '@/services/ai/TTSService';
 
 interface UseJarvisOptions {
   settings?: JarvisSettings;
@@ -39,7 +39,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
   const isProcessingQueueRef = useRef(false);
   const currentSpeakPromiseRef = useRef<Promise<void> | null>(null);
 
-  const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const isSupported = TTSService.isBrowserTTSSupported();
 
   // Atualizar contador da fila
   const updateQueueLength = useCallback(() => {
@@ -53,58 +53,32 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
     }
 
     try {
-      const decryptedKey = decryptApiKey(settings.openaiApiKey);
-      
-      if (!decryptedKey) {
-        console.warn('[Jarvis] OpenAI API key inválida');
-        return false;
-      }
-
       setIsSpeaking(true);
 
-      const response = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${decryptedKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'tts-1',
-          voice: settings.openaiVoice || 'onyx',
-          input: text,
-          speed: settings.rate,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `Erro ${response.status}`);
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
       // Para áudio anterior se existir
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
 
+      const audio = await TTSService.speakWithOpenAI(text, {
+        apiKey: settings.openaiApiKey,
+        voice: settings.openaiVoice || 'onyx',
+        rate: settings.rate,
+        volume: settings.volume,
+      });
+
+      audioRef.current = audio;
+
       return new Promise<boolean>((resolve) => {
-        const audio = new Audio(audioUrl);
-        audio.volume = settings.volume;
-        audioRef.current = audio;
-        
         audio.onended = () => {
           setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
           audioRef.current = null;
           resolve(true);
         };
         
         audio.onerror = () => {
           setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
           audioRef.current = null;
           resolve(false);
         };
@@ -131,34 +105,14 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
       }
 
       // Cancelar fala anterior
-      window.speechSynthesis.cancel();
+      TTSService.stopBrowserSpeech();
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'pt-BR';
-      utterance.rate = settings.rate;
-      utterance.pitch = settings.pitch;
-      utterance.volume = settings.volume;
-
-      // Usar voz selecionada ou encontrar uma em português brasileiro
-      const voices = window.speechSynthesis.getVoices();
-      
-      if (settings.selectedVoiceURI) {
-        const selectedVoice = voices.find(voice => voice.voiceURI === settings.selectedVoiceURI);
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
-        }
-      } else {
-        // Auto-selecionar voz pt-BR
-        const ptBRVoice = voices.find(voice => 
-          voice.lang === 'pt-BR' || 
-          voice.lang.startsWith('pt-BR') ||
-          voice.lang === 'pt_BR'
-        );
-        
-        if (ptBRVoice) {
-          utterance.voice = ptBRVoice;
-        }
-      }
+      const utterance = TTSService.speakWithBrowser(text, {
+        voice: settings.selectedVoiceURI || undefined,
+        rate: settings.rate,
+        pitch: settings.pitch,
+        volume: settings.volume,
+      });
 
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => {
@@ -226,6 +180,20 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
     processQueue();
   }, [speakAndWait, updateQueueLength]);
 
+  // Função para parar fala
+  const stopSpeaking = useCallback(() => {
+    // Para OpenAI audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    
+    // Para Web Speech
+    TTSService.stopBrowserSpeech();
+    
+    setIsSpeaking(false);
+  }, []);
+
   // Função principal de fala com sistema de fila
   const speak = useCallback(async (text: string, options: SpeakOptions = {}): Promise<void> => {
     const { priority = 0, interrupt = false } = options;
@@ -259,23 +227,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
         processQueue();
       }
     });
-  }, [speakAndWait, processQueue, updateQueueLength]);
-
-  // Função para parar fala
-  const stopSpeaking = useCallback(() => {
-    // Para OpenAI audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    
-    // Para Web Speech
-    if (isSupported) {
-      window.speechSynthesis.cancel();
-    }
-    
-    setIsSpeaking(false);
-  }, [isSupported]);
+  }, [speakAndWait, processQueue, updateQueueLength, stopSpeaking]);
 
   // Função de teste de áudio
   const testAudio = useCallback(() => {
