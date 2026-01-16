@@ -6,9 +6,10 @@ import { useSyncedRides } from '@/hooks/useSyncedRides';
 import { useSyncedProfile, VehicleInfo } from '@/hooks/useSyncedProfile';
 import { useVehicleBenefits } from '@/hooks/useVehicleBenefits';
 import type { JarvisSettings } from '@/types/jarvisSettings';
+import { defaultJarvisSettings } from '@/types/jarvisSettings';
 
 interface UseVehicleSessionOptions {
-  jarvisSettings: JarvisSettings;
+  jarvisSettings?: JarvisSettings; // Made optional
   onApplyOptimizedSettings?: (settings: {
     redlineRPM: number;
     highTempThreshold: number;
@@ -52,16 +53,19 @@ export function useVehicleSession({
   // Hook de perfil sincronizado (inclui veículo configurado pelo usuário)
   const syncedProfile = useSyncedProfile();
   
+  // Use provided settings or defaults
+  const effectiveSettings = jarvisSettings ?? defaultJarvisSettings;
+  
   // Hook de benefícios específicos do veículo
   const vehicleBenefits = useVehicleBenefits({
     brand: themeVehicle?.brand || 'generic',
     profile: currentProfile,
     modelYear: themeVehicle?.modelYear,
     currentSettings: {
-      redlineRPM: jarvisSettings.redlineRPM,
-      highTempThreshold: jarvisSettings.highTempThreshold,
-      lowVoltageThreshold: jarvisSettings.lowVoltageThreshold,
-      speedLimit: jarvisSettings.speedLimit,
+      redlineRPM: effectiveSettings.redlineRPM,
+      highTempThreshold: effectiveSettings.highTempThreshold,
+      lowVoltageThreshold: effectiveSettings.lowVoltageThreshold,
+      speedLimit: effectiveSettings.speedLimit,
     },
     onApplySettings: (settings) => {
       if (onApplyOptimizedSettings) {
