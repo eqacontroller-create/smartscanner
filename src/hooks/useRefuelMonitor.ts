@@ -118,6 +118,13 @@ export function useRefuelMonitor({
   const readFailureCountRef = useRef(0);
   const MAX_READ_FAILURES = 5;
   
+  // BUG FIX 4: Ref para velocidade (evita recriar interval a cada mudança de speed)
+  const speedRef = useRef(speed);
+  
+  // BUG FIX 3: Ref para estado de conexão (detectar desconexão durante monitoramento)
+  const isConnectedRef = useRef(isConnected);
+  const disconnectionAnnouncedRef = useRef(false);
+  
   // CORREÇÃO v2: Refs estáveis para funções (evita mudanças de dependência no useEffect)
   const speakRef = useRef(speak);
   const readSTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
@@ -128,6 +135,33 @@ export function useRefuelMonitor({
   useEffect(() => {
     speakRef.current = speak;
   }, [speak]);
+  
+  // BUG FIX 4: Manter speedRef atualizado (sem recriar interval)
+  useEffect(() => {
+    speedRef.current = speed;
+  }, [speed]);
+  
+  // BUG FIX 3: Manter isConnectedRef atualizado e detectar desconexão
+  useEffect(() => {
+    const wasConnected = isConnectedRef.current;
+    isConnectedRef.current = isConnected;
+    
+    // Detectar desconexão durante monitoramento
+    if (wasConnected && !isConnected && mode === 'monitoring') {
+      if (!disconnectionAnnouncedRef.current) {
+        disconnectionAnnouncedRef.current = true;
+        speakRef.current('Atenção. Conexão com o adaptador perdida. O monitoramento será pausado até reconectar.');
+        console.warn('[Refuel] Bluetooth disconnected during monitoring');
+      }
+    }
+    
+    // Reconexão durante monitoramento
+    if (!wasConnected && isConnected && mode === 'monitoring' && disconnectionAnnouncedRef.current) {
+      disconnectionAnnouncedRef.current = false;
+      speakRef.current('Conexão restaurada. Monitoramento retomado.');
+      console.log('[Refuel] Bluetooth reconnected during monitoring');
+    }
+  }, [isConnected, mode]);
   
   // Cleanup geral no unmount do componente
   useEffect(() => {
@@ -435,12 +469,15 @@ export function useRefuelMonitor({
   const cancelRefuel = useCallback(() => {
     console.log('[Refuel] cancelRefuel - Limpando estado');
     
+    // BUG FIX 1: Capturar flowType ANTES de limpar para mensagem correta
+    const wasQuickTest = flowTypeRef.current === 'quick-test';
+    
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
       monitoringIntervalRef.current = null;
     }
     
-    // Limpar flowType
+    // Limpar flowType DEPOIS de capturar
     setFlowType(null);
     flowTypeRef.current = null;
     
@@ -466,7 +503,8 @@ export function useRefuelMonitor({
     lastUpdateTimestampRef.current = null;
     readFailureCountRef.current = 0;
     
-    speak(flowTypeRef.current === 'quick-test' ? 'Teste cancelado.' : 'Modo abastecimento cancelado.');
+    // Usar variável capturada (wasQuickTest) em vez de flowTypeRef.current (já null)
+    speak(wasQuickTest ? 'Teste cancelado.' : 'Modo abastecimento cancelado.');
   }, [speak]);
   
   // Analisar qualidade do combustível
@@ -723,8 +761,18 @@ export function useRefuelMonitor({
         return;
       }
       
-      // CORREÇÃO v2: Usar prop speed diretamente via closure (sempre atualizado)
-      const currentSpeed = speed;
+      // BUG FIX 3: Verificar conexão antes de tentar leituras OBD
+      if (!isConnectedRef.current) {
+        // Apenas atualizar UI, não tenta ler OBD
+        if (now - lastUIUpdateRef.current >= UI_UPDATE_THROTTLE) {
+          setDistanceMonitored(distanceRef.current);
+          lastUIUpdateRef.current = now;
+        }
+        return; // Pular leituras OBD enquanto desconectado
+      }
+      
+      // BUG FIX 4: Usar speedRef.current (via ref, não closure)
+      const currentSpeed = speedRef.current;
       
       // ========== 1. CALCULAR DISTÂNCIA (TIMESTAMP-BASED) ==========
       // CORREÇÃO v2: Só acumula distância quando velocidade >= 3 km/h
@@ -864,9 +912,9 @@ export function useRefuelMonitor({
         monitoringIntervalRef.current = null;
       }
     };
-  // CORREÇÃO v2: Dependências mínimas - apenas mode e speed (para atualização em tempo real)
-  // Funções via refs, settings via frozenSettingsRef
-  }, [mode, speed, fuelLevelSupported, getProgressMessage, finalizeAnalysis]);
+  // BUG FIX 4: Dependências mínimas - apenas mode (speed via ref, não recria interval)
+  // Funções via refs, settings via frozenSettingsRef, speed via speedRef
+  }, [mode, fuelLevelSupported, getProgressMessage, finalizeAnalysis]);
   
   // Cleanup quando modo muda para inactive ou completed
   useEffect(() => {
