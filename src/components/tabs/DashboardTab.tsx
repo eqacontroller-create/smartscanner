@@ -37,9 +37,9 @@ export function DashboardTab({
   onStopPolling,
 }: DashboardTabProps) {
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 tab-content-enter">
       {/* Gauge Section */}
-      <div className="flex flex-col items-center gap-4 sm:gap-6">
+      <div className="flex flex-col items-center gap-4 sm:gap-6 animate-fade-in">
         <RPMGauge value={rpm} redlineRPM={redlineRPM} />
         
         {/* Polling Toggle Button */}
@@ -47,7 +47,7 @@ export function DashboardTab({
           <Button
             size="lg"
             onClick={isPolling ? onStopPolling : onStartPolling}
-            className={`gap-2 min-h-[48px] px-6 touch-target transition-all duration-300 ${isPolling 
+            className={`gap-2 min-h-[48px] px-6 touch-target press-effect transition-all duration-300 ${isPolling 
               ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
               : 'bg-accent text-accent-foreground hover:bg-accent/90'
             }`}
@@ -68,20 +68,26 @@ export function DashboardTab({
       </div>
 
       {/* Vehicle Stats */}
-      <VehicleStats 
-        speed={speed} 
-        temperature={temperature} 
-        voltage={voltage}
-        fuelLevel={fuelLevel}
-        engineLoad={engineLoad}
-        isReading={isReading}
-      />
+      <div className="animate-fade-in stagger-1">
+        <VehicleStats 
+          speed={speed} 
+          temperature={temperature} 
+          voltage={voltage}
+          fuelLevel={fuelLevel}
+          engineLoad={engineLoad}
+          isReading={isReading}
+        />
+      </div>
 
       {/* RPM Card */}
-      <RPMCard value={rpm} isReading={isReading} />
+      <div className="animate-fade-in stagger-2">
+        <RPMCard value={rpm} isReading={isReading} />
+      </div>
 
       {/* Log Panel */}
-      <LogPanel logs={logs} />
+      <div className="animate-fade-in stagger-3">
+        <LogPanel logs={logs} />
+      </div>
     </div>
   );
 }
