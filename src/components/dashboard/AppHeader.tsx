@@ -11,7 +11,6 @@ import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
 import { SyncStatus } from '@/components/dashboard/SyncStatus';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
 import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
-import { JarvisSettingsButton } from '@/components/dashboard/JarvisSettingsButton';
 import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
 import type { VehicleProfile, VehicleBrand, DetectedVehicle } from '@/lib/vehicleProfiles';
 import type { ConnectionStatus } from '@/contexts/OBDContext';
@@ -101,7 +100,9 @@ export function AppHeader({
                 <DropdownMenuItem asChild>
                   <Link to="/ajuda" className="flex items-center gap-2"><HelpCircle className="h-4 w-4" />Central de Ajuda</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onOpenSettings}><Settings className="h-4 w-4 mr-2" />Configurações Jarvis</DropdownMenuItem>
+                <DropdownMenuItem onClick={onOpenSettings}>
+                  <Settings className="h-4 w-4 mr-2" />Configurações
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={onTestAudio} disabled={!isJarvisSupported || isSpeaking}>
                   <Volume2 className="h-4 w-4 mr-2" />Testar Áudio
                 </DropdownMenuItem>
@@ -113,7 +114,16 @@ export function AppHeader({
             )}
             
             <div className="hidden xs:flex items-center gap-1 sm:gap-2">
-              <JarvisSettingsButton onClick={onOpenSettings} disabled={!isJarvisSupported} />
+              {/* Settings button now navigates to Config tab */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onOpenSettings}
+                className="h-8 w-8 sm:h-9 sm:w-9"
+                title="Configurações"
+              >
+                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
               <JarvisTestButton onTest={onTestAudio} isSpeaking={isSpeaking} isSupported={isJarvisSupported} />
             </div>
             
