@@ -14,17 +14,21 @@ import {
   Zap, Moon, RefreshCw, LogOut, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { VehicleSetup, type VehicleConfig } from '@/components/settings/VehicleSetup';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { TripSettings } from '@/types/tripSettings';
 import type { RefuelSettings } from '@/types/refuelTypes';
+import type { VehicleInfo } from '@/hooks/useSyncedProfile';
 
 interface SettingsTabProps {
   jarvisSettings: JarvisSettings;
   tripSettings: TripSettings;
   refuelSettings: RefuelSettings;
+  vehicleInfo?: VehicleInfo;
   onUpdateJarvisSetting: <K extends keyof JarvisSettings>(key: K, value: JarvisSettings[K]) => void;
   onUpdateTripSettings: (settings: Partial<TripSettings>) => void;
   onUpdateRefuelSettings: (settings: Partial<RefuelSettings>) => void;
+  onUpdateVehicle?: (vehicle: Partial<VehicleInfo>) => Promise<void>;
   onResetJarvisSettings: () => void;
   onResetRefuelSettings: () => void;
   onTestVoice: () => void;
@@ -38,9 +42,11 @@ export function SettingsTab({
   jarvisSettings,
   tripSettings,
   refuelSettings,
+  vehicleInfo,
   onUpdateJarvisSetting,
   onUpdateTripSettings,
   onUpdateRefuelSettings,
+  onUpdateVehicle,
   onResetJarvisSettings,
   onResetRefuelSettings,
   onTestVoice,
@@ -439,15 +445,41 @@ export function SettingsTab({
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm">Quilometragem atual</Label>
-              <Input
-                type="number"
-                value={jarvisSettings.currentMileage}
-                onChange={(e) => onUpdateJarvisSetting('currentMileage', parseInt(e.target.value) || 0)}
-                placeholder="Ex: 50000"
+            {onUpdateVehicle ? (
+              <VehicleSetup
+                detectedBrand={vehicleInfo?.vehicleBrand}
+                detectedYear={vehicleInfo?.modelYear}
+                detectedVin={vehicleInfo?.vin}
+                currentConfig={{
+                  brand: vehicleInfo?.vehicleBrand || '',
+                  model: vehicleInfo?.vehicleModel || '',
+                  year: vehicleInfo?.modelYear || '',
+                  engine: vehicleInfo?.vehicleEngine || '',
+                  transmission: vehicleInfo?.vehicleTransmission || 'manual',
+                  nickname: vehicleInfo?.vehicleNickname || '',
+                }}
+                onSave={async (config) => {
+                  await onUpdateVehicle({
+                    vehicleBrand: config.brand,
+                    vehicleModel: config.model,
+                    modelYear: config.year,
+                    vehicleEngine: config.engine,
+                    vehicleTransmission: config.transmission,
+                    vehicleNickname: config.nickname,
+                  });
+                }}
               />
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-sm">Quilometragem atual</Label>
+                <Input
+                  type="number"
+                  value={jarvisSettings.currentMileage}
+                  onChange={(e) => onUpdateJarvisSetting('currentMileage', parseInt(e.target.value) || 0)}
+                  placeholder="Ex: 50000"
+                />
+              </div>
+            )}
           </AccordionContent>
         </AccordionItem>
 

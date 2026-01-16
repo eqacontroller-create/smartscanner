@@ -134,7 +134,10 @@ export type Database = {
           updated_at: string | null
           vehicle_brand: string | null
           vehicle_cost_per_km: number | null
+          vehicle_engine: string | null
           vehicle_model: string | null
+          vehicle_nickname: string | null
+          vehicle_transmission: string | null
           vin: string | null
           voice_pitch: number | null
           voice_rate: number | null
@@ -175,7 +178,10 @@ export type Database = {
           updated_at?: string | null
           vehicle_brand?: string | null
           vehicle_cost_per_km?: number | null
+          vehicle_engine?: string | null
           vehicle_model?: string | null
+          vehicle_nickname?: string | null
+          vehicle_transmission?: string | null
           vin?: string | null
           voice_pitch?: number | null
           voice_rate?: number | null
@@ -216,7 +222,10 @@ export type Database = {
           updated_at?: string | null
           vehicle_brand?: string | null
           vehicle_cost_per_km?: number | null
+          vehicle_engine?: string | null
           vehicle_model?: string | null
+          vehicle_nickname?: string | null
+          vehicle_transmission?: string | null
           vin?: string | null
           voice_pitch?: number | null
           voice_rate?: number | null
@@ -369,6 +378,48 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           vehicle_cost_per_km?: number | null
+        }
+        Relationships: []
+      }
+      vehicle_models: {
+        Row: {
+          brand: string
+          common_issues: Json | null
+          created_at: string
+          engine_options: Json | null
+          id: string
+          maintenance_schedule: Json | null
+          model_code: string | null
+          model_name: string
+          popular_parts: Json | null
+          updated_at: string
+          years_available: string
+        }
+        Insert: {
+          brand: string
+          common_issues?: Json | null
+          created_at?: string
+          engine_options?: Json | null
+          id?: string
+          maintenance_schedule?: Json | null
+          model_code?: string | null
+          model_name: string
+          popular_parts?: Json | null
+          updated_at?: string
+          years_available: string
+        }
+        Update: {
+          brand?: string
+          common_issues?: Json | null
+          created_at?: string
+          engine_options?: Json | null
+          id?: string
+          maintenance_schedule?: Json | null
+          model_code?: string | null
+          model_name?: string
+          popular_parts?: Json | null
+          updated_at?: string
+          years_available?: string
         }
         Relationships: []
       }

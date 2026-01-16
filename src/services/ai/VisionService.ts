@@ -178,6 +178,22 @@ export function generateShoppingLink(partName: string): string {
 }
 
 /**
+ * Gera link de busca contextualizado com veículo
+ */
+export function generateVehicleShoppingLink(
+  partName: string,
+  vehicle: { brand?: string | null; model?: string | null; year?: string | null }
+): string {
+  const parts = [partName];
+  if (vehicle.brand) parts.push(vehicle.brand);
+  if (vehicle.model) parts.push(vehicle.model);
+  if (vehicle.year) parts.push(vehicle.year);
+  
+  const query = encodeURIComponent(parts.join(' '));
+  return `https://www.google.com/search?tbm=shop&q=${query}`;
+}
+
+/**
  * Gera link de busca no Google Imagens para referência
  */
 export function generateImageSearchLink(partName: string): string {
@@ -192,5 +208,6 @@ export const VisionService = {
   analyzeImage,
   analyzeVideo,
   generateShoppingLink,
+  generateVehicleShoppingLink,
   generateImageSearchLink,
 };

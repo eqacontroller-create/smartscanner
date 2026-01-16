@@ -15,6 +15,9 @@ export interface VehicleInfo {
   vehicleBrand: string | null;
   vehicleModel: string | null;
   modelYear: string | null;
+  vehicleEngine: string | null;
+  vehicleTransmission: string | null;
+  vehicleNickname: string | null;
 }
 
 export interface SyncedProfile {
@@ -38,6 +41,9 @@ const defaultVehicle: VehicleInfo = {
   vehicleBrand: null,
   vehicleModel: null,
   modelYear: null,
+  vehicleEngine: null,
+  vehicleTransmission: null,
+  vehicleNickname: null,
 };
 
 const defaultProfile: SyncedProfile = {
@@ -54,6 +60,9 @@ function dbToProfile(dbData: ProfileData): SyncedProfile {
       vehicleBrand: dbData.vehicle_brand ?? null,
       vehicleModel: dbData.vehicle_model ?? null,
       modelYear: dbData.model_year ?? null,
+      vehicleEngine: dbData.vehicle_engine ?? null,
+      vehicleTransmission: dbData.vehicle_transmission ?? null,
+      vehicleNickname: dbData.vehicle_nickname ?? null,
     },
     jarvisSettings: {
       fuelType: (dbData.fuel_type as FuelType) || 'gasoline',
@@ -111,6 +120,9 @@ function profileToDb(profile: SyncedProfile, userId: string): ProfileData {
     vehicle_brand: profile.vehicle.vehicleBrand,
     vehicle_model: profile.vehicle.vehicleModel,
     model_year: profile.vehicle.modelYear,
+    vehicle_engine: profile.vehicle.vehicleEngine,
+    vehicle_transmission: profile.vehicle.vehicleTransmission,
+    vehicle_nickname: profile.vehicle.vehicleNickname,
     // Fuel/Trip
     fuel_price: profile.tripSettings.fuelPrice,
     average_consumption: profile.tripSettings.averageConsumption,
