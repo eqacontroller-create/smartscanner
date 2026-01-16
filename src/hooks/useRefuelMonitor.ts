@@ -90,6 +90,10 @@ export function useRefuelMonitor({
   const [currentFuelLevel, setCurrentFuelLevel] = useState<number | null>(null);
   const [distanceMonitored, setDistanceMonitored] = useState(0);
   
+  // CORREÇÃO: Velocidade interna (lida diretamente do OBD quando polling está pausado)
+  const [internalSpeed, setInternalSpeed] = useState<number>(0);
+  const internalSpeedRef = useRef<number>(0);
+  
   // Anomalias
   const [anomalyActive, setAnomalyActive] = useState(false);
   const [anomalyDuration, setAnomalyDuration] = useState(0);
@@ -140,6 +144,7 @@ export function useRefuelMonitor({
   const readSTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readLTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readFuelLevelRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
+  const readSpeedRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   
   // CORREÇÃO v3: Manter speakRef SEMPRE atualizado com a versão mais recente
   // Isso garante que mudanças nas configurações de voz sejam refletidas imediatamente
@@ -384,12 +389,51 @@ export function useRefuelMonitor({
     return null;
   }, [sendRawCommand]);
   
+  // CORREÇÃO: Ler velocidade diretamente do OBD (quando polling do dashboard está pausado)
+  const readSpeed = useCallback(async (): Promise<number | null> => {
+    if (isReadingOBDRef.current) {
+      console.log('[Refuel] readSpeed - aguardando mutex...');
+      await new Promise(r => setTimeout(r, 50));
+    }
+    
+    isReadingOBDRef.current = true;
+    
+    try {
+      const response = await sendRawCommand('010D', 2000);
+      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+      
+      // Verificar erros conhecidos
+      if (cleanResponse.includes('NODATA') || 
+          cleanResponse.includes('ERROR') ||
+          cleanResponse.includes('TIMEOUT') ||
+          cleanResponse.includes('UNABLE') ||
+          cleanResponse.includes('STOPPED')) {
+        isReadingOBDRef.current = false;
+        return null;
+      }
+      
+      const match = cleanResponse.match(/41\s*0D\s*([0-9A-F]{2})/i);
+      if (match) {
+        const speed = parseInt(match[1], 16); // km/h diretamente
+        console.log('[Refuel] Speed parsed from OBD:', speed);
+        isReadingOBDRef.current = false;
+        return speed;
+      }
+    } catch (error) {
+      console.error('[Refuel] Error reading speed:', error);
+    }
+    
+    isReadingOBDRef.current = false;
+    return null;
+  }, [sendRawCommand]);
+  
   // Manter refs de funções atualizados
   useEffect(() => {
     readSTFTRef.current = readSTFT;
     readLTFTRef.current = readLTFT;
     readFuelLevelRef.current = readFuelLevel;
-  }, [readSTFT, readLTFT, readFuelLevel]);
+    readSpeedRef.current = readSpeed;
+  }, [readSTFT, readLTFT, readFuelLevel, readSpeed]);
   
   // Iniciar modo abastecimento (fluxo completo)
   const startRefuelMode = useCallback(async () => {
@@ -817,12 +861,63 @@ export function useRefuelMonitor({
     }
   };
   
+  // CORREÇÃO: Loop de PRÉ-LEITURA durante waiting (lê velocidade + Fuel Trim antes de andar)
+  // Isso resolve o dead lock: polling pausado → velocidade congelada → refuel não funciona
+  useEffect(() => {
+    const isWaiting = mode === 'waiting' || mode === 'waiting-quick';
+    if (!isWaiting || !isConnected) return;
+    
+    console.log('[Refuel] Iniciando loop de pré-leitura (velocidade + Fuel Trim)');
+    
+    // Resetar velocidade interna ao entrar no modo waiting
+    internalSpeedRef.current = 0;
+    setInternalSpeed(0);
+    
+    const preReadInterval = setInterval(async () => {
+      console.log('[Refuel] Pre-read tick - isConnected:', isConnectedRef.current);
+      
+      if (!isConnectedRef.current) {
+        console.log('[Refuel] Pre-read - desconectado, pulando');
+        return;
+      }
+      
+      // 1. Ler velocidade diretamente do OBD
+      const obdSpeed = await readSpeedRef.current();
+      if (obdSpeed !== null) {
+        internalSpeedRef.current = obdSpeed;
+        setInternalSpeed(obdSpeed);
+        console.log('[Refuel] Pre-read - velocidade OBD:', obdSpeed);
+      }
+      
+      // 2. Ler Fuel Trim (para mostrar valores antes de andar)
+      const stft = await readSTFTRef.current();
+      const ltft = await readLTFTRef.current();
+      
+      if (stft !== null) {
+        setCurrentSTFT(stft);
+        console.log('[Refuel] Pre-read - STFT:', stft);
+      }
+      if (ltft !== null) {
+        setCurrentLTFT(ltft);
+        console.log('[Refuel] Pre-read - LTFT:', ltft);
+      }
+    }, 2000); // A cada 2 segundos
+    
+    return () => {
+      console.log('[Refuel] Cleanup loop de pré-leitura');
+      clearInterval(preReadInterval);
+    };
+  }, [mode, isConnected]);
+  
   // Detectar início de movimento (waiting ou waiting-quick -> monitoring)
-  // Congelar settings ao iniciar monitoramento
+  // CORREÇÃO: Usar internalSpeed (lido diretamente do OBD) em vez de speed (prop congelada)
   useEffect(() => {
     const isWaiting = mode === 'waiting' || mode === 'waiting-quick';
     
-    if (isWaiting && speed > 5 && !isMonitoringActiveRef.current) {
+    // Usar velocidade interna (lida do OBD) como fonte primária
+    const effectiveSpeed = internalSpeedRef.current > 0 ? internalSpeedRef.current : speed;
+    
+    if (isWaiting && effectiveSpeed > 5 && !isMonitoringActiveRef.current) {
       // Para waiting normal, precisa ter currentRefuel
       if (mode === 'waiting' && !currentRefuel) return;
       
@@ -853,7 +948,7 @@ export function useRefuelMonitor({
         speak(`Monitoramento iniciado. Analisarei os primeiros ${frozen.monitoringDistance} quilômetros.`);
       }
     }
-  }, [mode, currentRefuel, speed, speak, settings]);
+  }, [mode, currentRefuel, speed, internalSpeed, speak, settings]);
   
   // CORREÇÃO v2: LOOP UNIFICADO DE MONITORAMENTO com dependência mínima
   // Usa refs para funções e settings congelados
@@ -904,8 +999,16 @@ export function useRefuelMonitor({
         return; // Pular leituras OBD enquanto desconectado
       }
       
-      // BUG FIX 4: Usar speedRef.current (via ref, não closure)
-      const currentSpeed = speedRef.current;
+      // ========== 0. LER VELOCIDADE DIRETAMENTE DO OBD ==========
+      // CORREÇÃO: Polling do dashboard está pausado, então lemos velocidade nós mesmos
+      const obdSpeed = await readSpeedRef.current();
+      if (obdSpeed !== null) {
+        internalSpeedRef.current = obdSpeed;
+        setInternalSpeed(obdSpeed);
+      }
+      
+      // Usar velocidade interna (lida do OBD) como fonte primária
+      const currentSpeed = internalSpeedRef.current > 0 ? internalSpeedRef.current : speedRef.current;
       
       // ========== 1. CALCULAR DISTÂNCIA (TIMESTAMP-BASED) ==========
       // CORREÇÃO v2: Só acumula distância quando velocidade >= 3 km/h
