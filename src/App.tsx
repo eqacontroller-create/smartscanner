@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Help from "./pages/Help";
+import Manual from "./pages/Manual";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
@@ -28,6 +29,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/ajuda" element={<Help />} />
+            <Route path="/manual" element={<Manual />} />
             <Route path="/instalar" element={<Install />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
