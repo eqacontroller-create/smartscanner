@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { RiskBadge } from './RiskBadge';
 import { Confetti } from '@/components/ui/confetti';
+import { useCelebrationSound } from '@/hooks/useCelebrationSound';
 import { VisionService } from '@/services/ai/VisionService';
 import { 
   ShoppingCart, 
@@ -76,16 +77,23 @@ export function DiagnosisCard({
   const [showConfetti, setShowConfetti] = useState(false);
   const riskConfig = RISK_CONFIG[result.riskLevel];
   
-  // Trigger confetti for safe results
+  // Celebration sound hook (uses Web Audio API - no external dependencies)
+  const { play: playCelebration } = useCelebrationSound({ 
+    enabled: true, 
+    volume: 0.25 // Suave
+  });
+  
+  // Trigger confetti and sound for safe results
   useEffect(() => {
     if (result.riskLevel === 'safe') {
       // Small delay for better UX
       const timer = setTimeout(() => {
         setShowConfetti(true);
+        playCelebration();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [result.riskLevel]);
+  }, [result.riskLevel, playCelebration]);
   
   // Verifica se tem contexto de veículo válido
   const hasVehicle = vehicleContext && (vehicleContext.brand || vehicleContext.model);
