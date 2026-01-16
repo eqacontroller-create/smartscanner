@@ -2,9 +2,10 @@
  * VisualMechanic - Container principal do diagnóstico visual
  * UX premium inclusiva para público leigo + modo offline + contexto do veículo + histórico
  * Suporta múltiplas imagens para diagnóstico mais preciso
+ * Inclui entrada de texto e voz para descrever o problema
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +21,7 @@ import { DiagnosisHistory } from './DiagnosisHistory';
 import { useVisualMechanic } from '@/hooks/useVisualMechanic';
 import { useOfflineVision } from '@/hooks/useOfflineVision';
 import { useDiagnosisHistory } from '@/hooks/useDiagnosisHistory';
+import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useAuth } from '@/hooks/useAuth';
 import { Eye, WifiOff, CloudOff, Car, Camera, History, Sparkles, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
     error,
     progressMessage,
     canAddMore,
+    userDescription,
     startCapture,
     stopCapturing,
     handleFileSelect,
@@ -55,7 +58,35 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
     removeFile,
     analyzeMedia,
     reset,
+    setUserDescription,
   } = useVisualMechanic();
+  
+  // Voice recognition for description input
+  const {
+    isListening,
+    isSupported: isVoiceSupported,
+    transcript,
+    toggleListening,
+  } = useVoiceRecognition({
+    language: 'pt-BR',
+    continuous: false,
+  });
+  
+  // Track last processed transcript to avoid duplicates
+  const lastTranscriptRef = useRef('');
+  
+  // Append voice transcript to description
+  useEffect(() => {
+    if (transcript && transcript !== lastTranscriptRef.current && !isListening) {
+      lastTranscriptRef.current = transcript;
+      const trimmed = userDescription.trim();
+      if (trimmed) {
+        setUserDescription(`${trimmed}. ${transcript}`);
+      } else {
+        setUserDescription(transcript);
+      }
+    }
+  }, [transcript, isListening]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const {
     pendingItems,
@@ -312,6 +343,11 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
                       canAddMore={canAddMore}
                       isAnalyzing={isAnalyzing}
                       isOnline={isOnline}
+                      description={userDescription}
+                      onDescriptionChange={setUserDescription}
+                      onVoiceToggle={toggleListening}
+                      isListening={isListening}
+                      isVoiceSupported={isVoiceSupported}
                     />
                   ) : (
                     // Single image preview
@@ -324,6 +360,11 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
                       isAnalyzing={isAnalyzing}
                       canAddMore={canAddMore && analysisType === 'photo'}
                       onAddMore={handleAddMore}
+                      description={userDescription}
+                      onDescriptionChange={setUserDescription}
+                      onVoiceToggle={toggleListening}
+                      isListening={isListening}
+                      isVoiceSupported={isVoiceSupported}
                     />
                   )}
                   

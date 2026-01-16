@@ -4,6 +4,7 @@ export { CaptureButton } from './CaptureButton';
 export { FileCapture } from './FileCapture';
 export { MediaPreview } from './MediaPreview';
 export { MultiImagePreview } from './MultiImagePreview';
+export { DescriptionInput } from './DescriptionInput';
 export { AnalysisProgress } from './AnalysisProgress';
 export { DiagnosisCard } from './DiagnosisCard';
 export { DiagnosisHistory } from './DiagnosisHistory';

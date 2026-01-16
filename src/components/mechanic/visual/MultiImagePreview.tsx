@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { X, Plus, RotateCcw, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MAX_IMAGES } from '@/types/visionTypes';
+import { DescriptionInput } from './DescriptionInput';
 
 interface MultiImagePreviewProps {
   files: File[];
@@ -18,6 +19,12 @@ interface MultiImagePreviewProps {
   canAddMore: boolean;
   isAnalyzing: boolean;
   isOnline: boolean;
+  // New props for description
+  description?: string;
+  onDescriptionChange?: (value: string) => void;
+  onVoiceToggle?: () => void;
+  isListening?: boolean;
+  isVoiceSupported?: boolean;
 }
 
 export function MultiImagePreview({
@@ -30,6 +37,11 @@ export function MultiImagePreview({
   canAddMore,
   isAnalyzing,
   isOnline,
+  description = '',
+  onDescriptionChange,
+  onVoiceToggle,
+  isListening = false,
+  isVoiceSupported = true,
 }: MultiImagePreviewProps) {
   return (
     <Card className="overflow-hidden border-2 border-border/50 bg-card/80 backdrop-blur-sm animate-scale-in">
@@ -125,6 +137,20 @@ export function MultiImagePreview({
             </button>
           )}
         </div>
+        
+        {/* Description input */}
+        {onDescriptionChange && (
+          <div className="border-t border-border/30 pt-4">
+            <DescriptionInput
+              value={description}
+              onChange={onDescriptionChange}
+              onVoiceToggle={onVoiceToggle}
+              isListening={isListening}
+              isVoiceSupported={isVoiceSupported}
+              disabled={isAnalyzing}
+            />
+          </div>
+        )}
         
         {/* Action buttons */}
         <div className="flex gap-3">
