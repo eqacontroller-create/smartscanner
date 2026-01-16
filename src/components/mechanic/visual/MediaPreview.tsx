@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { X, RotateCcw, Sparkles, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AnalysisType } from '@/types/visionTypes';
+import { DescriptionInput } from './DescriptionInput';
 
 interface MediaPreviewProps {
   mediaUrl: string;
@@ -17,6 +18,12 @@ interface MediaPreviewProps {
   isAnalyzing: boolean;
   canAddMore?: boolean;
   onAddMore?: () => void;
+  // New props for description
+  description?: string;
+  onDescriptionChange?: (value: string) => void;
+  onVoiceToggle?: () => void;
+  isListening?: boolean;
+  isVoiceSupported?: boolean;
 }
 
 export function MediaPreview({
@@ -28,6 +35,11 @@ export function MediaPreview({
   isAnalyzing,
   canAddMore,
   onAddMore,
+  description = '',
+  onDescriptionChange,
+  onVoiceToggle,
+  isListening = false,
+  isVoiceSupported = true,
 }: MediaPreviewProps) {
   return (
     <Card className="overflow-hidden border-2 border-border/50 bg-card/80 backdrop-blur-sm animate-scale-in">
@@ -84,6 +96,20 @@ export function MediaPreview({
             </Button>
           )}
         </div>
+        
+        {/* Description input */}
+        {onDescriptionChange && (
+          <div className="p-4 border-t border-border/30">
+            <DescriptionInput
+              value={description}
+              onChange={onDescriptionChange}
+              onVoiceToggle={onVoiceToggle}
+              isListening={isListening}
+              isVoiceSupported={isVoiceSupported}
+              disabled={isAnalyzing}
+            />
+          </div>
+        )}
         
         {/* Action buttons */}
         <div className="p-4 flex gap-3 bg-gradient-to-t from-card to-card/80">

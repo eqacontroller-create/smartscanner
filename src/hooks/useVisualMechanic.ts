@@ -20,6 +20,7 @@ export interface UseVisualMechanicReturn {
   error: string | null;
   progressMessage: string;
   canAddMore: boolean;
+  userDescription: string;
   
   // Ações
   startCapture: (type: AnalysisType) => void;
@@ -29,6 +30,7 @@ export interface UseVisualMechanicReturn {
   removeFile: (index: number) => void;
   analyzeMedia: (vehicleContext?: VehicleContextForVision) => Promise<void>;
   reset: () => void;
+  setUserDescription: (description: string) => void;
 }
 
 export function useVisualMechanic(): UseVisualMechanicReturn {
@@ -40,6 +42,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
   const [result, setResult] = useState<VisionAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progressMessage, setProgressMessage] = useState('');
+  const [userDescription, setUserDescription] = useState('');
   
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -172,19 +175,22 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     try {
       let analysisResult: VisionAnalysisResult;
       
+      // Passa a descrição do usuário se existir
+      const questionToSend = userDescription.trim() || undefined;
+      
       if (mediaFiles.length === 1) {
         // Análise de uma única imagem/vídeo
         const file = mediaFiles[0];
         const isVideo = file.type.startsWith('video/');
         
         analysisResult = isVideo
-          ? await VisionService.analyzeVideo(file, undefined, vehicleContext)
-          : await VisionService.analyzeImage(file, undefined, vehicleContext);
+          ? await VisionService.analyzeVideo(file, questionToSend, vehicleContext)
+          : await VisionService.analyzeImage(file, questionToSend, vehicleContext);
       } else {
         // Análise de múltiplas imagens
         analysisResult = await VisionService.analyzeMultipleImages(
           mediaFiles,
-          undefined,
+          questionToSend,
           vehicleContext
         );
       }
@@ -216,7 +222,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [mediaFiles]);
+  }, [mediaFiles, userDescription]);
   
   // Para o modo de captura (volta ao preview)
   const stopCapturing = useCallback(() => {
@@ -236,6 +242,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     setResult(null);
     setError(null);
     setProgressMessage('');
+    setUserDescription('');
   }, [mediaPreviews]);
   
   return {
@@ -248,6 +255,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     error,
     progressMessage,
     canAddMore,
+    userDescription,
     startCapture,
     stopCapturing,
     handleFileSelect,
@@ -255,5 +263,6 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     removeFile,
     analyzeMedia,
     reset,
+    setUserDescription,
   };
 }
