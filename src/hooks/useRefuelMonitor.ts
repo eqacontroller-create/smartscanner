@@ -289,8 +289,12 @@ export function useRefuelMonitor({
   }, [fuelLevelSupported, sendRawCommand]);
   
   // CORREÇÃO 4: Ler STFT com proteção de mutex
+  // BUG FIX: Só bloquear se stftSupported === false (não quando null/verificando)
   const readSTFT = useCallback(async (): Promise<number | null> => {
-    if (!stftSupported) return null;
+    if (stftSupported === false) {
+      console.log('[Refuel] readSTFT bloqueado - PID não suportado');
+      return null;
+    }
     if (isReadingOBDRef.current) {
       console.log('[Refuel] readSTFT ignorado - outra leitura em andamento');
       return null;
@@ -299,10 +303,13 @@ export function useRefuelMonitor({
     isReadingOBDRef.current = true;
     try {
       const response = await sendRawCommand('0106', 2000);
+      console.log('[Refuel] STFT raw response:', response);
       const match = response.match(/41\s*06\s*([0-9A-Fa-f]{2})/i);
       if (match) {
         const a = parseInt(match[1], 16);
-        return Math.round(((a - 128) * 100 / 128) * 10) / 10;
+        const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
+        console.log('[Refuel] STFT parsed:', value);
+        return value;
       }
     } catch (error) {
       console.error('[Refuel] Error reading STFT:', error);
@@ -322,10 +329,13 @@ export function useRefuelMonitor({
     isReadingOBDRef.current = true;
     try {
       const response = await sendRawCommand('0107', 2000);
+      console.log('[Refuel] LTFT raw response:', response);
       const match = response.match(/41\s*07\s*([0-9A-Fa-f]{2})/i);
       if (match) {
         const a = parseInt(match[1], 16);
-        return Math.round(((a - 128) * 100 / 128) * 10) / 10;
+        const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
+        console.log('[Refuel] LTFT parsed:', value);
+        return value;
       }
     } catch (error) {
       console.error('[Refuel] Error reading LTFT:', error);
@@ -447,8 +457,9 @@ export function useRefuelMonitor({
   }, [stftSupported, speak, readLTFT]);
   
   // Confirmar dados do abastecimento
+  // BUG FIX: Só bloquear se stftSupported === false (não quando null/verificando)
   const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number, stationName?: string) => {
-    if (!stftSupported) {
+    if (stftSupported === false) {
       await speak('Este veículo não suporta monitoramento de Fuel Trim. Registrando abastecimento sem análise de qualidade.');
       
       const entry: Partial<RefuelEntry> = {
@@ -834,8 +845,18 @@ export function useRefuelMonitor({
         return;
       }
       
+      // DEBUG: Log de estado a cada tick
+      console.log('[Refuel] Loop tick:', {
+        isConnected: isConnectedRef.current,
+        speed: speedRef.current,
+        stftSupported,
+        distance: distanceRef.current.toFixed(3),
+        mode,
+      });
+      
       // BUG FIX 3: Verificar conexão antes de tentar leituras OBD
       if (!isConnectedRef.current) {
+        console.log('[Refuel] Pulando leitura OBD - desconectado');
         // Apenas atualizar UI, não tenta ler OBD
         if (now - lastUIUpdateRef.current >= UI_UPDATE_THROTTLE) {
           setDistanceMonitored(distanceRef.current);
