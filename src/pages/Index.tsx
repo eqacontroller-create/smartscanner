@@ -32,7 +32,7 @@ const Index = () => {
   const jarvisReal = useJarvisSystem({ vehicleData: session.vehicleData, tripData: tripCalc.tripData, isConnected: session.isConnected, isPolling: session.isPolling, brandDisplayName: session.currentProfile.displayName, brandCharacteristics: session.currentProfile.characteristics, modelYear: session.themeVehicle?.modelYear });
   const refuelSettings = useRefuelSettings();
   const autoRide = useAutoRide({ speed: session.vehicleData.speed, rpm: session.vehicleData.rpm, settings: tripCalc.settings, speak: jarvis.settings.aiModeEnabled ? jarvisReal.speak : undefined, onSaveRide: session.syncedRides.saveRide, onUpdateRide: session.syncedRides.updateRide, onClearRides: session.syncedRides.clearTodayRides, initialRides: session.syncedRides.todayRides });
-  const refuelMonitor = useRefuelMonitor({ speed: session.vehicleData.speed, sendRawCommand: session.sendRawCommand, isConnected: session.isConnected, speak: jarvisReal.speak, onFuelPriceUpdate: (p) => tripCalc.updateSettings({ fuelPrice: p }), userId: session.user?.id, settings: refuelSettings.settings });
+  const refuelMonitor = useRefuelMonitor({ speed: session.vehicleData.speed, sendRawCommand: session.sendRawCommand, isConnected: session.isConnected, speak: jarvisReal.speak, onFuelPriceUpdate: (p) => tripCalc.updateSettings({ fuelPrice: p }), userId: session.user?.id, settings: refuelSettings.settings, reconnect: session.reconnect });
   const maintenanceSchedule = useMaintenanceSchedule({ brand: (session.themeVehicle?.brand || 'generic') as any, currentMileage: jarvis.settings.currentMileage, onAlertSpeak: jarvis.settings.maintenanceAlertEnabled && jarvis.settings.aiModeEnabled ? jarvisReal.speak : undefined });
 
   const handleVisibilityRestore = useCallback(async () => {
