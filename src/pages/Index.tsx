@@ -43,6 +43,7 @@ import { TodayRides } from '@/components/financial/TodayRides';
 import { RideRecoveryDialog } from '@/components/financial/RideRecoveryDialog';
 import { RefuelButton } from '@/components/refuel/RefuelButton';
 import { RefuelModal } from '@/components/refuel/RefuelModal';
+import { RefuelFlowSelector } from '@/components/refuel/RefuelFlowSelector';
 import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
 import { RefuelResult } from '@/components/refuel/RefuelResult';
 import { RefuelSettingsSheet } from '@/components/refuel/RefuelSettingsSheet';

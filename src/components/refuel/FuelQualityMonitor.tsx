@@ -1,16 +1,17 @@
 // Card de monitoramento de qualidade de combustível em tempo real
-// CORREÇÃO v2: Mostrar indicador quando settings foram alterados durante monitoramento
+// Suporta dois fluxos: Abastecimento completo e Teste Rápido
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Fuel, Activity, AlertTriangle, CheckCircle2, Settings, Cloud } from 'lucide-react';
-import { RefuelMode, RefuelSettings } from '@/types/refuelTypes';
+import { Fuel, Activity, AlertTriangle, CheckCircle2, Settings, Cloud, FlaskConical } from 'lucide-react';
+import { RefuelMode, RefuelFlowType, RefuelSettings } from '@/types/refuelTypes';
 import { FuelTrimChart } from './FuelTrimChart';
 import { cn } from '@/lib/utils';
 
 interface FuelQualityMonitorProps {
   mode: RefuelMode;
+  flowType?: RefuelFlowType | null;
   distanceMonitored: number;
   currentSTFT: number | null;
   currentLTFT: number | null;
@@ -18,12 +19,13 @@ interface FuelQualityMonitorProps {
   anomalyDuration: number;
   fuelTrimHistory: Array<{ timestamp: number; stft: number; ltft: number; distance: number }>;
   settings: RefuelSettings;
-  frozenSettings?: RefuelSettings | null; // NOVO: Settings congelados durante monitoramento
-  isSyncing?: boolean; // NOVO: Indicador de sincronização
+  frozenSettings?: RefuelSettings | null;
+  isSyncing?: boolean;
 }
 
 export function FuelQualityMonitor({
   mode,
+  flowType,
   distanceMonitored,
   currentSTFT,
   currentLTFT,
@@ -35,6 +37,8 @@ export function FuelQualityMonitor({
   isSyncing,
 }: FuelQualityMonitorProps) {
   if (mode !== 'monitoring' && mode !== 'analyzing') return null;
+  
+  const isQuickTest = flowType === 'quick-test';
   
   // CORREÇÃO v2: Usar settings congelados se disponíveis (durante monitoramento)
   const activeSettings = frozenSettings || settings;
@@ -59,28 +63,41 @@ export function FuelQualityMonitor({
   return (
     <Card className={cn(
       'border-2 transition-colors duration-300',
-      anomalyActive ? 'border-yellow-500 animate-pulse' : 'border-primary/30'
+      anomalyActive ? 'border-yellow-500 animate-pulse' : 
+        isQuickTest ? 'border-blue-500/30' : 'border-primary/30'
     )}>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Fuel className="h-5 w-5 text-primary" />
-            Hora do Posto
+            {isQuickTest ? (
+              <FlaskConical className="h-5 w-5 text-blue-500" />
+            ) : (
+              <Fuel className="h-5 w-5 text-primary" />
+            )}
+            {isQuickTest ? 'Teste de Combustível' : 'Hora do Posto'}
             {isSyncing && (
               <Cloud className="h-4 w-4 text-muted-foreground animate-pulse" />
             )}
           </span>
-          {anomalyActive ? (
-            <Badge variant="destructive" className="animate-pulse gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              Anomalia
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="gap-1">
-              <Activity className="h-3 w-3" />
-              Analisando
-            </Badge>
-          )}
+          <div className="flex items-center gap-1">
+            {isQuickTest && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <FlaskConical className="h-3 w-3" />
+                Rápido
+              </Badge>
+            )}
+            {anomalyActive ? (
+              <Badge variant="destructive" className="animate-pulse gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Anomalia
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1">
+                <Activity className="h-3 w-3" />
+                Analisando
+              </Badge>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       
