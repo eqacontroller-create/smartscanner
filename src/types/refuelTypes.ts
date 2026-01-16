@@ -1,8 +1,11 @@
 // Tipos para Auditoria de Abastecimento
 // Detecta combustível adulterado analisando Fuel Trim
 
+// Tipo de fluxo de monitoramento
+export type RefuelFlowType = 'refuel' | 'quick-test';
+
 // Status do modo abastecimento
-export type RefuelMode = 'inactive' | 'waiting' | 'monitoring' | 'analyzing' | 'completed';
+export type RefuelMode = 'inactive' | 'waiting' | 'waiting-quick' | 'monitoring' | 'analyzing' | 'completed';
 
 // Qualidade do combustível detectada
 export type FuelQuality = 'unknown' | 'ok' | 'warning' | 'critical';

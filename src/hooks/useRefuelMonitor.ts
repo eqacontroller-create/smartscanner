@@ -7,6 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   RefuelMode, 
+  RefuelFlowType,
   RefuelEntry, 
   FuelTrimSample, 
   FuelQuality,
@@ -33,6 +34,7 @@ interface UseRefuelMonitorOptions {
 
 interface UseRefuelMonitorReturn {
   mode: RefuelMode;
+  flowType: RefuelFlowType | null;
   currentRefuel: Partial<RefuelEntry> | null;
   fuelTrimHistory: FuelTrimSample[];
   fuelLevelSupported: boolean | null;
@@ -44,8 +46,9 @@ interface UseRefuelMonitorReturn {
   anomalyActive: boolean;
   anomalyDuration: number;
   settings: RefuelSettings;
-  frozenSettings: RefuelSettings | null; // NOVO: Settings congelados durante monitoramento
+  frozenSettings: RefuelSettings | null;
   startRefuelMode: () => void;
+  startQuickTest: () => void;
   confirmRefuel: (pricePerLiter: number, litersAdded: number) => void;
   cancelRefuel: () => void;
   checkPIDSupport: () => Promise<void>;
@@ -62,6 +65,7 @@ export function useRefuelMonitor({
 }: UseRefuelMonitorOptions): UseRefuelMonitorReturn {
   // Estados principais
   const [mode, setMode] = useState<RefuelMode>('inactive');
+  const [flowType, setFlowType] = useState<RefuelFlowType | null>(null);
   const [currentRefuel, setCurrentRefuel] = useState<Partial<RefuelEntry> | null>(null);
   const [fuelTrimHistory, setFuelTrimHistory] = useState<FuelTrimSample[]>([]);
   
@@ -71,6 +75,7 @@ export function useRefuelMonitor({
   // CORREÇÃO v2: Settings congelados durante monitoramento (imutáveis após iniciar)
   const [frozenSettings, setFrozenSettings] = useState<RefuelSettings | null>(null);
   const frozenSettingsRef = useRef<RefuelSettings | null>(null);
+  const flowTypeRef = useRef<RefuelFlowType | null>(null);
   
   // Suporte de PIDs
   const [fuelLevelSupported, setFuelLevelSupported] = useState<boolean | null>(null);
@@ -236,11 +241,15 @@ export function useRefuelMonitor({
     readFuelLevelRef.current = readFuelLevel;
   }, [readSTFT, readLTFT, readFuelLevel]);
   
-  // Iniciar modo abastecimento
+  // Iniciar modo abastecimento (fluxo completo)
   const startRefuelMode = useCallback(async () => {
     const levelBefore = await readFuelLevel();
     
     console.log('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
+    
+    // Definir fluxo como abastecimento
+    setFlowType('refuel');
+    flowTypeRef.current = 'refuel';
     
     setMode('waiting');
     setCurrentRefuel({
@@ -255,7 +264,7 @@ export function useRefuelMonitor({
     initialLTFTRef.current = null;
     anomalyStartRef.current = null;
     
-    // CORREÇÃO v2: Limpar settings congelados
+    // Limpar settings congelados
     setFrozenSettings(null);
     frozenSettingsRef.current = null;
     
@@ -277,6 +286,61 @@ export function useRefuelMonitor({
       await speak('Modo abastecimento ativado. Abasteça e confirme os dados quando terminar.');
     }
   }, [readFuelLevel, speak]);
+  
+  // Iniciar teste rápido de combustível (sem salvar dados)
+  const startQuickTest = useCallback(async () => {
+    console.log('[Refuel] startQuickTest - Iniciando teste rápido');
+    
+    // Verificar se STFT é suportado
+    if (!stftSupported) {
+      await speak('Este veículo não suporta leitura de Fuel Trim. Teste não disponível.');
+      return;
+    }
+    
+    // Definir fluxo como teste rápido
+    setFlowType('quick-test');
+    flowTypeRef.current = 'quick-test';
+    
+    // Definir modo como waiting-quick (sem necessidade de dados)
+    setMode('waiting-quick');
+    setCurrentRefuel({
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      pricePerLiter: 0,
+      litersAdded: 0,
+      totalPaid: 0,
+      fuelLevelBefore: null,
+      fuelLevelAfter: null,
+      quality: 'unknown',
+    });
+    
+    setFuelTrimHistory([]);
+    setDistanceMonitored(0);
+    distanceRef.current = 0;
+    setAnomalyActive(false);
+    setAnomalyDuration(0);
+    stftSamplesRef.current = [];
+    initialLTFTRef.current = await readLTFT();
+    anomalyStartRef.current = null;
+    
+    // Limpar settings congelados
+    setFrozenSettings(null);
+    frozenSettingsRef.current = null;
+    
+    // Resetar refs de timing
+    lastUpdateTimestampRef.current = null;
+    lastUIUpdateRef.current = 0;
+    lastFuelTrimReadRef.current = 0;
+    lastFuelLevelReadRef.current = 0;
+    
+    // Resetar refs de alerta
+    lastAnomalyAlertTimeRef.current = 0;
+    anomalyRecoveryAnnouncedRef.current = false;
+    announcedMilestonesRef.current.clear();
+    readFailureCountRef.current = 0;
+    
+    await speak('Teste de combustível ativado. Comece a dirigir para iniciar a análise.');
+  }, [stftSupported, speak, readLTFT]);
   
   // Confirmar dados do abastecimento
   const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number) => {
@@ -372,6 +436,10 @@ export function useRefuelMonitor({
       monitoringIntervalRef.current = null;
     }
     
+    // Limpar flowType
+    setFlowType(null);
+    flowTypeRef.current = null;
+    
     setMode('inactive');
     setCurrentRefuel(null);
     setFuelTrimHistory([]);
@@ -383,7 +451,7 @@ export function useRefuelMonitor({
     setCurrentLTFT(null);
     setCurrentFuelLevel(null);
     
-    // CORREÇÃO v2: Limpar settings congelados
+    // Limpar settings congelados
     setFrozenSettings(null);
     frozenSettingsRef.current = null;
     
@@ -394,7 +462,7 @@ export function useRefuelMonitor({
     lastUpdateTimestampRef.current = null;
     readFailureCountRef.current = 0;
     
-    speak('Modo abastecimento cancelado.');
+    speak(flowTypeRef.current === 'quick-test' ? 'Teste cancelado.' : 'Modo abastecimento cancelado.');
   }, [speak]);
   
   // Analisar qualidade do combustível
@@ -506,8 +574,9 @@ export function useRefuelMonitor({
       fuelLevelAfter: finalFuelLevel ?? prev?.fuelLevelAfter,
     }));
     
-    // Salvar no Supabase se autenticado
-    if (userId && currentRefuel) {
+    // Salvar no Supabase APENAS se for fluxo de abastecimento E usuário autenticado
+    const isRefuelFlow = flowTypeRef.current === 'refuel';
+    if (isRefuelFlow && userId && currentRefuel) {
       try {
         const insertData = {
           user_id: userId,
@@ -532,15 +601,21 @@ export function useRefuelMonitor({
       } catch (error) {
         console.error('[Refuel] Error saving to database:', error);
       }
+    } else if (!isRefuelFlow) {
+      console.log('[Refuel] Teste rápido - dados não salvos no banco');
     }
     
-    // Anunciar resultado
-    await speakRef.current(getQualityAnnouncement(quality, avgSTFT, ltftDelta, distanceRef.current));
+    // Anunciar resultado (mensagem diferente por fluxo)
+    if (isRefuelFlow) {
+      await speakRef.current(getQualityAnnouncement(quality, avgSTFT, ltftDelta, distanceRef.current));
+    } else {
+      await speakRef.current(getQuickTestAnnouncement(quality, avgSTFT));
+    }
     
     // Marcar como concluído
     setMode('completed');
     
-    // CORREÇÃO v2: Limpar settings congelados após conclusão
+    // Limpar settings congelados após conclusão
     setFrozenSettings(null);
     frozenSettingsRef.current = null;
     
@@ -562,17 +637,36 @@ export function useRefuelMonitor({
     }
   };
   
-  // Detectar início de movimento (waiting -> monitoring)
-  // CORREÇÃO v2: Congelar settings ao iniciar monitoramento
+  // Gerar anúncio para teste rápido (mais curto, sem dados financeiros)
+  const getQuickTestAnnouncement = (quality: FuelQuality, avgSTFT: number): string => {
+    switch (quality) {
+      case 'ok':
+        return `Teste concluído. Combustível OK! Fuel Trim médio de ${Math.abs(avgSTFT).toFixed(0)} porcento, dentro do normal.`;
+      case 'warning':
+        return `Teste concluído. Atenção: Fuel Trim elevado em ${Math.abs(avgSTFT).toFixed(0)} porcento. Pode haver problema com o combustível.`;
+      case 'critical':
+        return `Teste concluído. Alerta crítico! Fuel Trim em ${Math.abs(avgSTFT).toFixed(0)} porcento. Combustível possivelmente adulterado.`;
+      default:
+        return `Teste concluído. Não foi possível determinar a qualidade do combustível.`;
+    }
+  };
+  
+  // Detectar início de movimento (waiting ou waiting-quick -> monitoring)
+  // Congelar settings ao iniciar monitoramento
   useEffect(() => {
-    if (mode === 'waiting' && currentRefuel && speed > 5 && !isMonitoringActiveRef.current) {
+    const isWaiting = mode === 'waiting' || mode === 'waiting-quick';
+    
+    if (isWaiting && speed > 5 && !isMonitoringActiveRef.current) {
+      // Para waiting normal, precisa ter currentRefuel
+      if (mode === 'waiting' && !currentRefuel) return;
+      
       isMonitoringActiveRef.current = true;
       
-      // CORREÇÃO v2: Congelar settings ANTES de iniciar monitoramento
+      // Congelar settings ANTES de iniciar monitoramento
       const frozen = { ...settings };
       frozenSettingsRef.current = frozen;
       setFrozenSettings(frozen);
-      console.log('[Refuel] Settings congelados para monitoramento:', frozen.monitoringDistance, 'km');
+      console.log('[Refuel] Settings congelados para monitoramento:', frozen.monitoringDistance, 'km', '| FlowType:', flowTypeRef.current);
       
       setMode('monitoring');
       startOdometerRef.current = 0;
@@ -585,8 +679,13 @@ export function useRefuelMonitor({
       announcedMilestonesRef.current.clear();
       readFailureCountRef.current = 0;
       
-      // Anunciar com a distância CONGELADA
-      speak(`Monitoramento iniciado. Analisarei os primeiros ${frozen.monitoringDistance} quilômetros.`);
+      // Anunciar com mensagem apropriada ao fluxo
+      const isQuickTest = flowTypeRef.current === 'quick-test';
+      if (isQuickTest) {
+        speak(`Teste iniciado. Analisarei ${frozen.monitoringDistance} quilômetros.`);
+      } else {
+        speak(`Monitoramento iniciado. Analisarei os primeiros ${frozen.monitoringDistance} quilômetros.`);
+      }
     }
   }, [mode, currentRefuel, speed, speak, settings]);
   
@@ -777,6 +876,7 @@ export function useRefuelMonitor({
   
   return {
     mode,
+    flowType,
     currentRefuel,
     fuelTrimHistory,
     fuelLevelSupported,
@@ -788,8 +888,9 @@ export function useRefuelMonitor({
     anomalyActive,
     anomalyDuration,
     settings,
-    frozenSettings, // NOVO: Expor settings congelados
+    frozenSettings,
     startRefuelMode,
+    startQuickTest,
     confirmRefuel,
     cancelRefuel,
     checkPIDSupport,

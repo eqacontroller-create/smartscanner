@@ -1,4 +1,5 @@
 // Card de resultado final da análise de combustível
+// Suporta dois fluxos: Abastecimento completo e Teste Rápido
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,20 +12,23 @@ import {
   TrendingUp,
   TrendingDown,
   Gauge,
-  X
+  X,
+  FlaskConical
 } from 'lucide-react';
-import { RefuelEntry, getQualityLabel } from '@/types/refuelTypes';
+import { RefuelEntry, RefuelFlowType, getQualityLabel } from '@/types/refuelTypes';
 import { formatCurrency } from '@/types/tripSettings';
 import { cn } from '@/lib/utils';
 import { TankLevelCheck } from './TankLevelCheck';
 
 interface RefuelResultProps {
   refuel: Partial<RefuelEntry>;
+  flowType?: RefuelFlowType | null;
   onClose: () => void;
 }
 
-export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
+export function RefuelResult({ refuel, flowType, onClose }: RefuelResultProps) {
   const quality = refuel.quality || 'unknown';
+  const isQuickTest = flowType === 'quick-test';
   
   // Ícone e cor baseados na qualidade
   const getQualityVisual = () => {
@@ -68,8 +72,15 @@ export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Fuel className="h-5 w-5 text-primary" />
-            Resultado da Análise
+            {isQuickTest ? (
+              <FlaskConical className="h-5 w-5 text-blue-500" />
+            ) : (
+              <Fuel className="h-5 w-5 text-primary" />
+            )}
+            {isQuickTest ? 'Resultado do Teste' : 'Resultado da Análise'}
+            {isQuickTest && (
+              <Badge variant="secondary" className="text-xs">Teste Rápido</Badge>
+            )}
           </span>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <X className="h-4 w-4" />
@@ -122,8 +133,8 @@ export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
           </div>
         </div>
         
-        {/* Verificação da Bomba - Card Completo */}
-        {refuel.fuelLevelBefore !== null && 
+        {/* Verificação da Bomba - Card Completo (apenas para abastecimento) */}
+        {!isQuickTest && refuel.fuelLevelBefore !== null && 
          refuel.fuelLevelBefore !== undefined &&
          refuel.fuelLevelAfter !== null && 
          refuel.fuelLevelAfter !== undefined && 
@@ -137,8 +148,8 @@ export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
           />
         )}
         
-        {/* Fallback: Mostrar apenas precisão quando não há dados de nível completos */}
-        {refuel.pumpAccuracyPercent !== undefined && 
+        {/* Fallback: Mostrar apenas precisão quando não há dados de nível completos (apenas para abastecimento) */}
+        {!isQuickTest && refuel.pumpAccuracyPercent !== undefined && 
          (refuel.fuelLevelBefore === null || refuel.fuelLevelBefore === undefined ||
           refuel.fuelLevelAfter === null || refuel.fuelLevelAfter === undefined) && (
           <div className="p-3 rounded-lg bg-muted/30 space-y-2">
@@ -169,15 +180,24 @@ export function RefuelResult({ refuel, onClose }: RefuelResultProps) {
           {quality === 'critical' && 'Recomendado trocar de posto imediatamente.'}
         </div>
         
-        {/* Dados do abastecimento */}
-        <div className="pt-2 border-t flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            {refuel.litersAdded?.toFixed(1)}L a {formatCurrency(refuel.pricePerLiter || 0)}/L
-          </span>
-          <span className="font-medium text-primary">
-            {formatCurrency(refuel.totalPaid || 0)}
-          </span>
-        </div>
+        {/* Dados do abastecimento (apenas para fluxo completo) */}
+        {!isQuickTest && (refuel.litersAdded ?? 0) > 0 && (
+          <div className="pt-2 border-t flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {refuel.litersAdded?.toFixed(1)}L a {formatCurrency(refuel.pricePerLiter || 0)}/L
+            </span>
+            <span className="font-medium text-primary">
+              {formatCurrency(refuel.totalPaid || 0)}
+            </span>
+          </div>
+        )}
+        
+        {/* Nota para teste rápido */}
+        {isQuickTest && (
+          <div className="pt-2 border-t text-center text-xs text-muted-foreground">
+            Este teste não foi salvo no histórico
+          </div>
+        )}
         
         {/* Botão fechar */}
         <Button onClick={onClose} className="w-full">
