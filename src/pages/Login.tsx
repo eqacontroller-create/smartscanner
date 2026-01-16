@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Car, Cloud, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function Login() {
+// CORREÇÃO: Usar forwardRef para evitar warning de ref
+const Login = forwardRef<HTMLDivElement, object>(function Login(_props, ref) {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated, loading: authLoading } = useAuth();
   
@@ -77,7 +78,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
+    <div ref={ref} className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
       {/* Logo e título */}
       <div className="flex flex-col items-center gap-3 mb-8">
         <div className="flex items-center gap-3">
@@ -204,4 +205,6 @@ export default function Login() {
       </div>
     </div>
   );
-}
+});
+
+export default Login;

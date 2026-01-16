@@ -273,6 +273,13 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
             // Retomar polling se estava ativo
             if (isPollingRef.current) {
               addLogRef.current('▶ Retomando leitura contínua...');
+              
+              // CORREÇÃO: Limpar polling anterior antes de criar novo
+              if (pollingIntervalRef.current) {
+                clearTimeout(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+              
               setStatus('reading');
               const poll = async () => {
                 if (!isPollingRef.current) return;

@@ -31,7 +31,7 @@ interface UseAlertsOptions {
   vehicleData: VehicleData;
   settings: AlertSettings;
   status: string;
-  speak: (text: string) => void;
+  speak: (text: string) => Promise<void>; // CORREÇÃO: Promise<void>
   brandName: string;
   modelYear?: string;
   brandTip?: string;
@@ -64,6 +64,19 @@ export function useAlerts(options: UseAlertsOptions) {
   // Alert queue management
   const alertQueueRef = useRef<string[]>([]);
   const isProcessingAlertRef = useRef<boolean>(false);
+  
+  // CORREÇÃO: Ref para timeout de processamento
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // CORREÇÃO: Cleanup do timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+        processingTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Queue an alert with priority handling
   const queueAlert = useCallback((message: string, isCritical: boolean = false) => {
@@ -87,9 +100,15 @@ export function useAlerts(options: UseAlertsOptions) {
       speak(message);
     }
     
+    // CORREÇÃO: Limpar timeout anterior antes de criar novo
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+    }
+    
     // Allow next alert after a delay
-    setTimeout(() => {
+    processingTimeoutRef.current = setTimeout(() => {
       isProcessingAlertRef.current = false;
+      processingTimeoutRef.current = null;
       if (alertQueueRef.current.length > 0) {
         processAlertQueue();
       }
