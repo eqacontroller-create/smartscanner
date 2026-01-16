@@ -34,24 +34,28 @@ export function SemanticStatus({
       bg: 'bg-green-500/10',
       border: 'border-green-500/30',
       text: 'text-green-500',
+      glow: 'shadow-green-500/10',
       icon: <CheckCircle className="h-5 w-5" />,
     },
     warning: {
       bg: 'bg-yellow-500/10',
       border: 'border-yellow-500/30',
       text: 'text-yellow-500',
+      glow: 'shadow-yellow-500/10',
       icon: <AlertTriangle className="h-5 w-5" />,
     },
     critical: {
       bg: 'bg-red-500/10',
       border: 'border-red-500/30',
       text: 'text-red-500',
+      glow: 'shadow-red-500/10',
       icon: <XCircle className="h-5 w-5" />,
     },
     unknown: {
-      bg: 'bg-muted/50',
-      border: 'border-muted',
+      bg: 'bg-muted/30',
+      border: 'border-muted/50',
       text: 'text-muted-foreground',
+      glow: '',
       icon: <HelpCircle className="h-5 w-5" />,
     },
   };
@@ -61,30 +65,41 @@ export function SemanticStatus({
   return (
     <div 
       className={cn(
-        'rounded-lg border p-4 transition-all duration-300',
+        'rounded-xl border p-4 transition-all duration-300',
+        'backdrop-blur-sm',
+        'hover:scale-[1.02] hover:shadow-lg',
         config.bg,
         config.border,
+        config.glow && `shadow-md ${config.glow}`,
         className
       )}
     >
       {/* Header com ícone e label */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          {icon && <span className={config.text}>{icon}</span>}
+          {icon && (
+            <span className={cn(
+              'p-1 rounded-md backdrop-blur-sm',
+              config.bg,
+              config.text
+            )}>
+              {icon}
+            </span>
+          )}
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
         </div>
-        <span className={config.text}>{config.icon}</span>
+        <span className={cn(config.text, 'transition-transform')}>{config.icon}</span>
       </div>
 
       {/* Status grande e visível */}
-      <div className={cn('text-xl font-bold', config.text)}>
+      <div className={cn('text-xl font-bold value-transition', config.text)}>
         {statusText}
       </div>
 
       {/* Valor numérico (se habilitado) */}
       {showValue && value !== null && (
-        <div className="mt-1 text-sm text-muted-foreground">
-          {value} {unit}
+        <div className="mt-1 text-sm text-muted-foreground value-transition tabular-nums">
+          {value.toFixed(1)} {unit}
         </div>
       )}
     </div>
