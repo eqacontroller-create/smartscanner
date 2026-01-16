@@ -8,6 +8,9 @@ import { RefuelFlowSelector } from '@/components/refuel/RefuelFlowSelector';
 import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
 import { RefuelResult } from '@/components/refuel/RefuelResult';
 import { RefuelSettingsSheet } from '@/components/refuel/RefuelSettingsSheet';
+import { Button } from '@/components/ui/button';
+import { X, Fuel, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
 import type { RideEntry } from '@/types/tripSettings';
@@ -97,6 +100,48 @@ export function FloatingControls(props: FloatingControlsProps) {
       
       <RefuelModal open={props.isRefuelModalOpen} onOpenChange={props.onRefuelModalChange} fuelLevelBefore={props.currentRefuel?.fuelLevelBefore ?? null} currentFuelLevel={props.currentFuelLevel} fuelLevelSupported={props.fuelLevelSupported} defaultPrice={props.tripFuelPrice} isAuthenticated={props.isAuthenticated} onConfirm={(price, liters) => { props.confirmRefuel(price, liters); props.onRefuelModalChange(false); }} />
       
+      {/* Badge flutuante para estados de espera */}
+      {(props.refuelMode === 'waiting' || props.refuelMode === 'waiting-quick') && (
+        <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
+          <div className={cn(
+            'rounded-xl border-2 p-3 backdrop-blur-sm animate-pulse',
+            props.refuelMode === 'waiting-quick' 
+              ? 'bg-blue-500/10 border-blue-500/50' 
+              : 'bg-yellow-500/10 border-yellow-500/50'
+          )}>
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'p-2 rounded-full',
+                props.refuelMode === 'waiting-quick' ? 'bg-blue-500/20' : 'bg-yellow-500/20'
+              )}>
+                {props.refuelMode === 'waiting-quick' 
+                  ? <Activity className="h-5 w-5 text-blue-500" />
+                  : <Fuel className="h-5 w-5 text-yellow-500" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  'text-sm font-medium',
+                  props.refuelMode === 'waiting-quick' ? 'text-blue-500' : 'text-yellow-500'
+                )}>
+                  {props.refuelMode === 'waiting-quick' 
+                    ? 'Teste Rápido Ativo' 
+                    : 'Modo Abastecimento Ativo'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {props.refuelMode === 'waiting-quick' 
+                    ? 'Comece a dirigir para iniciar' 
+                    : 'Confirme os dados do abastecimento'}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={props.cancelRefuel} className="h-8 w-8 flex-shrink-0">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(props.refuelMode === 'monitoring' || props.refuelMode === 'analyzing') && (
         <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
           <FuelQualityMonitor mode={props.refuelMode} distanceMonitored={props.distanceMonitored} currentSTFT={props.currentSTFT} currentLTFT={props.currentLTFT} anomalyActive={props.anomalyActive} anomalyDuration={props.anomalyDuration} fuelTrimHistory={props.fuelTrimHistory} settings={props.refuelSettings} frozenSettings={props.frozenSettings} isSyncing={props.isSyncing} flowType={props.refuelFlowType} />
@@ -111,7 +156,7 @@ export function FloatingControls(props: FloatingControlsProps) {
       
       {props.isConnected && (
         <div className="fixed bottom-4 left-4 z-50 safe-area-bottom flex items-center gap-2">
-          <RefuelButton mode={props.refuelMode} isConnected={props.isConnected} isAuthenticated={props.isAuthenticated} onStart={() => props.onFlowSelectorChange(true)} onCancel={props.cancelRefuel} />
+          <RefuelButton mode={props.refuelMode} flowType={props.refuelFlowType} isConnected={props.isConnected} isAuthenticated={props.isAuthenticated} onStart={() => props.onFlowSelectorChange(true)} onCancel={props.cancelRefuel} />
           {props.refuelMode === 'inactive' && <RefuelSettingsSheet settings={props.refuelSettings} onSettingsChange={props.onUpdateRefuelSettings} onReset={props.onResetRefuelSettings} />}
         </div>
       )}

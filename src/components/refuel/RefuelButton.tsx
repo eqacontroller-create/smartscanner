@@ -3,7 +3,7 @@
 
 import { Fuel, X, Cloud, CloudOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RefuelMode } from '@/types/refuelTypes';
+import { RefuelMode, RefuelFlowType } from '@/types/refuelTypes';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -14,6 +14,7 @@ import {
 
 interface RefuelButtonProps {
   mode: RefuelMode;
+  flowType?: RefuelFlowType | null;
   isConnected: boolean;
   isAuthenticated?: boolean;
   onStart: () => void;
@@ -22,20 +23,26 @@ interface RefuelButtonProps {
 
 export function RefuelButton({
   mode,
+  flowType,
   isConnected,
   isAuthenticated = false,
   onStart,
   onCancel,
 }: RefuelButtonProps) {
   const isActive = mode !== 'inactive';
+  const isQuickTest = flowType === 'quick-test';
   
-  // Cores baseadas no modo
+  // Cores baseadas no modo e tipo de fluxo
   const getModeStyles = () => {
     switch (mode) {
       case 'waiting':
         return 'bg-yellow-500 hover:bg-yellow-600 text-yellow-950 animate-pulse';
+      case 'waiting-quick':
+        return 'bg-blue-500 hover:bg-blue-600 text-white animate-pulse';
       case 'monitoring':
-        return 'bg-blue-500 hover:bg-blue-600 text-white';
+        return isQuickTest 
+          ? 'bg-blue-500 hover:bg-blue-600 text-white'
+          : 'bg-primary hover:bg-primary/90';
       case 'analyzing':
         return 'bg-purple-500 hover:bg-purple-600 text-white animate-pulse';
       case 'completed':
@@ -45,13 +52,15 @@ export function RefuelButton({
     }
   };
   
-  // Label baseado no modo
+  // Label baseado no modo e tipo de fluxo
   const getModeLabel = () => {
     switch (mode) {
       case 'waiting':
+        return 'Confirmar...';
+      case 'waiting-quick':
         return 'Aguardando...';
       case 'monitoring':
-        return 'Analisando';
+        return isQuickTest ? 'Testando' : 'Analisando';
       case 'analyzing':
         return 'Processando';
       case 'completed':
