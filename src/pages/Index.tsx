@@ -162,6 +162,7 @@ const Index = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   // isAuthModalOpen removido - login agora é página dedicada
   const [mainTab, setMainTab] = useState('painel');
+  const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
   const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
   
   // Hook de configurações de abastecimento
@@ -807,6 +808,7 @@ const Index = () => {
             settings={refuelMonitor.settings}
             frozenSettings={refuelMonitor.frozenSettings}
             isSyncing={refuelSettings.isSyncing}
+            flowType={refuelMonitor.flowType}
           />
         </div>
       )}
@@ -816,6 +818,7 @@ const Index = () => {
         <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
           <RefuelResult
             refuel={refuelMonitor.currentRefuel}
+            flowType={refuelMonitor.flowType}
             onClose={refuelMonitor.cancelRefuel}
           />
         </div>
@@ -828,10 +831,7 @@ const Index = () => {
               mode={refuelMonitor.mode}
               isConnected={status === 'ready' || status === 'reading'}
               isAuthenticated={isAuthenticated}
-              onStart={() => {
-                refuelMonitor.startRefuelMode();
-                setIsRefuelModalOpen(true);
-              }}
+              onStart={() => setIsFlowSelectorOpen(true)}
               onCancel={refuelMonitor.cancelRefuel}
             />
             {/* Botão de configurações de abastecimento */}
@@ -844,6 +844,21 @@ const Index = () => {
             )}
         </div>
       )}
+      
+      {/* Seletor de Fluxo de Combustível */}
+      <RefuelFlowSelector
+        open={isFlowSelectorOpen}
+        onOpenChange={setIsFlowSelectorOpen}
+        onSelectRefuel={() => {
+          refuelMonitor.startRefuelMode();
+          setIsRefuelModalOpen(true);
+        }}
+        onSelectQuickTest={() => {
+          refuelMonitor.startQuickTest();
+        }}
+        isAuthenticated={isAuthenticated}
+        stftSupported={refuelMonitor.stftSupported}
+      />
     </div>
   );
 };
