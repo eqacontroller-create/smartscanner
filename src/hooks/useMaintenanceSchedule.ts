@@ -17,7 +17,7 @@ interface UseMaintenanceScheduleOptions {
   onAlertSpeak?: (message: string) => void;
 }
 
-interface UseMaintenanceScheduleReturn {
+export interface UseMaintenanceScheduleReturn {
   // Estado
   alerts: MaintenanceAlert[];
   history: MaintenanceRecord[];
