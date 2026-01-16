@@ -36,6 +36,7 @@ export function VehicleSelector({
 }: VehicleSelectorProps) {
   const {
     brands,
+    models,
     filteredModels,
     isLoading,
     error,
@@ -53,27 +54,15 @@ export function VehicleSelector({
   const [selectedModel, setSelectedModel] = useState<VehicleModelData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Calculate model counts per brand
+  // Calculate model counts per brand (based on raw models, not filtered)
   const modelCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    brands.forEach(brand => {
-      counts[brand] = filteredModels.filter(
-        m => m.brand.toLowerCase() === brand.toLowerCase() && 
-        (selectedBrand === null || m.brand.toLowerCase() === selectedBrand.toLowerCase())
-      ).length;
-    });
-    
-    // If no brand filter, count all models per brand
-    if (!selectedBrand) {
-      brands.forEach(brand => {
-        counts[brand] = filteredModels.filter(
-          m => m.brand.toLowerCase() === brand.toLowerCase()
-        ).length;
-      });
+    for (const model of models) {
+      const brandLower = model.brand.toLowerCase();
+      counts[model.brand] = (counts[model.brand] || 0) + 1;
     }
-    
     return counts;
-  }, [brands, filteredModels, selectedBrand]);
+  }, [models]);
 
   // Search suggestions
   const suggestions = useMemo(() => {

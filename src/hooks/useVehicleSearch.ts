@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { VehicleModelsService, VehicleModelData } from '@/services/supabase/VehicleModelsService';
 
 interface UseVehicleSearchResult {
@@ -21,6 +21,10 @@ interface UseVehicleSearchResult {
 
 const RECENT_SEARCHES_KEY = 'vehicle-recent-searches';
 const MAX_RECENT_SEARCHES = 5;
+const DEBOUNCE_DELAY = 250; // ms
+
+// Premium brands for sorting (cached)
+const PREMIUM_BRANDS = new Set(['bmw', 'mercedes-benz', 'audi', 'volvo', 'land rover', 'porsche', 'jaguar', 'lexus']);
 
 export function useVehicleSearch(): UseVehicleSearchResult {
   const [brands, setBrands] = useState<string[]>([]);
@@ -28,9 +32,26 @@ export function useVehicleSearch(): UseVehicleSearchResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  
+  // Debounce timer ref
+  const debounceRef = useRef<NodeJS.Timeout>();
+
+  // Debounce search query
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, DEBOUNCE_DELAY);
+    
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -69,18 +90,17 @@ export function useVehicleSearch(): UseVehicleSearchResult {
     loadData();
   }, []);
 
-  // Filter models based on search and filters
+  // Filter models based on search and filters (uses debounced query)
   const filteredModels = useMemo(() => {
-    let result = [...models];
+    let result = models;
     
-    // Filter by brand
+    // Filter by brand (fast, no array copy needed yet)
     if (selectedBrand) {
-      result = result.filter(m => 
-        m.brand.toLowerCase() === selectedBrand.toLowerCase()
-      );
+      const brandLower = selectedBrand.toLowerCase();
+      result = result.filter(m => m.brand.toLowerCase() === brandLower);
     }
     
-    // Filter by year
+    // Filter by year (uses cached parser)
     if (selectedYear) {
       result = result.filter(m => {
         const years = VehicleModelsService.parseYearsRange(m.years_available);
@@ -88,9 +108,9 @@ export function useVehicleSearch(): UseVehicleSearchResult {
       });
     }
     
-    // Filter by search query (fuzzy)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
+    // Filter by search query (fuzzy) - uses debounced value
+    if (debouncedQuery.trim()) {
+      const query = debouncedQuery.toLowerCase().trim();
       result = result.filter(m => {
         const brandMatch = m.brand.toLowerCase().includes(query);
         const modelMatch = m.model_name.toLowerCase().includes(query);
@@ -101,10 +121,9 @@ export function useVehicleSearch(): UseVehicleSearchResult {
     }
     
     // Sort: premium brands first, then alphabetically
-    result.sort((a, b) => {
-      const premiumBrands = ['bmw', 'mercedes-benz', 'audi', 'volvo', 'land rover', 'porsche'];
-      const aIsPremium = premiumBrands.includes(a.brand.toLowerCase());
-      const bIsPremium = premiumBrands.includes(b.brand.toLowerCase());
+    return [...result].sort((a, b) => {
+      const aIsPremium = PREMIUM_BRANDS.has(a.brand.toLowerCase());
+      const bIsPremium = PREMIUM_BRANDS.has(b.brand.toLowerCase());
       
       if (aIsPremium && !bIsPremium) return -1;
       if (!aIsPremium && bIsPremium) return 1;
@@ -116,9 +135,7 @@ export function useVehicleSearch(): UseVehicleSearchResult {
       // Then by model
       return a.model_name.localeCompare(b.model_name);
     });
-    
-    return result;
-  }, [models, selectedBrand, selectedYear, searchQuery]);
+  }, [models, selectedBrand, selectedYear, debouncedQuery]);
 
   const clearFilters = useCallback(() => {
     setSearchQuery('');

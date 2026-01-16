@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { getBrandAsset, BrandAsset } from '@/lib/brandAssets';
 import { Star } from 'lucide-react';
@@ -90,16 +90,25 @@ export function BrandCarousel({ brands, selectedBrand, onSelectBrand, modelCount
     }
   }, [selectedBrand, brands]);
 
-  // Sort brands: premium first, then alphabetically
-  const sortedBrands = [...brands].sort((a, b) => {
-    const assetA = getBrandAsset(a);
-    const assetB = getBrandAsset(b);
-    
-    if (assetA.premium && !assetB.premium) return -1;
-    if (!assetA.premium && assetB.premium) return 1;
-    
-    return assetA.displayName.localeCompare(assetB.displayName);
-  });
+  // Memoize sorted brands with pre-computed assets
+  const brandsWithAssets = useMemo(() => {
+    return brands
+      .map(brand => ({
+        brand,
+        asset: getBrandAsset(brand)
+      }))
+      .sort((a, b) => {
+        if (a.asset.premium && !b.asset.premium) return -1;
+        if (!a.asset.premium && b.asset.premium) return 1;
+        return a.asset.displayName.localeCompare(b.asset.displayName);
+      });
+  }, [brands]);
+
+  // Memoize total count
+  const totalModels = useMemo(() => {
+    if (!modelCounts) return 0;
+    return Object.values(modelCounts).reduce((a, b) => a + b, 0);
+  }, [modelCounts]);
 
   return (
     <div className="relative">
@@ -138,13 +147,12 @@ export function BrandCarousel({ brands, selectedBrand, onSelectBrand, modelCount
           </span>
           {modelCounts && (
             <span className="text-[10px] text-muted-foreground/60">
-              {Object.values(modelCounts).reduce((a, b) => a + b, 0)} modelos
+              {totalModels} modelos
             </span>
           )}
         </button>
 
-        {sortedBrands.map((brand) => {
-          const asset = getBrandAsset(brand);
+        {brandsWithAssets.map(({ brand, asset }) => {
           const isSelected = selectedBrand?.toLowerCase() === brand.toLowerCase();
           
           return (
