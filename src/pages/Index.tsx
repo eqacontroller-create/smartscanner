@@ -23,23 +23,8 @@ import { JarvisSettingsSheet } from '@/components/dashboard/JarvisSettingsSheet'
 import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
 import { JarvisFloatingWidget } from '@/components/dashboard/JarvisFloatingWidget';
 import { SyncStatus } from '@/components/dashboard/SyncStatus';
-import { RPMGauge } from '@/components/dashboard/RPMGauge';
-import { RPMCard } from '@/components/dashboard/RPMCard';
-import { VehicleStats } from '@/components/dashboard/VehicleStats';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
-import { VehicleVIN } from '@/components/dashboard/VehicleVIN';
-import { VehicleInfoCard } from '@/components/dashboard/VehicleInfoCard';
-import { MaintenanceCard } from '@/components/dashboard/MaintenanceCard';
-import { LogPanel } from '@/components/dashboard/LogPanel';
-import { DTCScanner } from '@/components/mechanic/DTCScanner';
-import { LiveDataMonitor } from '@/components/mechanic/LiveDataMonitor';
-import { TripMonitor } from '@/components/financial/TripMonitor';
-import { TripControls } from '@/components/financial/TripControls';
-import { QuickSettings } from '@/components/financial/QuickSettings';
-import { TripHistory } from '@/components/financial/TripHistory';
-import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
 import { RideEndModal } from '@/components/financial/RideEndModal';
-import { TodayRides } from '@/components/financial/TodayRides';
 import { RideRecoveryDialog } from '@/components/financial/RideRecoveryDialog';
 import { RefuelButton } from '@/components/refuel/RefuelButton';
 import { RefuelModal } from '@/components/refuel/RefuelModal';
@@ -50,7 +35,7 @@ import { RefuelSettingsSheet } from '@/components/refuel/RefuelSettingsSheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, Car, AlertTriangle, Home, DollarSign, Settings, Gauge, Wrench, Activity, HelpCircle, Download, MoreVertical, Volume2, Moon } from 'lucide-react';
+import { Car, AlertTriangle, Home, DollarSign, Settings, Wrench, HelpCircle, Download, MoreVertical, Volume2, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
@@ -58,6 +43,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+// Novos componentes de aba
+import { DashboardTab } from '@/components/tabs/DashboardTab';
+import { MechanicTab } from '@/components/tabs/MechanicTab';
+import { FinancialTab } from '@/components/tabs/FinancialTab';
+import { SettingsTab } from '@/components/tabs/SettingsTab';
 
 const Index = () => {
   // Dados OBD via contexto global (persiste entre navegações)
@@ -160,7 +151,6 @@ const Index = () => {
   });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // isAuthModalOpen removido - login agora é página dedicada
   const [mainTab, setMainTab] = useState('painel');
   const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
   const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
@@ -185,17 +175,16 @@ const Index = () => {
     speak,
     onFuelPriceUpdate: (price) => tripCalculator.updateSettings({ fuelPrice: price }),
     userId: user?.id,
-    settings: refuelSettings.settings, // Passar configurações externas
+    settings: refuelSettings.settings,
   });
 
   // Verificar suporte de PIDs ao conectar
-  // CORRIGIDO: Comentário eslint para ignorar dependência intencionalmente
   useEffect(() => {
     if (status === 'ready') {
       refuelMonitor.checkPIDSupport();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]); // Intencionalmente omitido refuelMonitor para executar apenas quando status muda
+  }, [status]);
   
   // Hook de Shift Light Adaptativo
   useShiftLight({
@@ -211,12 +200,11 @@ const Index = () => {
   const reconnectAttemptedRef = useRef(false);
   
   // Handler para reconexão automática quando tela é desbloqueada
-  // CORRIGIDO: Adiciona verificação de status desconectado para evitar tentativas desnecessárias
   const handleVisibilityRestore = useCallback(async () => {
     if (
       jarvisSettings.autoReconnectEnabled && 
       hasLastDevice &&
-      status === 'disconnected' && // NOVA VERIFICAÇÃO: Só reconecta se realmente desconectou
+      status === 'disconnected' &&
       !reconnectAttemptedRef.current
     ) {
       reconnectAttemptedRef.current = true;
@@ -225,7 +213,6 @@ const Index = () => {
       const success = await reconnect();
       if (success) {
         speak('Reconectado automaticamente');
-        // Reiniciar polling após reconexão bem-sucedida
         setTimeout(() => {
           startPolling();
         }, 500);
@@ -295,8 +282,6 @@ const Index = () => {
     }
   }, [detectedVehicle, status, setVehicle, resetToGeneric]);
 
-  // ALERTAS MOVIDOS PARA useAlerts hook - Sistema centralizado com queue e prioridade
-
   // Handler para relatório de voz
   const handleVoiceReport = () => {
     const report = tripCalculator.getVoiceReport();
@@ -339,7 +324,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              {/* Status de Sincronização - sempre visível */}
+              {/* Status de Sincronização */}
               <SyncStatus 
                 synced={syncedRides.synced} 
                 lastSyncedAt={syncedRides.loading ? null : new Date()}
@@ -347,13 +332,11 @@ const Index = () => {
               
               {/* Botões secundários - visíveis em telas >= xs */}
               <div className="hidden xs:flex items-center gap-1 sm:gap-2">
-                {/* Botão Instalar PWA */}
                 <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
                   <Link to="/instalar">
                     <Download className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Link>
                 </Button>
-                {/* Botão de Ajuda */}
                 <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9">
                   <Link to="/ajuda">
                     <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -361,7 +344,7 @@ const Index = () => {
                 </Button>
               </div>
               
-              {/* Menu dropdown para mobile (< xs) */}
+              {/* Menu dropdown para mobile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="xs:hidden">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -395,7 +378,7 @@ const Index = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               
-              {/* Botão de voz do Jarvis AI - sempre visível se ativo */}
+              {/* Botão de voz do Jarvis AI */}
               {jarvisSettings.aiModeEnabled && (
                 <JarvisVoiceButton
                   isListening={jarvisAI.isListening}
@@ -427,7 +410,7 @@ const Index = () => {
                 </div>
               )}
               
-              {/* Status de conexão - sempre visível */}
+              {/* Status de conexão */}
               <StatusIndicator status={status} />
             </div>
           </div>
@@ -489,228 +472,127 @@ const Index = () => {
             />
           </div>
 
-          {/* Main Navigation Tabs */}
+          {/* Main Navigation Tabs - 4 ABAS */}
           <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
-              <TabsTrigger value="painel" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
+            <TabsList className="grid w-full grid-cols-4 h-auto tabs-scroll">
+              <TabsTrigger value="painel" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
                 <Home className="h-4 w-4" />
                 <span className="hidden xs:inline">Painel</span>
               </TabsTrigger>
-              <TabsTrigger value="financeiro" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
-                <DollarSign className="h-4 w-4" />
-                <span className="hidden xs:inline">Financeiro</span>
+              <TabsTrigger value="mecanica" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
+                <Wrench className="h-4 w-4" />
+                <span className="hidden xs:inline">Mecânica</span>
               </TabsTrigger>
-              <TabsTrigger value="ajustes" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-xs sm:text-sm touch-target">
+              <TabsTrigger value="financas" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden xs:inline">Finanças</span>
+              </TabsTrigger>
+              <TabsTrigger value="config" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
                 <Settings className="h-4 w-4" />
-                <span className="hidden xs:inline">Ajustes</span>
+                <span className="hidden xs:inline">Config</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* Painel Tab (Dashboard) */}
-            <TabsContent value="painel" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              {/* Sub-tabs for dashboard features */}
-              <Tabs defaultValue="dashboard" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 h-auto">
-                  <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 text-xs touch-target">
-                    <Gauge className="h-3.5 w-3.5" />
-                    <span className="hidden xs:inline">Gauges</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="live" className="gap-1.5 sm:gap-2 py-2 text-xs touch-target">
-                    <Activity className="h-3.5 w-3.5" />
-                    <span className="hidden xs:inline">Live Data</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="mechanic" className="gap-1.5 sm:gap-2 py-2 text-xs touch-target">
-                    <Wrench className="h-3.5 w-3.5" />
-                    <span className="hidden xs:inline">Diagnóstico</span>
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Dashboard Sub-Tab */}
-                <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4">
-                  {/* Gauge Section */}
-                  <div className="flex flex-col items-center gap-4 sm:gap-6">
-                    <RPMGauge value={rpm} redlineRPM={jarvisSettings.redlineRPM} />
-                    
-                    {/* Polling Toggle Button */}
-                    {(isReady || isReading) && (
-                      <Button
-                        size="lg"
-                        onClick={isPolling ? stopPolling : startPolling}
-                        className={`gap-2 min-h-[48px] px-6 touch-target ${isPolling 
-                          ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
-                          : 'bg-accent text-accent-foreground hover:bg-accent/90'
-                        }`}
-                      >
-                        {isPolling ? (
-                          <>
-                            <Square className="h-5 w-5" />
-                            <span>Parar Leitura</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-5 w-5" />
-                            <span>Iniciar Leitura</span>
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Vehicle Stats */}
-                  <VehicleStats 
-                    speed={speed} 
-                    temperature={temperature} 
-                    voltage={voltage}
-                    fuelLevel={fuelLevel}
-                    engineLoad={engineLoad}
-                    isReading={isReading}
-                  />
-
-                  {/* RPM Card */}
-                  <RPMCard value={rpm} isReading={isReading} />
-
-                  {/* Log Panel */}
-                  <LogPanel logs={logs} />
-                </TabsContent>
-
-                {/* Live Data Sub-Tab */}
-                <TabsContent value="live" className="space-y-4 sm:space-y-6 mt-4">
-                  <LiveDataMonitor
-                    sendCommand={sendRawCommand}
-                    isConnected={isReady || isReading}
-                    addLog={addLog}
-                    stopPolling={stopPolling}
-                    isPolling={isPolling}
-                  />
-                  
-                  {/* Log Panel */}
-                  <LogPanel logs={logs} />
-                </TabsContent>
-
-                {/* Mechanic/Diagnostics Sub-Tab */}
-                <TabsContent value="mechanic" className="space-y-4 sm:space-y-6 mt-4">
-                  {/* Vehicle VIN Reader */}
-                  <VehicleVIN
-                    sendCommand={sendRawCommand}
-                    isConnected={isReady || isReading}
-                    addLog={addLog}
-                  />
-                  
-                  {/* Vehicle Info Card - Mostra benefícios específicos da marca */}
-                  {themeVehicle && (
-                    <VehicleInfoCard
-                      brand={themeVehicle.brand}
-                      profile={currentProfile}
-                      modelYear={themeVehicle.modelYear}
-                      benefits={vehicleBenefits}
-                    />
-                  )}
-                  
-                  {/* Maintenance Card - Cronograma de manutenção por marca */}
-                  <MaintenanceCard
-                    alerts={maintenanceSchedule.alerts}
-                    intervals={maintenanceSchedule.intervals}
-                    currentMileage={jarvisSettings.currentMileage}
-                    brandName={currentProfile.displayName}
-                    onRecordMaintenance={maintenanceSchedule.recordMaintenance}
-                    onSpeakAlerts={() => {
-                      const message = maintenanceSchedule.getVoiceMessage();
-                      if (message) speak(message);
-                    }}
-                    isSpeaking={isSpeaking}
-                  />
-                  
-                  <DTCScanner 
-                    sendCommand={sendRawCommand}
-                    isConnected={isReady || isReading}
-                    addLog={addLog}
-                    stopPolling={stopPolling}
-                    isPolling={isPolling}
-                    onSpeakAlert={jarvisSettings.aiModeEnabled ? speak : undefined}
-                  />
-                  
-                  {/* Log Panel also visible in mechanic tab */}
-                  <LogPanel logs={logs} />
-                </TabsContent>
-              </Tabs>
+            {/* Aba PAINEL (Dashboard Principal) */}
+            <TabsContent value="painel" className="mt-4 sm:mt-6">
+              <DashboardTab
+                rpm={rpm}
+                speed={speed}
+                temperature={temperature}
+                voltage={voltage}
+                fuelLevel={fuelLevel}
+                engineLoad={engineLoad}
+                redlineRPM={jarvisSettings.redlineRPM}
+                isReady={isReady}
+                isReading={isReading}
+                isPolling={isPolling}
+                logs={logs}
+                onStartPolling={startPolling}
+                onStopPolling={stopPolling}
+              />
             </TabsContent>
 
-            {/* Financeiro Tab (Taxímetro) */}
-            <TabsContent value="financeiro" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              {/* Status da corrida automática */}
-              {tripCalculator.settings.autoRideEnabled && (
-                <div className="flex justify-center">
-                  <RideStatusBadge status={autoRide.rideStatus} />
-                </div>
-              )}
-
-              {/* Trip Monitor - Main Display */}
-              <TripMonitor 
-                tripData={tripCalculator.tripData} 
-                currentSpeed={speed}
-              />
-
-              {/* Trip Controls */}
-              <TripControls
-                tripData={tripCalculator.tripData}
-                onStart={tripCalculator.startTrip}
-                onPause={tripCalculator.pauseTrip}
-                onResume={tripCalculator.resumeTrip}
-                onReset={tripCalculator.resetTrip}
-                onSave={tripCalculator.saveTrip}
-                onVoiceReport={handleVoiceReport}
+            {/* Aba MECÂNICA (Diagnóstico Completo) */}
+            <TabsContent value="mecanica" className="mt-4 sm:mt-6">
+              <MechanicTab
+                sendCommand={sendRawCommand}
+                isConnected={isReady || isReading}
+                isPolling={isPolling}
+                addLog={addLog}
+                stopPolling={stopPolling}
+                logs={logs}
+                themeVehicle={themeVehicle}
+                currentProfile={currentProfile}
+                vehicleBenefits={vehicleBenefits}
+                maintenanceSchedule={maintenanceSchedule}
+                currentMileage={jarvisSettings.currentMileage}
+                speak={speak}
                 isSpeaking={isSpeaking}
-              />
-
-              {/* Histórico de Hoje (Auto-Ride) */}
-              {tripCalculator.settings.autoRideEnabled && (
-                <TodayRides
-                  summary={autoRide.dailySummary}
-                  onClear={autoRide.clearTodayRides}
-                  onVoiceReport={handleDailyReport}
-                  isSpeaking={isSpeaking}
-                />
-              )}
-
-              {/* Quick Settings */}
-              <QuickSettings
-                settings={tripCalculator.settings}
-                onUpdateSettings={tripCalculator.updateSettings}
-              />
-
-              {/* Trip History */}
-              <TripHistory
-                history={tripCalculator.history}
-                onClearHistory={tripCalculator.clearHistory}
+                aiModeEnabled={jarvisSettings.aiModeEnabled}
               />
             </TabsContent>
 
-            {/* Ajustes Tab (Settings) */}
-            <TabsContent value="ajustes" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              <Card>
-                <CardContent className="p-4 sm:p-6 text-center space-y-4">
-                  <Settings className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <div>
-                    <h3 className="font-semibold text-lg">Configurações do Jarvis</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Acesse as configurações do assistente de voz, alertas e perfil do motor.
-                    </p>
-                  </div>
-                  <Button 
-                    size="lg"
-                    className="gap-2"
-                    onClick={() => setIsSettingsOpen(true)}
-                  >
-                    <Settings className="h-5 w-5" />
-                    Abrir Configurações
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Quick Financial Settings */}
-              <QuickSettings
-                settings={tripCalculator.settings}
+            {/* Aba FINANÇAS (Custos e Viagens) */}
+            <TabsContent value="financas" className="mt-4 sm:mt-6">
+              <FinancialTab
+                tripData={tripCalculator.tripData}
+                tripSettings={tripCalculator.settings}
+                tripHistory={tripCalculator.history}
+                onStartTrip={tripCalculator.startTrip}
+                onPauseTrip={tripCalculator.pauseTrip}
+                onResumeTrip={tripCalculator.resumeTrip}
+                onResetTrip={tripCalculator.resetTrip}
+                onSaveTrip={tripCalculator.saveTrip}
+                onClearHistory={tripCalculator.clearHistory}
                 onUpdateSettings={tripCalculator.updateSettings}
+                onVoiceReport={handleVoiceReport}
+                currentSpeed={speed}
+                isSpeaking={isSpeaking}
+                autoRideEnabled={tripCalculator.settings.autoRideEnabled}
+                rideStatus={autoRide.rideStatus}
+                dailySummary={autoRide.dailySummary}
+                onClearTodayRides={autoRide.clearTodayRides}
+                onDailyReport={handleDailyReport}
+                refuelMode={refuelMonitor.mode}
+                refuelFlowType={refuelMonitor.flowType}
+                distanceMonitored={refuelMonitor.distanceMonitored}
+                currentSTFT={refuelMonitor.currentSTFT}
+                currentLTFT={refuelMonitor.currentLTFT}
+                anomalyActive={refuelMonitor.anomalyActive}
+                anomalyDuration={refuelMonitor.anomalyDuration}
+                fuelTrimHistory={refuelMonitor.fuelTrimHistory}
+                refuelSettings={refuelSettings.settings}
+                frozenSettings={refuelMonitor.frozenSettings}
+                currentRefuel={refuelMonitor.currentRefuel as any}
+                isSyncing={refuelSettings.isSyncing}
+                stftSupported={refuelMonitor.stftSupported ?? false}
+                isConnected={isReady || isReading}
+                isAuthenticated={isAuthenticated}
+                onStartRefuelMode={refuelMonitor.startRefuelMode}
+                onStartQuickTest={refuelMonitor.startQuickTest}
+                onCancelRefuel={refuelMonitor.cancelRefuel}
+                onOpenRefuelModal={() => setIsRefuelModalOpen(true)}
+                onUpdateRefuelSettings={refuelSettings.updateSettings}
+                onResetRefuelSettings={refuelSettings.resetToDefaults}
+              />
+            </TabsContent>
+
+            {/* Aba CONFIGURAÇÕES */}
+            <TabsContent value="config" className="mt-4 sm:mt-6">
+              <SettingsTab
+                jarvisSettings={jarvisSettings}
+                tripSettings={tripCalculator.settings}
+                refuelSettings={refuelSettings.settings}
+                onUpdateJarvisSetting={updateSetting}
+                onUpdateTripSettings={tripCalculator.updateSettings}
+                onUpdateRefuelSettings={refuelSettings.updateSettings}
+                onResetJarvisSettings={resetToDefaults}
+                onResetRefuelSettings={refuelSettings.resetToDefaults}
+                onTestVoice={testAudio}
+                availableVoices={availableVoices}
+                portugueseVoices={portugueseVoices}
+                isSpeaking={isSpeaking}
+                isWakeLockActive={wakeLock.isWakeLockActive}
               />
             </TabsContent>
           </Tabs>
@@ -777,8 +659,6 @@ const Index = () => {
         onDiscard={autoRide.discardRecovery}
       />
       
-      {/* AuthModal removido - login agora é página dedicada via /login */}
-      
       {/* Modal de Abastecimento */}
       <RefuelModal
         open={isRefuelModalOpen}
@@ -827,21 +707,21 @@ const Index = () => {
       {/* Botão Flutuante de Abastecimento */}
       {(status === 'ready' || status === 'reading') && (
         <div className="fixed bottom-4 left-4 z-50 safe-area-bottom flex items-center gap-2">
-            <RefuelButton
-              mode={refuelMonitor.mode}
-              isConnected={status === 'ready' || status === 'reading'}
-              isAuthenticated={isAuthenticated}
-              onStart={() => setIsFlowSelectorOpen(true)}
-              onCancel={refuelMonitor.cancelRefuel}
+          <RefuelButton
+            mode={refuelMonitor.mode}
+            isConnected={status === 'ready' || status === 'reading'}
+            isAuthenticated={isAuthenticated}
+            onStart={() => setIsFlowSelectorOpen(true)}
+            onCancel={refuelMonitor.cancelRefuel}
+          />
+          {/* Botão de configurações de abastecimento */}
+          {refuelMonitor.mode === 'inactive' && (
+            <RefuelSettingsSheet
+              settings={refuelSettings.settings}
+              onSettingsChange={refuelSettings.updateSettings}
+              onReset={refuelSettings.resetToDefaults}
             />
-            {/* Botão de configurações de abastecimento */}
-            {refuelMonitor.mode === 'inactive' && (
-              <RefuelSettingsSheet
-                settings={refuelSettings.settings}
-                onSettingsChange={refuelSettings.updateSettings}
-                onReset={refuelSettings.resetToDefaults}
-              />
-            )}
+          )}
         </div>
       )}
       
@@ -849,6 +729,8 @@ const Index = () => {
       <RefuelFlowSelector
         open={isFlowSelectorOpen}
         onOpenChange={setIsFlowSelectorOpen}
+        stftSupported={refuelMonitor.stftSupported}
+        isAuthenticated={isAuthenticated}
         onSelectRefuel={() => {
           refuelMonitor.startRefuelMode();
           setIsRefuelModalOpen(true);
@@ -856,8 +738,6 @@ const Index = () => {
         onSelectQuickTest={() => {
           refuelMonitor.startQuickTest();
         }}
-        isAuthenticated={isAuthenticated}
-        stftSupported={refuelMonitor.stftSupported}
       />
     </div>
   );
