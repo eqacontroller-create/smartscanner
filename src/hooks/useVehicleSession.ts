@@ -3,6 +3,7 @@ import { useOBD } from '@/hooks/useOBD';
 import { useVehicleTheme } from '@/hooks/useVehicleTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useSyncedRides } from '@/hooks/useSyncedRides';
+import { useSyncedProfile, VehicleInfo } from '@/hooks/useSyncedProfile';
 import { useVehicleBenefits } from '@/hooks/useVehicleBenefits';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 
@@ -23,6 +24,7 @@ interface UseVehicleSessionOptions {
  * - Tema dinâmico baseado no veículo
  * - Autenticação
  * - Sincronização de corridas
+ * - Perfil sincronizado (veículo, Jarvis, viagem)
  * - Benefícios específicos da marca
  */
 export function useVehicleSession({
@@ -46,6 +48,9 @@ export function useVehicleSession({
   
   // Hook de sincronização de corridas
   const syncedRides = useSyncedRides();
+  
+  // Hook de perfil sincronizado (inclui veículo configurado pelo usuário)
+  const syncedProfile = useSyncedProfile();
   
   // Hook de benefícios específicos do veículo
   const vehicleBenefits = useVehicleBenefits({
@@ -110,6 +115,9 @@ export function useVehicleSession({
     
     // Sincronização
     syncedRides,
+    
+    // Perfil sincronizado (veículo, Jarvis, viagem)
+    syncedProfile,
     
     // Benefícios
     vehicleBenefits,

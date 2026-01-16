@@ -94,6 +94,25 @@ interface MainTabsProps {
   vehicleBenefits: UseVehicleBenefitsReturn;
   maintenanceSchedule: UseMaintenanceScheduleReturn;
   vehicleContext?: VehicleContextForVision;
+  // Vehicle Setup integration
+  vehicleInfo?: {
+    vin: string | null;
+    vehicleBrand: string | null;
+    vehicleModel: string | null;
+    modelYear: string | null;
+    vehicleEngine: string | null;
+    vehicleTransmission: string | null;
+    vehicleNickname: string | null;
+  };
+  onUpdateVehicle?: (vehicle: Partial<{
+    vin: string | null;
+    vehicleBrand: string | null;
+    vehicleModel: string | null;
+    modelYear: string | null;
+    vehicleEngine: string | null;
+    vehicleTransmission: string | null;
+    vehicleNickname: string | null;
+  }>) => Promise<void>;
 }
 
 export function MainTabs(props: MainTabsProps) {
@@ -140,7 +159,7 @@ export function MainTabs(props: MainTabsProps) {
 
       <TabsContent value="config" className="mt-4 sm:mt-6">
         <Suspense fallback={<TabSkeleton />}>
-          <SettingsTab jarvisSettings={jarvisSettings} tripSettings={props.tripSettings} refuelSettings={props.refuelSettings} onUpdateJarvisSetting={props.onUpdateJarvisSetting} onUpdateTripSettings={props.onUpdateTripSettings} onUpdateRefuelSettings={props.onUpdateRefuelSettings} onResetJarvisSettings={props.onResetJarvisSettings} onResetRefuelSettings={props.onResetRefuelSettings} onTestVoice={props.onTestVoice} availableVoices={props.availableVoices} portugueseVoices={props.portugueseVoices} isSpeaking={props.isSpeaking} isWakeLockActive={props.isWakeLockActive} />
+          <SettingsTab jarvisSettings={jarvisSettings} tripSettings={props.tripSettings} refuelSettings={props.refuelSettings} vehicleInfo={props.vehicleInfo} onUpdateJarvisSetting={props.onUpdateJarvisSetting} onUpdateTripSettings={props.onUpdateTripSettings} onUpdateRefuelSettings={props.onUpdateRefuelSettings} onUpdateVehicle={props.onUpdateVehicle} onResetJarvisSettings={props.onResetJarvisSettings} onResetRefuelSettings={props.onResetRefuelSettings} onTestVoice={props.onTestVoice} availableVoices={props.availableVoices} portugueseVoices={props.portugueseVoices} isSpeaking={props.isSpeaking} isWakeLockActive={props.isWakeLockActive} />
         </Suspense>
       </TabsContent>
     </Tabs>
