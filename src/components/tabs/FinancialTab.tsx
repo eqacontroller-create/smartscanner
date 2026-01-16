@@ -6,15 +6,18 @@ import { QuickSettings } from '@/components/financial/QuickSettings';
 import { TripHistory } from '@/components/financial/TripHistory';
 import { TodayRides } from '@/components/financial/TodayRides';
 import { RideStatusBadge } from '@/components/financial/RideStatusBadge';
-import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
-import { RefuelResult } from '@/components/refuel/RefuelResult';
-import { RefuelButton } from '@/components/refuel/RefuelButton';
-import { RefuelSettingsSheet } from '@/components/refuel/RefuelSettingsSheet';
+import { 
+  FuelEducation,
+  FuelActionCards,
+  FuelMonitoringDashboard,
+  FuelHistory,
+  RefuelResult,
+  RefuelSettingsSheet,
+} from '@/components/refuel';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { DollarSign, Timer, Fuel, History, Car, TrendingUp, Zap } from 'lucide-react';
+import { DollarSign, Timer, Fuel, History, Car, TrendingUp } from 'lucide-react';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
 
@@ -63,6 +66,7 @@ interface FinancialTabProps {
   onOpenRefuelModal: () => void;
   onUpdateRefuelSettings: (settings: Partial<RefuelSettings>) => void;
   onResetRefuelSettings: () => void;
+  userId?: string;
 }
 
 export function FinancialTab({
@@ -105,6 +109,7 @@ export function FinancialTab({
   onOpenRefuelModal,
   onUpdateRefuelSettings,
   onResetRefuelSettings,
+  userId,
 }: FinancialTabProps) {
   const [subTab, setSubTab] = useState('taximetro');
 
@@ -200,92 +205,54 @@ export function FinancialTab({
 
         {/* Combustível (Qualidade e Abastecimento) */}
         <TabsContent value="combustivel" className="space-y-4 mt-4 tab-content-enter">
-          {/* Controles de Combustível */}
-          <Card className="border-primary/20 card-hover">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-base flex items-center gap-2">
-                    <Fuel className="h-4 w-4 text-primary" />
-                    Monitor de Combustível
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {refuelMode === 'inactive' 
-                      ? 'Inicie uma análise para verificar a qualidade do combustível'
-                      : refuelMode === 'monitoring'
-                      ? 'Monitorando Fuel Trim...'
-                      : refuelMode === 'analyzing'
-                      ? 'Analisando dados coletados...'
-                      : 'Análise concluída'
-                    }
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {refuelMode === 'inactive' && (
-                    <RefuelSettingsSheet
-                      settings={refuelSettings}
-                      onSettingsChange={onUpdateRefuelSettings}
-                      onReset={onResetRefuelSettings}
-                    />
-                  )}
-                  <RefuelButton
-                    mode={refuelMode}
-                    isConnected={isConnected}
-                    isAuthenticated={isAuthenticated}
-                    onStart={onOpenRefuelModal}
-                    onCancel={onCancelRefuel}
-                  />
-                </div>
-              </div>
-
-              {/* Botões de ação quando inativo */}
-              {refuelMode === 'inactive' && isConnected && (
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <Button 
-                    variant="outline" 
-                    className="h-auto py-3 flex-col gap-1 hover:border-primary/50 hover:bg-primary/5 press-effect transition-all"
-                    onClick={() => {
-                      onStartRefuelMode();
-                      onOpenRefuelModal();
-                    }}
-                  >
-                    <Fuel className="h-5 w-5 text-primary" />
-                    <span className="text-xs font-medium">Vou Abastecer</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-auto py-3 flex-col gap-1 hover:border-blue-500/50 hover:bg-blue-500/5 press-effect transition-all"
-                    onClick={onStartQuickTest}
-                    disabled={!stftSupported}
-                  >
-                    <Zap className="h-5 w-5 text-blue-500" />
-                    <span className="text-xs font-medium">Teste Rápido</span>
-                    {!stftSupported && (
-                      <span className="text-[10px] text-muted-foreground">STFT indisponível</span>
-                    )}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Monitor de Qualidade (quando ativo) */}
-          {(refuelMode === 'monitoring' || refuelMode === 'analyzing') && (
-            <div className="animate-fade-in stagger-1">
-              <FuelQualityMonitor
-                mode={refuelMode}
-                flowType={refuelFlowType}
-                distanceMonitored={distanceMonitored}
-                currentSTFT={currentSTFT}
-                currentLTFT={currentLTFT}
-                anomalyActive={anomalyActive}
-                anomalyDuration={anomalyDuration}
-                fuelTrimHistory={fuelTrimHistory}
-                settings={refuelSettings}
-                frozenSettings={frozenSettings}
-                isSyncing={isSyncing}
+          {/* Estado Inativo - Educação + Ações */}
+          {refuelMode === 'inactive' && (
+            <>
+              <FuelEducation defaultOpen={['what-is']} />
+              
+              <FuelActionCards
+                isConnected={isConnected}
+                isAuthenticated={isAuthenticated}
+                stftSupported={stftSupported}
+                onStartRefuel={() => {
+                  onStartRefuelMode();
+                  onOpenRefuelModal();
+                }}
+                onStartQuickTest={onStartQuickTest}
               />
-            </div>
+              
+              {/* Configurações */}
+              <div className="flex justify-end">
+                <RefuelSettingsSheet
+                  settings={refuelSettings}
+                  onSettingsChange={onUpdateRefuelSettings}
+                  onReset={onResetRefuelSettings}
+                />
+              </div>
+              
+              <FuelHistory 
+                userId={userId} 
+                isAuthenticated={isAuthenticated} 
+              />
+            </>
+          )}
+
+          {/* Estado Monitorando - Dashboard em tempo real */}
+          {(refuelMode === 'monitoring' || refuelMode === 'analyzing') && (
+            <FuelMonitoringDashboard
+              mode={refuelMode}
+              flowType={refuelFlowType}
+              distanceMonitored={distanceMonitored}
+              currentSTFT={currentSTFT}
+              currentLTFT={currentLTFT}
+              anomalyActive={anomalyActive}
+              anomalyDuration={anomalyDuration}
+              fuelTrimHistory={fuelTrimHistory}
+              settings={refuelSettings}
+              frozenSettings={frozenSettings}
+              isSyncing={isSyncing}
+              onCancel={onCancelRefuel}
+            />
           )}
 
           {/* Resultado da Análise */}
@@ -300,7 +267,7 @@ export function FinancialTab({
           )}
 
           {/* Estatísticas de Consumo */}
-          <Card className="card-hover animate-fade-in stagger-2">
+          <Card className="card-hover animate-fade-in">
             <CardContent className="p-4">
               <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
