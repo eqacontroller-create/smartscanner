@@ -1,6 +1,6 @@
 /**
  * DiagnosisCard - Card didático com resultado do diagnóstico
- * Inclui badge do veículo e busca contextualizada
+ * Inclui badge do veículo, busca contextualizada e opção de salvar
  */
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +17,9 @@ import {
   AlertCircle,
   Info,
   Wrench,
-  Car
+  Car,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { RISK_CONFIG, type VisionAnalysisResult, type VehicleContextForVision } from '@/types/visionTypes';
 import { cn } from '@/lib/utils';
@@ -28,7 +30,10 @@ interface DiagnosisCardProps {
   vehicleContext?: VehicleContextForVision;
   onSpeak?: (text: string) => void;
   onReset: () => void;
+  onSave?: () => Promise<void>;
   isSpeaking?: boolean;
+  isSaving?: boolean;
+  isSaved?: boolean;
 }
 
 export function DiagnosisCard({ 
@@ -37,7 +42,10 @@ export function DiagnosisCard({
   vehicleContext,
   onSpeak, 
   onReset,
-  isSpeaking 
+  onSave,
+  isSpeaking,
+  isSaving,
+  isSaved
 }: DiagnosisCardProps) {
   const riskConfig = RISK_CONFIG[result.riskLevel];
   
@@ -205,6 +213,25 @@ export function DiagnosisCard({
             Ver referências
           </Button>
         </div>
+        
+        {/* Save to history button */}
+        {onSave && (
+          <Button
+            onClick={onSave}
+            disabled={isSaving || isSaved}
+            className="w-full gap-2"
+            variant={isSaved ? "secondary" : "default"}
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isSaved ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isSaved ? 'Salvo no histórico' : 'Salvar diagnóstico'}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

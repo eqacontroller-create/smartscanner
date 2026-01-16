@@ -456,6 +456,63 @@ export type Database = {
         }
         Relationships: []
       }
+      visual_diagnoses: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          description: string
+          id: string
+          media_type: string
+          notes: string | null
+          parts_mentioned: Json | null
+          recommendation: string | null
+          risk_level: string
+          thumbnail_url: string | null
+          title: string
+          user_id: string
+          vehicle_brand: string | null
+          vehicle_engine: string | null
+          vehicle_model: string | null
+          vehicle_year: string | null
+        }
+        Insert: {
+          analysis_type?: string
+          created_at?: string
+          description: string
+          id?: string
+          media_type?: string
+          notes?: string | null
+          parts_mentioned?: Json | null
+          recommendation?: string | null
+          risk_level?: string
+          thumbnail_url?: string | null
+          title: string
+          user_id: string
+          vehicle_brand?: string | null
+          vehicle_engine?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: string | null
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          media_type?: string
+          notes?: string | null
+          parts_mentioned?: Json | null
+          recommendation?: string | null
+          risk_level?: string
+          thumbnail_url?: string | null
+          title?: string
+          user_id?: string
+          vehicle_brand?: string | null
+          vehicle_engine?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
