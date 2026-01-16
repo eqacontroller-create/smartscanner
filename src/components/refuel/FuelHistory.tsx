@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   History, 
   Fuel, 
@@ -15,12 +16,15 @@ import {
   CloudOff,
   Loader2,
   TrendingUp,
+  Trophy,
+  MapPin,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FuelQuality, getQualityLabel, getQualityColor } from '@/types/refuelTypes';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { StationRanking } from './StationRanking';
 
 interface RefuelHistoryEntry {
   id: string;
@@ -30,8 +34,11 @@ interface RefuelHistoryEntry {
   total_paid: number;
   quality: string | null;
   stft_average: number | null;
+  ltft_delta: number | null;
   distance_monitored: number | null;
   pump_accuracy_percent: number | null;
+  station_name: string | null;
+  anomaly_detected: boolean | null;
 }
 
 interface FuelHistoryProps {
@@ -104,109 +111,129 @@ export function FuelHistory({ userId, isAuthenticated }: FuelHistoryProps) {
     );
   }
 
+  // Extrair nomes de postos recentes para sugestões
+  const recentStations = entries
+    .filter(e => e.station_name)
+    .map(e => e.station_name!)
+    .filter((v, i, a) => a.indexOf(v) === i);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-base">
-          <span className="flex items-center gap-2">
-            <History className="h-5 w-5 text-muted-foreground" />
-            Histórico de Abastecimentos
-          </span>
-          {entries.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {entries.length} registros
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
+    <div className="space-y-4">
+      {/* Ranking de Postos */}
+      <StationRanking refuelHistory={entries} />
       
-      <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-destructive mb-2">{error}</p>
-            <Button variant="outline" size="sm" onClick={loadHistory}>
-              Tentar novamente
-            </Button>
-          </div>
-        ) : entries.length === 0 ? (
-          <div className="text-center py-6">
-            <Fuel className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Nenhum abastecimento registrado ainda.
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Use "Vou Abastecer" para registrar seu primeiro.
-            </p>
-          </div>
-        ) : (
-          <ScrollArea className="h-[280px] pr-3">
-            <div className="space-y-3">
-              {entries.map((entry) => (
-                <div 
-                  key={entry.id}
-                  className="p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getQualityIcon(entry.quality)}
-                      <div>
-                        <span className={cn(
-                          'text-sm font-medium',
-                          getQualityColor(entry.quality as FuelQuality)
-                        )}>
-                          {getQualityLabel(entry.quality as FuelQuality)}
-                        </span>
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(entry.timestamp), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
+      {/* Histórico */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-base">
+            <span className="flex items-center gap-2">
+              <History className="h-5 w-5 text-muted-foreground" />
+              Histórico de Abastecimentos
+            </span>
+            {entries.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {entries.length} registros
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-destructive mb-2">{error}</p>
+              <Button variant="outline" size="sm" onClick={loadHistory}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="text-center py-6">
+              <Fuel className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Nenhum abastecimento registrado ainda.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use "Vou Abastecer" para registrar seu primeiro.
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[280px] pr-3">
+              <div className="space-y-3">
+                {entries.map((entry) => (
+                  <div 
+                    key={entry.id}
+                    className="p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getQualityIcon(entry.quality)}
+                        <div>
+                          <span className={cn(
+                            'text-sm font-medium',
+                            getQualityColor(entry.quality as FuelQuality)
+                          )}>
+                            {getQualityLabel(entry.quality as FuelQuality)}
+                          </span>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(entry.timestamp), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
+                          </div>
                         </div>
                       </div>
+                      <Badge variant="outline" className="text-xs">
+                        {entry.liters_added.toFixed(1)}L
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {entry.liters_added.toFixed(1)}L
-                    </Badge>
+                    
+                    {/* Nome do Posto */}
+                    {entry.station_name && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                        <MapPin className="h-3 w-3" />
+                        <span>{entry.station_name}</span>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-center p-1.5 rounded bg-muted/50">
+                        <span className="text-muted-foreground block">Preço</span>
+                        <span className="font-mono font-medium">
+                          R$ {entry.price_per_liter.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-center p-1.5 rounded bg-muted/50">
+                        <span className="text-muted-foreground block">Total</span>
+                        <span className="font-mono font-medium">
+                          R$ {entry.total_paid.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-center p-1.5 rounded bg-muted/50">
+                        <span className="text-muted-foreground block">STFT</span>
+                        <span className="font-mono font-medium">
+                          {entry.stft_average !== null 
+                            ? `${entry.stft_average > 0 ? '+' : ''}${entry.stft_average.toFixed(1)}%`
+                            : '--'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {entry.pump_accuracy_percent !== null && entry.pump_accuracy_percent < 98 && (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-yellow-600">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Bomba: {entry.pump_accuracy_percent.toFixed(1)}% precisão</span>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="text-center p-1.5 rounded bg-muted/50">
-                      <span className="text-muted-foreground block">Preço</span>
-                      <span className="font-mono font-medium">
-                        R$ {entry.price_per_liter.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="text-center p-1.5 rounded bg-muted/50">
-                      <span className="text-muted-foreground block">Total</span>
-                      <span className="font-mono font-medium">
-                        R$ {entry.total_paid.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="text-center p-1.5 rounded bg-muted/50">
-                      <span className="text-muted-foreground block">STFT</span>
-                      <span className="font-mono font-medium">
-                        {entry.stft_average !== null 
-                          ? `${entry.stft_average > 0 ? '+' : ''}${entry.stft_average.toFixed(1)}%`
-                          : '--'
-                        }
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {entry.pump_accuracy_percent !== null && entry.pump_accuracy_percent < 98 && (
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-yellow-600">
-                      <TrendingUp className="h-3 w-3" />
-                      <span>Bomba: {entry.pump_accuracy_percent.toFixed(1)}% precisão</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

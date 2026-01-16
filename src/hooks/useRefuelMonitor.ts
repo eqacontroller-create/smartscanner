@@ -343,7 +343,7 @@ export function useRefuelMonitor({
   }, [stftSupported, speak, readLTFT]);
   
   // Confirmar dados do abastecimento
-  const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number) => {
+  const confirmRefuel = useCallback(async (pricePerLiter: number, litersAdded: number, stationName?: string) => {
     if (!stftSupported) {
       await speak('Este veículo não suporta monitoramento de Fuel Trim. Registrando abastecimento sem análise de qualidade.');
       
@@ -353,6 +353,7 @@ export function useRefuelMonitor({
         pricePerLiter,
         litersAdded,
         totalPaid: pricePerLiter * litersAdded,
+        stationName,
         quality: 'unknown',
         stftAverage: 0,
         ltftDelta: 0,
@@ -368,6 +369,7 @@ export function useRefuelMonitor({
             price_per_liter: entry.pricePerLiter,
             liters_added: entry.litersAdded,
             total_paid: entry.totalPaid,
+            station_name: stationName || null,
             quality: 'unknown',
             stft_average: 0,
             ltft_delta: 0,
@@ -396,6 +398,7 @@ export function useRefuelMonitor({
       depois: fuelLevelAfterRefuel,
       litrosInformados: litersAdded,
       tanque: settings.tankCapacity,
+      posto: stationName,
     });
     
     setCurrentRefuel(prev => ({
@@ -405,6 +408,7 @@ export function useRefuelMonitor({
       pricePerLiter,
       litersAdded,
       totalPaid,
+      stationName,
       fuelLevelAfter: fuelLevelAfterRefuel,
       tankCapacity: settings.tankCapacity,
       quality: 'unknown',
@@ -587,6 +591,7 @@ export function useRefuelMonitor({
           fuel_level_before: currentRefuel.fuelLevelBefore ?? null,
           fuel_level_after: finalFuelLevel ?? currentRefuel.fuelLevelAfter ?? null,
           tank_capacity: currentSettings.tankCapacity,
+          station_name: currentRefuel.stationName || null,
           quality,
           stft_average: avgSTFT,
           ltft_delta: ltftDelta,
