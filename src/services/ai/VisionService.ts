@@ -1,9 +1,17 @@
 /**
  * VisionService - Serviço de diagnóstico visual por IA
  * Analisa fotos e vídeos de peças do motor e luzes do painel
+ * Suporta múltiplas imagens para diagnóstico mais preciso
  */
 
-import type { VisionAnalysisResult, VisionRequest, VisionResponse, MediaType, VehicleContextForVision } from '@/types/visionTypes';
+import type { 
+  VisionAnalysisResult, 
+  VisionRequest, 
+  VisionRequestMultiple, 
+  VisionResponse, 
+  MediaType, 
+  VehicleContextForVision 
+} from '@/types/visionTypes';
 
 const VISION_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vision-mechanic`;
 
@@ -126,6 +134,60 @@ export async function analyzeImage(
 }
 
 /**
+ * Analisa múltiplas imagens para diagnóstico mais preciso
+ */
+export async function analyzeMultipleImages(
+  files: File[],
+  userQuestion?: string,
+  vehicleContext?: VehicleContextForVision
+): Promise<VisionAnalysisResult> {
+  // Redimensiona todas as imagens em paralelo
+  const resizePromises = files.map(file => resizeImage(file));
+  const resizedBlobs = await Promise.all(resizePromises);
+  
+  // Converte todas para base64 em paralelo
+  const base64Promises = resizedBlobs.map(blob => {
+    const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+    return fileToBase64(file);
+  });
+  const base64Images = await Promise.all(base64Promises);
+  
+  // Prepara request com múltiplas imagens
+  const request: VisionRequestMultiple = {
+    media: base64Images.map((base64, index) => ({
+      base64,
+      type: 'image/jpeg' as MediaType,
+      label: `Imagem ${index + 1}`,
+    })),
+    analysisType: 'photo',
+    userQuestion,
+    vehicleContext,
+  };
+  
+  const response = await fetch(VISION_FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify(request),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Erro ${response.status}`);
+  }
+  
+  const data: VisionResponse = await response.json();
+  
+  if (!data.success || !data.result) {
+    throw new Error(data.error || 'Falha na análise');
+  }
+  
+  return data.result;
+}
+
+/**
  * Analisa vídeo curto do motor funcionando
  */
 export async function analyzeVideo(
@@ -210,6 +272,7 @@ export const VisionService = {
   fileToBase64,
   resizeImage,
   analyzeImage,
+  analyzeMultipleImages,
   analyzeVideo,
   generateShoppingLink,
   generateVehicleShoppingLink,

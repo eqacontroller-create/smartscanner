@@ -3,6 +3,7 @@ export { VisualMechanic } from './VisualMechanic';
 export { CaptureButton } from './CaptureButton';
 export { FileCapture } from './FileCapture';
 export { MediaPreview } from './MediaPreview';
+export { MultiImagePreview } from './MultiImagePreview';
 export { AnalysisProgress } from './AnalysisProgress';
 export { DiagnosisCard } from './DiagnosisCard';
 export { DiagnosisHistory } from './DiagnosisHistory';

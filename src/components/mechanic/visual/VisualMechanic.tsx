@@ -1,6 +1,7 @@
 /**
  * VisualMechanic - Container principal do diagnóstico visual
  * UX premium inclusiva para público leigo + modo offline + contexto do veículo + histórico
+ * Suporta múltiplas imagens para diagnóstico mais preciso
  */
 
 import { useState, useCallback } from 'react';
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CaptureButton } from './CaptureButton';
 import { FileCapture } from './FileCapture';
 import { MediaPreview } from './MediaPreview';
+import { MultiImagePreview } from './MultiImagePreview';
 import { AnalysisProgress } from './AnalysisProgress';
 import { DiagnosisCard } from './DiagnosisCard';
 import { OfflineQueue } from './OfflineQueue';
@@ -19,10 +21,11 @@ import { useVisualMechanic } from '@/hooks/useVisualMechanic';
 import { useOfflineVision } from '@/hooks/useOfflineVision';
 import { useDiagnosisHistory } from '@/hooks/useDiagnosisHistory';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, WifiOff, CloudOff, Car, Camera, History, Sparkles } from 'lucide-react';
+import { Eye, WifiOff, CloudOff, Car, Camera, History, Sparkles, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { VehicleContextForVision } from '@/types/visionTypes';
+import { MAX_IMAGES } from '@/types/visionTypes';
 
 interface VisualMechanicProps {
   onSpeak?: (text: string) => void;
@@ -38,14 +41,17 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
   const {
     isCapturing,
     isAnalyzing,
-    mediaPreview,
-    mediaFile,
+    mediaPreviews,
+    mediaFiles,
     analysisType,
     result,
     error,
     progressMessage,
+    canAddMore,
     startCapture,
     handleFileSelect,
+    addFile,
+    removeFile,
     analyzeMedia,
     reset,
   } = useVisualMechanic();
@@ -82,11 +88,22 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
       ].filter(Boolean).join(' ')
     : null;
   
+  // Verifica se tem múltiplas imagens
+  const hasMultipleImages = mediaFiles.length > 1;
+  
   // Salva foto para análise posterior quando offline
   const handleSaveForLater = async () => {
-    if (mediaFile && analysisType) {
-      await saveForLater(mediaFile, analysisType);
+    if (mediaFiles.length > 0 && analysisType) {
+      // Salva a primeira imagem para análise offline
+      await saveForLater(mediaFiles[0], analysisType);
       reset();
+    }
+  };
+  
+  // Handler para adicionar mais imagens
+  const handleAddMore = () => {
+    if (analysisType === 'photo') {
+      startCapture('photo');
     }
   };
   
@@ -205,6 +222,16 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
                 Tire uma foto ou grave um vídeo curto e descubra o que significa
               </CardDescription>
               
+              {/* Multi-image tip */}
+              {!mediaPreviews.length && !result && !isAnalyzing && (
+                <div className="flex items-center justify-center gap-2 mt-3 animate-fade-in">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-xs text-muted-foreground">
+                    <Images className="h-3.5 w-3.5 text-accent-foreground" />
+                    <span>Até {MAX_IMAGES} fotos para diagnóstico mais preciso</span>
+                  </div>
+                </div>
+              )}
+              
               {/* Premium Vehicle badge */}
               {vehicleDisplayName && (
                 <div className="flex items-center justify-center gap-2 mt-4 animate-fade-in">
@@ -225,7 +252,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
             
             <CardContent className="relative">
               {/* Offline info - agora permite salvar para depois */}
-              {!isOnline && !mediaPreview && (
+              {!isOnline && !mediaPreviews.length && (
                 <Alert className="mb-4 border-amber-500/30 bg-amber-500/10 backdrop-blur-sm">
                   <CloudOff className="h-4 w-4 text-amber-500" />
                   <AlertDescription className="text-amber-700">
@@ -242,7 +269,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
               )}
               
               {/* Initial state - Show capture buttons */}
-              {!isCapturing && !mediaPreview && !result && !isAnalyzing && (
+              {!isCapturing && !mediaPreviews.length && !result && !isAnalyzing && (
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <CaptureButton
                     type="photo"
@@ -259,22 +286,41 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
               {isCapturing && analysisType && (
                 <FileCapture
                   analysisType={analysisType}
-                  onFileSelect={handleFileSelect}
-                  onCancel={handleReset}
+                  onFileSelect={mediaFiles.length > 0 ? addFile : handleFileSelect}
+                  onCancel={mediaFiles.length > 0 ? () => {} : handleReset}
+                  isAddingMore={mediaFiles.length > 0}
                 />
               )}
               
               {/* Preview state - Show media preview com opção de salvar offline */}
-              {mediaPreview && !result && !isAnalyzing && analysisType && (
+              {mediaPreviews.length > 0 && !result && !isAnalyzing && !isCapturing && analysisType && (
                 <div className="space-y-4">
-                  <MediaPreview
-                    mediaUrl={mediaPreview}
-                    analysisType={analysisType}
-                    onAnalyze={isOnline ? handleAnalyze : undefined}
-                    onRetry={() => startCapture(analysisType)}
-                    onCancel={handleReset}
-                    isAnalyzing={isAnalyzing}
-                  />
+                  {hasMultipleImages ? (
+                    // Multi-image grid
+                    <MultiImagePreview
+                      files={mediaFiles}
+                      previews={mediaPreviews}
+                      onRemove={removeFile}
+                      onAddMore={handleAddMore}
+                      onAnalyze={handleAnalyze}
+                      onReset={handleReset}
+                      canAddMore={canAddMore}
+                      isAnalyzing={isAnalyzing}
+                      isOnline={isOnline}
+                    />
+                  ) : (
+                    // Single image preview
+                    <MediaPreview
+                      mediaUrl={mediaPreviews[0]}
+                      analysisType={analysisType}
+                      onAnalyze={isOnline ? handleAnalyze : undefined}
+                      onRetry={() => startCapture(analysisType)}
+                      onCancel={handleReset}
+                      isAnalyzing={isAnalyzing}
+                      canAddMore={canAddMore && analysisType === 'photo'}
+                      onAddMore={handleAddMore}
+                    />
+                  )}
                   
                   {/* Botão para salvar offline quando não tem conexão */}
                   {!isOnline && (
@@ -292,7 +338,10 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
               
               {/* Analyzing state - Show progress */}
               {isAnalyzing && (
-                <AnalysisProgress message={progressMessage} />
+                <AnalysisProgress 
+                  message={progressMessage} 
+                  imageCount={mediaFiles.length}
+                />
               )}
             </CardContent>
           </Card>
@@ -302,7 +351,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
             <div className="animate-scale-in">
               <DiagnosisCard
                 result={result}
-                mediaUrl={mediaPreview || undefined}
+                mediaUrl={mediaPreviews[0] || undefined}
                 vehicleContext={vehicleContext}
                 onSpeak={onSpeak}
                 onReset={handleReset}
@@ -315,7 +364,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
           )}
           
           {/* Fila de fotos offline pendentes */}
-          {pendingItems.length > 0 && !result && !isAnalyzing && !mediaPreview && (
+          {pendingItems.length > 0 && !result && !isAnalyzing && !mediaPreviews.length && (
             <OfflineQueue
               items={pendingItems}
               isOnline={isOnline}
@@ -328,7 +377,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
           )}
           
           {/* Histórico de diagnósticos offline processados */}
-          {processedResults.length > 0 && !result && !isAnalyzing && !mediaPreview && (
+          {processedResults.length > 0 && !result && !isAnalyzing && !mediaPreviews.length && (
             <ProcessedResults
               results={processedResults}
               onClear={clearProcessedResults}
@@ -337,7 +386,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
           )}
           
           {/* Premium Tips for first-time users */}
-          {!isCapturing && !mediaPreview && !result && !isAnalyzing && pendingItems.length === 0 && (
+          {!isCapturing && !mediaPreviews.length && !result && !isAnalyzing && pendingItems.length === 0 && (
             <Card className="relative overflow-hidden border-dashed border-muted-foreground/20 bg-muted/30 backdrop-blur-sm">
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
               <CardContent className="relative p-4">
@@ -349,7 +398,7 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
                     <p className="text-sm font-medium text-foreground">Dica do mecânico</p>
                     <p className="text-sm text-muted-foreground">
                       Fotografe luzes acesas no painel, vazamentos, peças com aspecto estranho 
-                      ou qualquer coisa que você não reconheça.
+                      ou qualquer coisa que você não reconheça. <strong>Use até {MAX_IMAGES} fotos de ângulos diferentes</strong> para um diagnóstico mais preciso!
                     </p>
                     {hasVehicle && (
                       <p className="text-sm text-primary font-medium pt-1">

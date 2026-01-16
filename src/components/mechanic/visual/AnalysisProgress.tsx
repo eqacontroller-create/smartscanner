@@ -8,9 +8,12 @@ import { cn } from '@/lib/utils';
 
 interface AnalysisProgressProps {
   message: string;
+  imageCount?: number;
 }
 
-export function AnalysisProgress({ message }: AnalysisProgressProps) {
+export function AnalysisProgress({ message, imageCount = 1 }: AnalysisProgressProps) {
+  const isMultiple = imageCount > 1;
+  
   return (
     <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-card to-accent/5">
       {/* Background glow */}
@@ -61,8 +64,10 @@ export function AnalysisProgress({ message }: AnalysisProgressProps) {
               {message}
             </p>
             <p className="text-sm text-muted-foreground">
-              Nosso mecânico virtual está analisando com cuidado. 
-              Isso pode levar alguns segundos.
+              {isMultiple 
+                ? `Analisando ${imageCount} fotos em conjunto para um diagnóstico mais preciso.`
+                : 'Nosso mecânico virtual está analisando com cuidado. Isso pode levar alguns segundos.'
+              }
             </p>
           </div>
           
