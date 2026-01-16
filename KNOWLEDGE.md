@@ -292,39 +292,97 @@ interface VehicleContext {
 
 ---
 
-## 12. Estrutura de Arquivos
+## 12. Estrutura de Arquivos (ATUALIZADA)
 
 ```
 src/
 ├── pages/
-│   └── Index.tsx              # Página principal
+│   └── Index.tsx              # Página principal (~75 linhas, apenas orquestra)
+├── services/                    # ⭐ NOVO - Camada de serviços puros
+│   ├── obd/
+│   │   ├── OBDParser.ts        # Parsing de respostas OBD-II (Mode 01, VIN)
+│   │   └── OBDProtocol.ts      # Constantes, PIDs, UUIDs, timing, comandos AT
+│   ├── supabase/
+│   │   ├── ProfileService.ts   # CRUD de perfis de usuário
+│   │   ├── RidesService.ts     # CRUD de corridas com sync real-time
+│   │   ├── ScanHistoryService.ts # Histórico de scans DTC
+│   │   └── VehicleService.ts   # CRUD de veículos por VIN
+│   └── ai/
+│       ├── JarvisService.ts    # Integração com IA Gemini via Edge Function
+│       └── TTSService.ts       # Síntese de voz (Text-to-Speech)
 ├── hooks/
-│   ├── useBluetooth.ts        # Conexão BLE + leitura de sensores
-│   ├── useJarvis.ts           # Síntese de voz (TTS)
-│   ├── useJarvisAI.ts         # Integração com IA
-│   ├── useJarvisSettings.ts   # Configurações persistentes
-│   └── useVoiceRecognition.ts # Reconhecimento de voz (STT)
+│   ├── useVehicleSession.ts    # ⭐ Hook composto (OBD + Theme + Auth + Rides + Benefits)
+│   ├── useJarvisSystem.ts      # ⭐ Hook composto (Settings + TTS + AI)
+│   ├── useRefuel.ts            # ⭐ Hook composto (Monitor + Settings)
+│   ├── useOBD.ts               # Conexão BLE + leitura de sensores
+│   ├── useJarvis.ts            # Síntese de voz (TTS)
+│   ├── useJarvisAI.ts          # Integração com IA
+│   ├── useJarvisSettings.ts    # Configurações persistentes
+│   ├── useVoiceRecognition.ts  # Reconhecimento de voz (STT)
+│   ├── useAutoRide.ts          # Detecção automática de corridas
+│   ├── useTripCalculator.ts    # Cálculo de custos de viagem
+│   ├── useRefuelMonitor.ts     # Monitor de abastecimento
+│   ├── useRefuelSettings.ts    # Configurações de abastecimento
+│   ├── useVehicleBenefits.ts   # Benefícios e dicas por marca
+│   ├── useVehicleTheme.ts      # Tema dinâmico por marca
+│   ├── useSyncedProfile.ts     # Sync de perfil com Supabase
+│   ├── useSyncedRides.ts       # Sync de corridas com Supabase
+│   ├── useSyncedSettings.ts    # Sync de configurações com Supabase
+│   ├── useMaintenanceSchedule.ts # Alertas de manutenção
+│   ├── useShiftLight.ts        # Luz de troca de marcha
+│   ├── useAlerts.ts            # Sistema de alertas do Jarvis
+│   └── useWakeLock.ts          # Manter tela ligada
 ├── components/
 │   ├── dashboard/
+│   │   ├── AppHeader.tsx       # ⭐ Header com veículo, sync, Jarvis controls
+│   │   ├── AppFooter.tsx       # ⭐ Rodapé com branding
+│   │   ├── ConnectionPanel.tsx # ⭐ Status de conexão e alertas
+│   │   ├── MainTabs.tsx        # ⭐ Navegação principal por tabs
+│   │   ├── FloatingControls.tsx # ⭐ Jarvis widget, modais de corrida/refuel
+│   │   ├── TelemetrySection.tsx # ⭐ Gauge RPM e estatísticas
+│   │   ├── ActionDock.tsx      # ⭐ Barra de ações (conectar, abastecer, settings)
 │   │   ├── RPMGauge.tsx
 │   │   ├── VehicleStats.tsx
 │   │   ├── JarvisFloatingWidget.tsx
 │   │   └── ...
+│   ├── tabs/
+│   │   ├── DashboardTab.tsx    # Conteúdo da aba Painel
+│   │   ├── MechanicTab.tsx     # Conteúdo da aba Mecânica
+│   │   ├── FinancialTab.tsx    # Conteúdo da aba Finanças
+│   │   └── SettingsTab.tsx     # Conteúdo da aba Config
 │   ├── mechanic/
 │   │   ├── DTCScanner.tsx
 │   │   ├── LiveDataMonitor.tsx
+│   │   └── ...
+│   ├── financial/
+│   │   ├── TripMonitor.tsx
+│   │   ├── TodayRides.tsx
+│   │   ├── RideEndModal.tsx
+│   │   └── ...
+│   ├── refuel/
+│   │   ├── RefuelModal.tsx
+│   │   ├── FuelQualityMonitor.tsx
 │   │   └── ...
 │   └── ui/                    # Componentes shadcn/ui
 ├── lib/
 │   ├── dtcDatabase.ts         # Base de códigos de erro
 │   ├── dtcParser.ts           # Parser de respostas DTC
 │   ├── vinDecoder.ts          # Decodificador de VIN
+│   ├── vehicleProfiles.ts     # Perfis de veículos por marca
 │   ├── liveDataParser.ts      # Parser de dados ao vivo
 │   ├── ecuModules.ts          # Módulos ECU conhecidos
 │   ├── freezeFrameParser.ts   # Parser de freeze frame
-│   └── scanHistory.ts         # Histórico de scans
+│   ├── scanHistory.ts         # Histórico de scans (localStorage)
+│   └── logger.ts              # Sistema de logging condicional
 ├── types/
-│   └── jarvisSettings.ts      # Tipos de configuração
+│   ├── jarvisSettings.ts      # Tipos de configuração do Jarvis
+│   ├── tripSettings.ts        # Tipos de viagem e corridas
+│   ├── refuelTypes.ts         # Tipos de abastecimento
+│   ├── vehicleTypes.ts        # Tipos de veículos e benefícios
+│   ├── maintenanceTypes.ts    # Tipos de manutenção
+│   └── sessionContext.ts      # ⭐ Tipos unificados de contexto
+├── contexts/
+│   └── OBDContext.tsx         # Contexto React para OBD (usa Services)
 └── integrations/
     └── supabase/
         ├── client.ts          # Cliente Supabase (auto-gerado)
@@ -403,6 +461,26 @@ supabase/
 - `raw_code`: VARCHAR
 - `status_byte`: VARCHAR
 
+**profiles**
+- `id`: UUID (PK, FK → auth.users)
+- Configurações do Jarvis, veículo, viagem, abastecimento
+
+**rides**
+- `id`: UUID (PK)
+- `user_id`: UUID (FK)
+- `start_time`, `end_time`: TIMESTAMP
+- `distance`, `cost`, `profit`: NUMERIC
+
+**trip_settings**
+- `id`: UUID (PK)
+- `user_id`: UUID (FK)
+- Configurações de viagem e corrida automática
+
+**refuel_entries**
+- `id`: UUID (PK)
+- `user_id`: UUID (FK)
+- Dados de abastecimento e qualidade do combustível
+
 ---
 
 ## 15. Secrets e Variáveis de Ambiente
@@ -437,3 +515,214 @@ supabase/
 | Jarvis não responde | Microfone bloqueado | Permitir acesso ao microfone |
 | Dados oscilando | Polling muito rápido | Aumentar intervalo |
 | Bip e sai ao falar | Recognition reiniciando | Já corrigido com refs |
+
+---
+
+## 18. Arquitetura de Services (BLINDADO) ⭐
+
+### Princípio: Services são Puros
+Services não têm estado React. São funções puras que processam dados.
+
+### `src/services/obd/`
+
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `OBDParser.ts` | Parsing de respostas OBD-II (Mode 01, VIN), limpeza, validação, decodificação |
+| `OBDProtocol.ts` | Constantes: PIDs, UUIDs Bluetooth, timing, comandos AT, fórmulas de decodificação |
+
+**Funções Exportadas (OBDParser):**
+- `cleanResponse(response: string): string`
+- `isErrorResponse(cleanedResponse: string): boolean`
+- `parseOBDResponse(pidCode: string, response: string): ParseResult`
+- `parseVINResponse(response: string): VINInfo | null`
+- `getAllPIDs(): PIDDefinition[]`
+
+**Constantes Exportadas (OBDProtocol):**
+- `OBD_PIDS` - Definições de todos os PIDs
+- `ELM327_COMMANDS` - Comandos AT
+- `BLUETOOTH_UUIDS` - UUIDs de service/characteristic
+- `OBD_TIMING` - Delays, timeouts, polling
+
+### `src/services/supabase/`
+
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `ProfileService.ts` | CRUD de perfis de usuário (getById, upsert, update) |
+| `RidesService.ts` | CRUD de corridas (getTodayRides, save, update, subscribe) |
+| `ScanHistoryService.ts` | Histórico de scans DTC (saveScanResult, getByVIN, compareScanResults) |
+| `VehicleService.ts` | CRUD de veículos (getByVIN, getOrCreate) |
+
+### `src/services/ai/`
+
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `JarvisService.ts` | Integração com IA Gemini via Edge Function |
+| `TTSService.ts` | Síntese de voz com Web Speech API |
+
+---
+
+## 19. Hooks Compostos (BLINDADO) ⭐
+
+### Princípio: Hooks Compostos Agregam
+Hooks compostos combinam múltiplos hooks primitivos para reduzir complexidade no Index.tsx.
+
+| Hook | Hooks Agregados | Retorno Principal |
+|------|-----------------|-------------------|
+| `useVehicleSession` | useOBD, useVehicleTheme, useAuth, useSyncedRides, useVehicleBenefits | Sessão completa do veículo |
+| `useJarvisSystem` | useJarvisSettings, useJarvis, useJarvisAI | Sistema de voz e IA unificado |
+| `useRefuel` | useRefuelMonitor, useRefuelSettings | Auditoria de abastecimento |
+
+### `useVehicleSession`
+```typescript
+interface UseVehicleSessionReturn {
+  // OBD
+  vehicleData: VehicleData;
+  status: ConnectionStatus;
+  isPolling: boolean;
+  isConnected: boolean;
+  logs: string[];
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  startPolling: () => void;
+  stopPolling: () => void;
+  sendRawCommand: (cmd: string) => Promise<string>;
+  
+  // Theme
+  themeVehicle: DetectedVehicle | null;
+  currentProfile: VehicleProfile;
+  
+  // Auth
+  isAuthenticated: boolean;
+  user: User | null;
+  
+  // Rides
+  syncedRides: SyncedRidesReturn;
+  
+  // Benefits
+  vehicleBenefits: VehicleBenefitsReturn;
+}
+```
+
+### `useJarvisSystem`
+```typescript
+interface UseJarvisSystemReturn {
+  // Settings
+  settings: JarvisSettings;
+  updateSetting: <K>(key: K, value: JarvisSettings[K]) => void;
+  resetToDefaults: () => void;
+  
+  // TTS
+  speak: (text: string) => Promise<void>;
+  testAudio: () => void;
+  isSpeaking: boolean;
+  isTTSSupported: boolean;
+  
+  // AI
+  isListening: boolean;
+  isProcessing: boolean;
+  isContinuousMode: boolean;
+  toggleListening: () => void;
+  conversationHistory: Message[];
+  // ... demais campos AI
+}
+```
+
+---
+
+## 20. Componentes de Dashboard Refatorados (BLINDADO) ⭐
+
+| Componente | Responsabilidade | Props Principais |
+|------------|------------------|------------------|
+| `AppHeader.tsx` | Header com veículo, sync status, Jarvis controls | themeVehicle, syncStatus, jarvisEnabled |
+| `AppFooter.tsx` | Rodapé com branding | (nenhuma) |
+| `ConnectionPanel.tsx` | Status de conexão, erros, botão conectar | status, error, isSupported, onConnect |
+| `MainTabs.tsx` | Navegação por tabs (Painel, Mecânica, Finanças, Config) | value, onValueChange, vehicleData, session |
+| `FloatingControls.tsx` | Jarvis widget, modais de corrida e abastecimento | isListening, autoRide, refuel, modals |
+| `TelemetrySection.tsx` | Gauge RPM, estatísticas do veículo | vehicleData, redlineRPM, isPolling |
+| `ActionDock.tsx` | Barra de ações (conectar, abastecer, settings) | isConnected, onConnect, onOpenRefuel |
+
+---
+
+## 21. Tipos Unificados de Contexto (BLINDADO) ⭐
+
+### Arquivo: `src/types/sessionContext.ts`
+
+| Interface | Propósito |
+|-----------|-----------|
+| `SessionContext` | Dados OBD + veículo + auth + ações |
+| `JarvisContext` | Settings + TTS + AI conversacional |
+| `TripContext` | Dados de viagem + ações |
+| `AutoRideContext` | Corridas automáticas + daily summary |
+| `RefuelContext` | Monitor + settings de abastecimento |
+| `ModalsState` | Estado dos modais (settings, flowSelector, refuel) |
+
+---
+
+## 22. Regras de Arquitetura (NÃO MODIFICAR) 🔒
+
+### 1. Services são Puros
+- Sem estado React (useState, useEffect)
+- Apenas funções que processam dados
+- Podem ser testados isoladamente
+
+### 2. Hooks Compostos Agregam
+- Combinam múltiplos hooks primitivos
+- Não duplicam lógica entre si
+- Retornam interface unificada
+
+### 3. Index.tsx é Maestro
+- Apenas orquestra componentes e hooks
+- Máximo ~100 linhas legíveis
+- Não processa dados diretamente
+
+### 4. Props Agrupadas
+- Usar objetos de contexto quando possível
+- Evitar explosão de props individuais
+- Tipos definidos em `src/types/`
+
+### 5. OBDContext usa Services
+- Parsing via `OBDParser`
+- Constantes via `OBDProtocol`
+- Não duplicar lógica de parsing
+
+### 6. Componentes de UI são Burros
+- Recebem dados via props
+- Não fazem fetch direto
+- Chamam callbacks para ações
+
+### 7. Separação de Concerns
+- `services/` → Lógica de negócio pura
+- `hooks/` → Estado React + side effects
+- `components/` → Apresentação visual
+- `types/` → Definições TypeScript
+- `lib/` → Utilitários e databases
+
+---
+
+## 23. Arquivos Protegidos (NÃO EDITAR) 🔒
+
+Os seguintes arquivos são auto-gerados ou críticos:
+
+- `src/integrations/supabase/client.ts` (auto-gerado)
+- `src/integrations/supabase/types.ts` (auto-gerado)
+- `supabase/config.toml` (auto-gerado)
+- `.env` (auto-gerado)
+- `package.json` (usar lov-add-dependency)
+
+---
+
+## 24. Histórico de Refatoração
+
+### Janeiro 2026 - Grande Refatoração de Arquitetura
+
+**Objetivo:** Eliminar dívida técnica e preparar para escala.
+
+**Mudanças Realizadas:**
+1. Extração de Services puros (`OBDParser`, `OBDProtocol`, `ProfileService`, etc.)
+2. Criação de Hooks Compostos (`useVehicleSession`, `useJarvisSystem`, `useRefuel`)
+3. Refatoração do `Index.tsx` para ~75 linhas
+4. Criação de Tipos Unificados (`SessionContext`, etc.)
+5. Componentização do Dashboard (`AppHeader`, `ConnectionPanel`, `MainTabs`, etc.)
+6. Documentação completa em `KNOWLEDGE.md`
+
+**Resultado:** Código profissional, testável, manutenível e pronto para crescer.
