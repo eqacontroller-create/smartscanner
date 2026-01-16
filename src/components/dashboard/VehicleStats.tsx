@@ -28,20 +28,22 @@ export function VehicleStats({ speed, temperature, voltage, fuelLevel, engineLoa
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Velocidade Grande - Destaque com Status Semântico */}
-      <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+      {/* Velocidade Grande - Destaque com Status Semântico e Glassmorphism */}
+      <Card className="glass border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 card-hover">
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Gauge className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <div className="p-1.5 rounded-lg bg-primary/20 backdrop-blur-sm">
+                <Gauge className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              </div>
               <span className="text-sm sm:text-base font-medium text-muted-foreground">Velocidade</span>
             </div>
             {/* Status Semântico da Velocidade */}
-            <span className={`text-xs sm:text-sm font-semibold px-2 py-0.5 rounded-full ${
+            <span className={`text-xs sm:text-sm font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm ${
               speedStatus.level === 'ok' ? 'bg-green-500/20 text-green-500' :
               speedStatus.level === 'warning' ? 'bg-yellow-500/20 text-yellow-500' :
               speedStatus.level === 'critical' ? 'bg-red-500/20 text-red-500' :
-              'bg-muted text-muted-foreground'
+              'bg-muted/80 text-muted-foreground'
             }`}>
               {speedStatus.text}
             </span>
@@ -104,25 +106,27 @@ export function VehicleStats({ speed, temperature, voltage, fuelLevel, engineLoa
 
       {/* Barra de Carga do Motor (visual adicional) */}
       {engineLoad !== null && engineLoad !== undefined && isReading && (
-        <Card>
+        <Card className="glass card-hover">
           <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <div className="p-1 rounded-md bg-primary/20 backdrop-blur-sm">
+                  <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                </div>
                 <span className="text-xs sm:text-sm font-medium text-muted-foreground">Esforço do Motor</span>
               </div>
-              <span className={`text-sm sm:text-base font-bold ${
+              <span className={`text-sm sm:text-base font-bold value-transition ${
                 engineLoad <= 30 ? 'text-green-500' :
                 engineLoad <= 60 ? 'text-yellow-500' :
                 'text-red-500'
               }`}>{engineLoad}%</span>
             </div>
-            <div className="h-3 bg-muted rounded-full overflow-hidden">
+            <div className="h-3 bg-muted/50 rounded-full overflow-hidden backdrop-blur-sm">
               <div 
                 className={`h-full transition-all duration-300 ease-out rounded-full ${
-                  engineLoad <= 30 ? 'bg-green-500' :
-                  engineLoad <= 60 ? 'bg-yellow-500' :
-                  'bg-red-500'
+                  engineLoad <= 30 ? 'bg-gradient-to-r from-green-500/80 to-green-400' :
+                  engineLoad <= 60 ? 'bg-gradient-to-r from-yellow-500/80 to-yellow-400' :
+                  'bg-gradient-to-r from-red-500/80 to-red-400'
                 }`}
                 style={{ width: `${Math.min(100, engineLoad)}%` }}
               />
