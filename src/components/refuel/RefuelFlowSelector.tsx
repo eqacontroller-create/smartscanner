@@ -28,12 +28,21 @@ export function RefuelFlowSelector({
   isAuthenticated = false,
   stftSupported,
 }: RefuelFlowSelectorProps) {
+  // Feedback háptico para mobile
+  const triggerHaptic = () => {
+    if (navigator.vibrate) {
+      navigator.vibrate(15); // Vibração curta de 15ms
+    }
+  };
+
   const handleSelectRefuel = () => {
+    triggerHaptic();
     onOpenChange(false);
     onSelectRefuel();
   };
 
   const handleSelectQuickTest = () => {
+    triggerHaptic();
     onOpenChange(false);
     onSelectQuickTest();
   };
