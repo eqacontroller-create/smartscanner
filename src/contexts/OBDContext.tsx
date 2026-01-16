@@ -99,6 +99,12 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   
   // Contador de falhas consecutivas para auto-reconnect
   const consecutiveFailuresRef = useRef<number>(0);
+  
+  // Auto-reconnect state
+  const wasIntentionallyConnectedRef = useRef(false);
+  const autoReconnectAttemptsRef = useRef(0);
+  const MAX_AUTO_RECONNECT_ATTEMPTS = 3;
+  const AUTO_RECONNECT_DELAY_MS = 2000;
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 
@@ -110,6 +116,10 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
 
   const addLogRef = useRef(addLog);
   addLogRef.current = addLog;
+
+  // Refs para funções internas (usadas no handler de desconexão)
+  const reconnectInternalRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false));
+  const readVehicleDataInternalRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false));
 
   // Get adaptive throttle based on current RPM
   const getAdaptiveThrottle = useCallback(() => {
@@ -230,16 +240,65 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
       deviceRef.current = device;
       addLogRef.current(`📱 Dispositivo: ${device.name || 'Desconhecido'}`);
 
-      device.addEventListener('gattserverdisconnected', () => {
-        setStatus('disconnected');
-        addLogRef.current('🔌 Dispositivo desconectado');
+      device.addEventListener('gattserverdisconnected', async () => {
+        addLogRef.current('🔌 Conexão Bluetooth perdida');
         writeCharRef.current = null;
         notifyCharRef.current = null;
         responseBufferRef.current = '';
         isReadingRef.current = false;
-        // Reset vehicle data
-        vehicleDataRef.current = defaultVehicleData;
-        setVehicleData(defaultVehicleData);
+        
+        // Se estava conectado intencionalmente, tentar reconectar automaticamente
+        if (wasIntentionallyConnectedRef.current && autoReconnectAttemptsRef.current < MAX_AUTO_RECONNECT_ATTEMPTS) {
+          autoReconnectAttemptsRef.current++;
+          const attempt = autoReconnectAttemptsRef.current;
+          
+          addLogRef.current(`🔄 Tentativa de reconexão automática ${attempt}/${MAX_AUTO_RECONNECT_ATTEMPTS}...`);
+          setStatus('connecting');
+          
+          await delay(AUTO_RECONNECT_DELAY_MS);
+          
+          // Verificar se não foi desconectado manualmente durante o delay
+          if (!wasIntentionallyConnectedRef.current) {
+            addLogRef.current('⏹ Reconexão cancelada - desconexão manual');
+            setStatus('disconnected');
+            return;
+          }
+          
+          const success = await reconnectInternalRef.current();
+          
+          if (success) {
+            autoReconnectAttemptsRef.current = 0;
+            addLogRef.current('✅ Reconexão automática bem-sucedida!');
+            
+            // Retomar polling se estava ativo
+            if (isPollingRef.current) {
+              addLogRef.current('▶ Retomando leitura contínua...');
+              setStatus('reading');
+              const poll = async () => {
+                if (!isPollingRef.current) return;
+                await readVehicleDataInternalRef.current();
+                if (isPollingRef.current) {
+                  pollingIntervalRef.current = window.setTimeout(poll, POLLING_INTERVAL_MS);
+                }
+              };
+              poll();
+            }
+          } else {
+            if (autoReconnectAttemptsRef.current >= MAX_AUTO_RECONNECT_ATTEMPTS) {
+              addLogRef.current('❌ Todas as tentativas de reconexão falharam');
+              setStatus('disconnected');
+              vehicleDataRef.current = defaultVehicleData;
+              setVehicleData(defaultVehicleData);
+              wasIntentionallyConnectedRef.current = false;
+              autoReconnectAttemptsRef.current = 0;
+            }
+          }
+        } else {
+          // Desconexão manual ou limite de tentativas atingido
+          setStatus('disconnected');
+          vehicleDataRef.current = defaultVehicleData;
+          setVehicleData(defaultVehicleData);
+        }
       });
 
       addLogRef.current('🔗 Conectando ao GATT Server...');
@@ -316,6 +375,8 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
 
       setStatus('ready');
       setError(null);
+      wasIntentionallyConnectedRef.current = true;
+      autoReconnectAttemptsRef.current = 0;
       addLogRef.current('✅ Scanner pronto!');
 
     } catch (err) {
@@ -340,6 +401,10 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
 
   // Disconnect from BLE device
   const disconnect = useCallback(() => {
+    // Marcar como desconexão intencional para prevenir auto-reconnect
+    wasIntentionallyConnectedRef.current = false;
+    autoReconnectAttemptsRef.current = 0;
+    
     stopPolling();
     if (deviceRef.current?.gatt?.connected) {
       deviceRef.current.gatt.disconnect();
@@ -573,6 +638,10 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
       isReadingRef.current = false;
     }
   }, [sendCommand]);
+
+  // Atualizar refs para uso no handler de desconexão
+  reconnectInternalRef.current = reconnect;
+  readVehicleDataInternalRef.current = readVehicleData;
 
   // Start polling loop
   const startPolling = useCallback(() => {
