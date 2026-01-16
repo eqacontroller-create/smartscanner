@@ -1,48 +1,121 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore, useRef } from 'react';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
 import { useSyncedProfile } from '@/hooks/useSyncedProfile';
 import { useAuth } from '@/hooks/useAuth';
 
 const STORAGE_KEY = 'jarvis-settings';
 
+// ============================================
+// GLOBAL STORE - Single source of truth
+// ============================================
+
+type Listener = () => void;
+
+// Global state that persists across all hook instances
+let globalSettings: JarvisSettings = defaultJarvisSettings;
+let globalListeners: Set<Listener> = new Set();
+let globalInitialized = false;
+
+// Load from localStorage on module initialization
+function initializeGlobalSettings() {
+  if (globalInitialized) return;
+  globalInitialized = true;
+  
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      globalSettings = { ...defaultJarvisSettings, ...parsed };
+    }
+  } catch (error) {
+    console.error('Erro ao carregar configurações do Jarvis:', error);
+  }
+}
+
+// Initialize immediately
+if (typeof window !== 'undefined') {
+  initializeGlobalSettings();
+}
+
+function subscribe(listener: Listener): () => void {
+  globalListeners.add(listener);
+  return () => globalListeners.delete(listener);
+}
+
+function getSnapshot(): JarvisSettings {
+  return globalSettings;
+}
+
+function getServerSnapshot(): JarvisSettings {
+  return defaultJarvisSettings;
+}
+
+function notifyListeners() {
+  globalListeners.forEach(listener => listener());
+}
+
+function setGlobalSettings(newSettings: JarvisSettings) {
+  globalSettings = newSettings;
+  notifyListeners();
+}
+
+// ============================================
+// HOOK
+// ============================================
+
 export function useJarvisSettings() {
   const { isAuthenticated } = useAuth();
   const syncedProfile = useSyncedProfile();
   
-  const [localSettings, setLocalSettings] = useState<JarvisSettings>(defaultJarvisSettings);
+  // Use global store for settings - ALL instances share this state
+  const localSettings = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot
+  );
+  
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(globalInitialized);
+  
+  // Track if we've synced from cloud to prevent loops
+  const hasSyncedFromCloud = useRef(false);
 
-  // Usa configurações do Cloud se autenticado, senão do localStorage
-  const settings = isAuthenticated && !syncedProfile.loading 
+  // Determine which settings to use
+  // - If authenticated and cloud has loaded, prefer cloud settings
+  // - Otherwise use local/global settings
+  const settings = isAuthenticated && !syncedProfile.loading && syncedProfile.synced
     ? syncedProfile.profile.jarvisSettings 
     : localSettings;
 
-  // Carregar configurações do localStorage (fallback offline)
+  // Sync cloud settings to global store when cloud loads
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setLocalSettings({ ...defaultJarvisSettings, ...parsed });
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações do Jarvis:', error);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // Sincroniza settings locais quando Cloud carrega (para manter backup local)
-  useEffect(() => {
-    if (isAuthenticated && !syncedProfile.loading && syncedProfile.synced) {
+    if (isAuthenticated && !syncedProfile.loading && syncedProfile.synced && !hasSyncedFromCloud.current) {
+      hasSyncedFromCloud.current = true;
+      const cloudSettings = syncedProfile.profile.jarvisSettings;
+      
+      // Update global store with cloud data
+      setGlobalSettings(cloudSettings);
+      
+      // Also update localStorage as backup
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(syncedProfile.profile.jarvisSettings));
-        setLocalSettings(syncedProfile.profile.jarvisSettings);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudSettings));
       } catch (error) {
         console.error('Erro ao atualizar cache local:', error);
       }
     }
   }, [isAuthenticated, syncedProfile.loading, syncedProfile.synced, syncedProfile.profile.jarvisSettings]);
+
+  // Reset sync flag when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasSyncedFromCloud.current = false;
+    }
+  }, [isAuthenticated]);
+
+  // Mark as loaded
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
 
   // Carregar vozes disponíveis
   useEffect(() => {
@@ -53,7 +126,6 @@ export function useJarvisSettings() {
 
     loadVoices();
     
-    // Algumas implementações carregam vozes de forma assíncrona
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
@@ -65,17 +137,19 @@ export function useJarvisSettings() {
     };
   }, []);
 
-  // Salvar configurações (Cloud + localStorage)
+  // Salvar configurações (Global + localStorage + Cloud)
   const saveSettings = useCallback(async (newSettings: JarvisSettings) => {
-    // Sempre salva localmente primeiro (offline-first)
-    setLocalSettings(newSettings);
+    // 1. Update global store immediately (all instances will re-render)
+    setGlobalSettings(newSettings);
+    
+    // 2. Save to localStorage (offline backup)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
     } catch (error) {
       console.error('Erro ao salvar configurações locais:', error);
     }
     
-    // Se autenticado, sincroniza com Cloud
+    // 3. If authenticated, sync to cloud
     if (isAuthenticated) {
       await syncedProfile.updateJarvisSettings(newSettings);
     }
@@ -86,9 +160,11 @@ export function useJarvisSettings() {
     key: K,
     value: JarvisSettings[K]
   ) => {
-    const newSettings = { ...settings, [key]: value };
+    // Use the current global settings to ensure we have latest values
+    const currentSettings = getSnapshot();
+    const newSettings = { ...currentSettings, [key]: value };
     saveSettings(newSettings);
-  }, [settings, saveSettings]);
+  }, [saveSettings]);
 
   // Restaurar padrões
   const resetToDefaults = useCallback(() => {
