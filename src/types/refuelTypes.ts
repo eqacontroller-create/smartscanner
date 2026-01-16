@@ -20,6 +20,7 @@ export interface RefuelEntry {
   fuelLevelBefore: number | null; // % antes (se disponível)
   fuelLevelAfter: number | null;  // % depois (se disponível)
   tankCapacity: number;           // Capacidade do tanque (config)
+  stationName?: string;           // Nome do posto (para ranking)
   
   // Resultados da análise
   quality: FuelQuality;

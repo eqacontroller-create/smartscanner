@@ -248,6 +248,7 @@ export type Database = {
           price_per_liter: number
           pump_accuracy_percent: number | null
           quality: string | null
+          station_name: string | null
           stft_average: number | null
           tank_capacity: number | null
           timestamp: string
@@ -267,6 +268,7 @@ export type Database = {
           price_per_liter: number
           pump_accuracy_percent?: number | null
           quality?: string | null
+          station_name?: string | null
           stft_average?: number | null
           tank_capacity?: number | null
           timestamp?: string
@@ -286,6 +288,7 @@ export type Database = {
           price_per_liter?: number
           pump_accuracy_percent?: number | null
           quality?: string | null
+          station_name?: string | null
           stft_average?: number | null
           tank_capacity?: number | null
           timestamp?: string

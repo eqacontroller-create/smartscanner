@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Fuel, DollarSign, Droplets, Gauge, Cloud, CloudOff, LogIn } from 'lucide-react';
 import { formatCurrency } from '@/types/tripSettings';
+import { StationInput } from './StationInput';
 
 interface RefuelModalProps {
   open: boolean;
@@ -23,8 +24,9 @@ interface RefuelModalProps {
   fuelLevelSupported: boolean | null;
   defaultPrice?: number;
   isAuthenticated?: boolean;
+  recentStations?: string[];
   onLoginClick?: () => void;
-  onConfirm: (pricePerLiter: number, litersAdded: number) => void;
+  onConfirm: (pricePerLiter: number, litersAdded: number, stationName?: string) => void;
 }
 
 export const RefuelModal = forwardRef<HTMLDivElement, RefuelModalProps>(function RefuelModal({
@@ -35,17 +37,20 @@ export const RefuelModal = forwardRef<HTMLDivElement, RefuelModalProps>(function
   fuelLevelSupported,
   defaultPrice = 6.00,
   isAuthenticated = false,
+  recentStations = [],
   onLoginClick,
   onConfirm,
 }, _ref) {
   const [pricePerLiter, setPricePerLiter] = useState(defaultPrice.toString());
   const [litersAdded, setLitersAdded] = useState('');
+  const [stationName, setStationName] = useState('');
   
   // Reset ao abrir
   useEffect(() => {
     if (open) {
       setPricePerLiter(defaultPrice.toFixed(2));
       setLitersAdded('');
+      setStationName('');
     }
   }, [open, defaultPrice]);
   
@@ -55,7 +60,7 @@ export const RefuelModal = forwardRef<HTMLDivElement, RefuelModalProps>(function
   
   const handleConfirm = () => {
     if (price > 0 && liters > 0) {
-      onConfirm(price, liters);
+      onConfirm(price, liters, stationName.trim() || undefined);
       onOpenChange(false);
     }
   };
@@ -140,6 +145,13 @@ export const RefuelModal = forwardRef<HTMLDivElement, RefuelModalProps>(function
               className="text-lg font-mono"
             />
           </div>
+          
+          {/* Nome do Posto */}
+          <StationInput
+            value={stationName}
+            onChange={setStationName}
+            recentStations={recentStations}
+          />
           
           {/* Total */}
           <div className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
