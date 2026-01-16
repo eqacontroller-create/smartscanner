@@ -15,8 +15,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Timer, Fuel, History, Car, TrendingUp, Zap } from 'lucide-react';
-import { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary } from '@/types/tripSettings';
-import { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
+import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary } from '@/types/tripSettings';
+import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
 
 interface FinancialTabProps {
   // Trip Calculator
@@ -52,7 +52,7 @@ interface FinancialTabProps {
   fuelTrimHistory: FuelTrimSample[];
   refuelSettings: RefuelSettings;
   frozenSettings: RefuelSettings | null;
-  currentRefuel: RefuelEntry | null;
+  currentRefuel: Partial<RefuelEntry> | null;
   isSyncing: boolean;
   stftSupported: boolean;
   isConnected: boolean;
@@ -279,7 +279,7 @@ export function FinancialTab({
           {/* Resultado da Análise */}
           {refuelMode === 'completed' && currentRefuel && (
             <RefuelResult
-              refuel={currentRefuel}
+              refuel={currentRefuel as RefuelEntry}
               flowType={refuelFlowType || 'refuel'}
               onClose={onCancelRefuel}
             />

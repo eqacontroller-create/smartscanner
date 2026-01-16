@@ -7,7 +7,7 @@ import { MaintenanceCard } from '@/components/dashboard/MaintenanceCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { AlertTriangle, Activity, Wrench, Car, Calendar } from 'lucide-react';
-import { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
+import type { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
 import type { MaintenanceAlert, MaintenanceInterval, MaintenanceType } from '@/types/maintenanceTypes';
 
 interface MechanicTabProps {

@@ -14,9 +14,9 @@ import {
   Zap, Moon, RefreshCw, LogOut, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { JarvisSettings } from '@/types/jarvisSettings';
-import { TripSettings } from '@/types/tripSettings';
-import { RefuelSettings } from '@/types/refuelTypes';
+import type { JarvisSettings } from '@/types/jarvisSettings';
+import type { TripSettings } from '@/types/tripSettings';
+import type { RefuelSettings } from '@/types/refuelTypes';
 
 interface SettingsTabProps {
   jarvisSettings: JarvisSettings;
@@ -437,42 +437,13 @@ export function SettingsTab({
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4 space-y-4">
-            {/* Quilometragem Atual */}
             <div className="space-y-2">
               <Label className="text-sm">Quilometragem atual</Label>
               <Input
                 type="number"
                 value={jarvisSettings.currentMileage}
                 onChange={(e) => onUpdateJarvisSetting('currentMileage', parseInt(e.target.value) || 0)}
-              />
-            </div>
-
-            {/* Próxima troca de óleo */}
-            <div className="space-y-2">
-              <Label className="text-sm">Próxima troca de óleo (km)</Label>
-              <Input
-                type="number"
-                value={jarvisSettings.nextOilChange}
-                onChange={(e) => onUpdateJarvisSetting('nextOilChange', parseInt(e.target.value) || 0)}
-              />
-            </div>
-
-            {/* Próxima inspeção */}
-            <div className="space-y-2">
-              <Label className="text-sm">Próxima inspeção (km)</Label>
-              <Input
-                type="number"
-                value={jarvisSettings.nextInspection}
-                onChange={(e) => onUpdateJarvisSetting('nextInspection', parseInt(e.target.value) || 0)}
-              />
-            </div>
-
-            {/* Alerta de manutenção */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Alerta de manutenção</Label>
-              <Switch
-                checked={jarvisSettings.maintenanceAlertEnabled}
-                onCheckedChange={(v) => onUpdateJarvisSetting('maintenanceAlertEnabled', v)}
+                placeholder="Ex: 50000"
               />
             </div>
           </AccordionContent>
@@ -487,7 +458,7 @@ export function SettingsTab({
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">App e Conta</p>
-                <p className="text-xs text-muted-foreground">Comportamento e sincronização</p>
+                <p className="text-xs text-muted-foreground">Preferências gerais</p>
               </div>
             </div>
           </AccordionTrigger>
@@ -496,9 +467,9 @@ export function SettingsTab({
             <div className="flex items-center justify-between">
               <Label className="text-sm flex items-center gap-2">
                 <Moon className="h-4 w-4" />
-                Modo Insônia (tela sempre ligada)
+                Modo Insônia
                 {isWakeLockActive && (
-                  <span className="text-xs text-primary">(ativo)</span>
+                  <span className="text-xs text-blue-400">(Ativo)</span>
                 )}
               </Label>
               <Switch
@@ -519,49 +490,44 @@ export function SettingsTab({
               />
             </div>
 
-            {/* Status da Conta */}
-            <div className="p-3 rounded-lg bg-muted/50">
-              {isAuthenticated && user ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Conta conectada</p>
-                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full gap-2 mt-2"
-                    onClick={() => signOut()}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sair da conta
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Conta não conectada</p>
-                  <p className="text-xs text-muted-foreground">
-                    Faça login para sincronizar seus dados
-                  </p>
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    className="w-full gap-2 mt-2"
-                    onClick={() => navigate('/login')}
-                  >
-                    Fazer Login
-                  </Button>
-                </div>
-              )}
-            </div>
+            {/* Conta */}
+            {isAuthenticated && user && (
+              <div className="pt-4 border-t space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Logado como: <span className="text-foreground">{user.email}</span>
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2 text-destructive hover:text-destructive"
+                  onClick={signOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sair da Conta
+                </Button>
+              </div>
+            )}
 
-            {/* Reset Configurações */}
-            <Button 
-              variant="destructive" 
-              className="w-full gap-2" 
-              onClick={onResetJarvisSettings}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restaurar Todas as Configurações
-            </Button>
+            {!isAuthenticated && (
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate('/login')}
+              >
+                Fazer Login
+              </Button>
+            )}
+
+            {/* Reset Geral */}
+            <div className="pt-4 border-t">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={onResetJarvisSettings}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Restaurar Padrões do Jarvis
+              </Button>
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
