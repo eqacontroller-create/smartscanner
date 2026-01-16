@@ -1,19 +1,26 @@
 import React, { createContext, useCallback, useRef, useState, useEffect } from 'react';
+import { 
+  BLUETOOTH_UUIDS, 
+  OBD_TIMING, 
+  OBD_PIDS, 
+  buildMode01Command 
+} from '@/services/obd/OBDProtocol';
+import { parseOBDResponse, parseVINResponse } from '@/services/obd/OBDParser';
 
-const SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
-const WRITE_CHARACTERISTIC_UUID = '0000fff2-0000-1000-8000-00805f9b34fb';
-const NOTIFY_CHARACTERISTIC_UUID = '0000fff1-0000-1000-8000-00805f9b34fb';
-
-// Adaptive throttle values for UI updates
-const THROTTLE_IDLE_MS = 500;    // Vehicle stopped (RPM = 0)
-const THROTTLE_NORMAL_MS = 200;  // Normal driving
-const THROTTLE_SPORT_MS = 100;   // High RPM (> 4000)
-
-// Polling interval for OBD reads
-const POLLING_INTERVAL_MS = 600;
-
-// Max consecutive failures before reconnect attempt
-const MAX_CONSECUTIVE_FAILURES = 5;
+// Destructure constants from protocol
+const { SERVICE, WRITE_CHAR, NOTIFY_CHAR } = BLUETOOTH_UUIDS;
+const { 
+  POLLING_INTERVAL_MS, 
+  COMMAND_TIMEOUT_MS,
+  MAX_CONSECUTIVE_FAILURES,
+  AUTO_RECONNECT_DELAY_MS,
+  MAX_AUTO_RECONNECT_ATTEMPTS,
+  THROTTLE_IDLE_MS,
+  THROTTLE_NORMAL_MS,
+  THROTTLE_SPORT_MS,
+  SPORT_RPM_THRESHOLD,
+  COMMAND_DELAY_MS
+} = OBD_TIMING;
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'initializing' | 'ready' | 'reading' | 'error';
 
@@ -103,8 +110,6 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   // Auto-reconnect state
   const wasIntentionallyConnectedRef = useRef(false);
   const autoReconnectAttemptsRef = useRef(0);
-  const MAX_AUTO_RECONNECT_ATTEMPTS = 3;
-  const AUTO_RECONNECT_DELAY_MS = 2000;
 
   const isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 
@@ -125,7 +130,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   const getAdaptiveThrottle = useCallback(() => {
     const rpm = vehicleDataRef.current.rpm;
     if (rpm === null || rpm === 0) return THROTTLE_IDLE_MS;
-    if (rpm > 4000) return THROTTLE_SPORT_MS;
+    if (rpm > SPORT_RPM_THRESHOLD) return THROTTLE_SPORT_MS;
     return THROTTLE_NORMAL_MS;
   }, []);
 
@@ -234,7 +239,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
 
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: [SERVICE_UUID]
+        optionalServices: [SERVICE]
       });
 
       deviceRef.current = device;
@@ -314,13 +319,13 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
       addLogRef.current('✅ GATT conectado');
 
       addLogRef.current('🔍 Obtendo serviço...');
-      const service = await server.getPrimaryService(SERVICE_UUID);
+      const service = await server.getPrimaryService(SERVICE);
       addLogRef.current('✅ Serviço encontrado');
 
       addLogRef.current('🔍 Obtendo características...');
       const [writeChar, notifyChar] = await Promise.all([
-        service.getCharacteristic(WRITE_CHARACTERISTIC_UUID),
-        service.getCharacteristic(NOTIFY_CHARACTERISTIC_UUID)
+        service.getCharacteristic(WRITE_CHAR),
+        service.getCharacteristic(NOTIFY_CHAR)
       ]);
 
       writeCharRef.current = writeChar;
@@ -367,9 +372,14 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
       addLogRef.current('🚗 Tentando detectar VIN do veículo...');
       try {
         const vinResponse = await sendCommand('0902', 8000);
-        const vinInfo = parseVINFromResponse(vinResponse);
+        const vinInfo = parseVINResponse(vinResponse);
         if (vinInfo) {
-          setDetectedVehicle(vinInfo);
+          setDetectedVehicle({
+            vin: vinInfo.vin,
+            manufacturer: vinInfo.manufacturer,
+            modelYear: vinInfo.modelYear,
+            country: vinInfo.country,
+          });
           addLogRef.current(`✅ VIN detectado: ${vinInfo.vin} (${vinInfo.manufacturer || 'Fabricante desconhecido'})`);
         } else {
           addLogRef.current('⚠️ VIN não disponível - usando modo genérico');
@@ -459,13 +469,13 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
       addLogRef.current('✅ GATT reconectado');
 
       addLogRef.current('🔍 Re-obtendo serviço...');
-      const service = await server.getPrimaryService(SERVICE_UUID);
+      const service = await server.getPrimaryService(SERVICE);
       addLogRef.current('✅ Serviço encontrado');
 
       addLogRef.current('🔍 Re-obtendo características...');
       const [writeChar, notifyChar] = await Promise.all([
-        service.getCharacteristic(WRITE_CHARACTERISTIC_UUID),
-        service.getCharacteristic(NOTIFY_CHARACTERISTIC_UUID)
+        service.getCharacteristic(WRITE_CHAR),
+        service.getCharacteristic(NOTIFY_CHAR)
       ]);
 
       writeCharRef.current = writeChar;
@@ -507,124 +517,77 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
     }
   }, [handleNotification, sendCommand]);
 
-  // Read vehicle data from OBD
+  // Read vehicle data from OBD using Services
   const readVehicleData = useCallback(async (): Promise<boolean> => {
     if (!writeCharRef.current || isReadingRef.current) return false;
 
     isReadingRef.current = true;
     let readSuccess = false;
 
+    // Helper to read a PID using the OBDParser service
+    const readPID = async (pidKey: keyof typeof OBD_PIDS): Promise<{ success: boolean; value: number | null }> => {
+      try {
+        const pid = OBD_PIDS[pidKey];
+        const command = buildMode01Command(pid.pid);
+        const response = await sendCommand(command, COMMAND_TIMEOUT_MS);
+        const result = parseOBDResponse(pid.pid, response);
+        return { success: result.success, value: result.value };
+      } catch {
+        return { success: false, value: null };
+      }
+    };
+
     try {
-      // Read RPM (PID 010C)
-      try {
-        const rpmResponse = await sendCommand('010C', 2500);
-        const cleanRpm = rpmResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-        const rpmMatch = cleanRpm.match(/410C([0-9A-F]{2})([0-9A-F]{2})/);
-        
-        if (rpmMatch) {
-          const A = parseInt(rpmMatch[1], 16);
-          const B = parseInt(rpmMatch[2], 16);
-          vehicleDataRef.current.rpm = Math.round(((A * 256) + B) / 4);
-          readSuccess = true;
-        } else if (cleanRpm.includes('NODATA')) {
-          vehicleDataRef.current.rpm = 0;
-          readSuccess = true;
-        }
-      } catch {
-        addLogRef.current('⚠️ Erro lendo RPM');
+      // Read RPM
+      const rpmResult = await readPID('RPM');
+      if (rpmResult.success) {
+        vehicleDataRef.current.rpm = rpmResult.value ?? 0;
+        readSuccess = true;
       }
 
-      await delay(50);
+      await delay(COMMAND_DELAY_MS);
 
-      // Read Speed (PID 010D)
-      try {
-        const speedResponse = await sendCommand('010D', 2500);
-        const cleanSpeed = speedResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-        const speedMatch = cleanSpeed.match(/410D([0-9A-F]{2})/);
-        
-        if (speedMatch) {
-          vehicleDataRef.current.speed = parseInt(speedMatch[1], 16);
-          readSuccess = true;
-        } else if (cleanSpeed.includes('NODATA')) {
-          vehicleDataRef.current.speed = 0;
-          readSuccess = true;
-        }
-      } catch {
-        addLogRef.current('⚠️ Erro lendo velocidade');
+      // Read Speed
+      const speedResult = await readPID('SPEED');
+      if (speedResult.success) {
+        vehicleDataRef.current.speed = speedResult.value ?? 0;
+        readSuccess = true;
       }
 
-      await delay(50);
+      await delay(COMMAND_DELAY_MS);
 
-      // Read Coolant Temperature (PID 0105)
-      try {
-        const tempResponse = await sendCommand('0105', 2500);
-        const cleanTemp = tempResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-        const tempMatch = cleanTemp.match(/4105([0-9A-F]{2})/);
-        
-        if (tempMatch) {
-          vehicleDataRef.current.temperature = parseInt(tempMatch[1], 16) - 40;
-          readSuccess = true;
-        } else if (cleanTemp.includes('NODATA')) {
-          vehicleDataRef.current.temperature = null;
-        }
-      } catch {
-        addLogRef.current('⚠️ Erro lendo temperatura');
+      // Read Coolant Temperature
+      const tempResult = await readPID('COOLANT_TEMP');
+      if (tempResult.success) {
+        vehicleDataRef.current.temperature = tempResult.value;
+        readSuccess = true;
       }
 
-      await delay(50);
+      await delay(COMMAND_DELAY_MS);
 
-      // Read Battery Voltage (PID 0142)
-      try {
-        const voltResponse = await sendCommand('0142', 2500);
-        const cleanVolt = voltResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-        const voltMatch = cleanVolt.match(/4142([0-9A-F]{2})([0-9A-F]{2})/);
-        
-        if (voltMatch) {
-          const A = parseInt(voltMatch[1], 16);
-          const B = parseInt(voltMatch[2], 16);
-          vehicleDataRef.current.voltage = Math.round(((A * 256) + B) / 1000 * 10) / 10;
-          readSuccess = true;
-        } else if (cleanVolt.includes('NODATA')) {
-          vehicleDataRef.current.voltage = null;
-        }
-      } catch {
-        addLogRef.current('⚠️ Erro lendo voltagem');
+      // Read Battery Voltage
+      const voltResult = await readPID('VOLTAGE');
+      if (voltResult.success) {
+        vehicleDataRef.current.voltage = voltResult.value;
+        readSuccess = true;
       }
 
-      await delay(50);
+      await delay(COMMAND_DELAY_MS);
 
-      // Read Fuel Level (PID 012F)
-      try {
-        const fuelResponse = await sendCommand('012F', 2500);
-        const cleanFuel = fuelResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-        const fuelMatch = cleanFuel.match(/412F([0-9A-F]{2})/);
-        
-        if (fuelMatch) {
-          vehicleDataRef.current.fuelLevel = Math.round(parseInt(fuelMatch[1], 16) * 100 / 255);
-          readSuccess = true;
-        } else if (cleanFuel.includes('NODATA')) {
-          vehicleDataRef.current.fuelLevel = null;
-        }
-      } catch {
-        addLogRef.current('⚠️ Erro lendo nível de combustível');
+      // Read Fuel Level
+      const fuelResult = await readPID('FUEL_LEVEL');
+      if (fuelResult.success) {
+        vehicleDataRef.current.fuelLevel = fuelResult.value;
+        readSuccess = true;
       }
 
-      await delay(50);
+      await delay(COMMAND_DELAY_MS);
 
-      // Read Engine Load (PID 0104)
-      try {
-        const loadResponse = await sendCommand('0104', 2500);
-        const cleanLoad = loadResponse.replace(/[\r\n>\s]/g, '').toUpperCase();
-        const loadMatch = cleanLoad.match(/4104([0-9A-F]{2})/);
-        
-        if (loadMatch) {
-          vehicleDataRef.current.engineLoad = Math.round(parseInt(loadMatch[1], 16) * 100 / 255);
-          readSuccess = true;
-        } else if (cleanLoad.includes('NODATA')) {
-          vehicleDataRef.current.engineLoad = null;
-        }
-      } catch {
-        addLogRef.current('⚠️ Erro lendo carga do motor');
+      // Read Engine Load
+      const loadResult = await readPID('ENGINE_LOAD');
+      if (loadResult.success) {
+        vehicleDataRef.current.engineLoad = loadResult.value;
+        readSuccess = true;
       }
 
       // Track consecutive failures
@@ -702,98 +665,4 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
       {children}
     </OBDContext.Provider>
   );
-}
-
-// VIN Parser helpers
-function parseVINFromResponse(response: string): DetectedVehicleInfo | null {
-  try {
-    const lines = response.split(/[\r\n]+/).filter(line => line.trim());
-    let hexData = '';
-    
-    for (const line of lines) {
-      const clean = line.replace(/\s+/g, '').toUpperCase();
-      
-      if (clean.includes('NODATA') || clean.includes('ERROR') || 
-          clean.includes('STOPPED') || clean.startsWith('7F') ||
-          clean === '>' || clean.length < 4) {
-        continue;
-      }
-      
-      if (clean.includes('4902')) {
-        const idx = clean.indexOf('4902');
-        hexData += clean.substring(idx + 4);
-      } else if (clean.match(/^[0-9A-F]+$/)) {
-        hexData += clean;
-      }
-    }
-    
-    if (hexData.length < 34) return null;
-    
-    let vin = '';
-    for (let i = 0; i < Math.min(hexData.length, 40); i += 2) {
-      const byte = parseInt(hexData.substring(i, i + 2), 16);
-      if (byte >= 32 && byte <= 126) {
-        vin += String.fromCharCode(byte);
-      }
-    }
-    
-    vin = vin.replace(/[^A-Z0-9]/gi, '').substring(0, 17);
-    
-    if (vin.length !== 17) return null;
-    
-    const wmi = vin.substring(0, 3);
-    const yearChar = vin.charAt(9);
-    
-    return {
-      vin,
-      manufacturer: getManufacturerFromWMI(wmi),
-      modelYear: getYearFromVIN(yearChar),
-      country: getCountryFromWMI(wmi),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function getManufacturerFromWMI(wmi: string): string | null {
-  const map: Record<string, string> = {
-    '9BW': 'Volkswagen', '93W': 'Volkswagen', '3VW': 'Volkswagen', 'WVW': 'Volkswagen',
-    '9BF': 'Ford', '1FA': 'Ford', '3FA': 'Ford', 'WF0': 'Ford',
-    '9BG': 'Chevrolet', '1G1': 'Chevrolet', '3G1': 'Chevrolet',
-    '93H': 'Honda', 'JHM': 'Honda', '1HG': 'Honda',
-    '9BD': 'Fiat', 'ZFA': 'Fiat',
-    '9BR': 'Toyota', 'JT2': 'Toyota', '4T1': 'Toyota',
-    'KMH': 'Hyundai', '5NP': 'Hyundai',
-    'VF1': 'Renault', '93Y': 'Renault',
-    'JN1': 'Nissan', '1N4': 'Nissan',
-    '1J4': 'Jeep', '1C4': 'Jeep',
-    'WBA': 'BMW', 'WBS': 'BMW',
-    'WDB': 'Mercedes-Benz', 'WDC': 'Mercedes-Benz',
-    'WAU': 'Audi', 'WUA': 'Audi',
-  };
-  return map[wmi] || null;
-}
-
-function getYearFromVIN(char: string): string | null {
-  const map: Record<string, string> = {
-    'A': '2010', 'B': '2011', 'C': '2012', 'D': '2013', 'E': '2014',
-    'F': '2015', 'G': '2016', 'H': '2017', 'J': '2018', 'K': '2019',
-    'L': '2020', 'M': '2021', 'N': '2022', 'P': '2023', 'R': '2024',
-    'S': '2025', 'T': '2026', 'V': '2027', 'W': '2028', 'X': '2029',
-    'Y': '2030',
-    '1': '2001', '2': '2002', '3': '2003', '4': '2004', '5': '2005',
-    '6': '2006', '7': '2007', '8': '2008', '9': '2009',
-  };
-  return map[char.toUpperCase()] || null;
-}
-
-function getCountryFromWMI(wmi: string): string | null {
-  const first = wmi.charAt(0).toUpperCase();
-  const map: Record<string, string> = {
-    '1': 'Estados Unidos', '2': 'Canadá', '3': 'México',
-    '9': 'Brasil', 'J': 'Japão', 'K': 'Coreia do Sul',
-    'W': 'Alemanha', 'V': 'França', 'Z': 'Itália',
-    'S': 'Reino Unido', 'Y': 'Suécia/Finlândia',
-  };
-  return map[first] || null;
 }
