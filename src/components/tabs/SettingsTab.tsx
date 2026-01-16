@@ -73,7 +73,7 @@ export function SettingsTab({
       >
         {/* Jarvis AI */}
         <AccordionItem value="jarvis" className="border rounded-xl overflow-hidden bg-card card-hover">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+          <AccordionTrigger className="px-3 sm:px-4 py-3 sm:py-4 hover:no-underline hover:bg-muted/50 min-h-[56px]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Bot className="h-4 w-4 text-primary" />
@@ -84,7 +84,7 @@ export function SettingsTab({
               </div>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 space-y-4">
+          <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
             {/* Ativar Jarvis */}
             <div className="flex items-center justify-between">
               <Label htmlFor="ai-mode" className="text-sm">Ativar Jarvis AI</Label>
@@ -185,7 +185,7 @@ export function SettingsTab({
 
         {/* Alertas e Limites */}
         <AccordionItem value="alertas" className="border rounded-xl overflow-hidden bg-card card-hover">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+          <AccordionTrigger className="px-3 sm:px-4 py-3 sm:py-4 hover:no-underline hover:bg-muted/50 min-h-[56px]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-yellow-500/10">
                 <Bell className="h-4 w-4 text-yellow-500" />
@@ -196,7 +196,7 @@ export function SettingsTab({
               </div>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 space-y-4">
+          <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
             {/* RPM Alto */}
             <div className="flex items-center justify-between">
               <Label className="text-sm flex items-center gap-2">
@@ -294,7 +294,7 @@ export function SettingsTab({
 
         {/* Configurações Financeiras */}
         <AccordionItem value="financeiro" className="border rounded-xl overflow-hidden bg-card card-hover">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+          <AccordionTrigger className="px-3 sm:px-4 py-3 sm:py-4 hover:no-underline hover:bg-muted/50 min-h-[56px]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-500/10">
                 <DollarSign className="h-4 w-4 text-green-500" />
@@ -305,7 +305,7 @@ export function SettingsTab({
               </div>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 space-y-4">
+          <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
             {/* Preço Combustível */}
             <div className="space-y-2">
               <Label className="text-sm">Preço do combustível (R$/L)</Label>
@@ -372,7 +372,7 @@ export function SettingsTab({
 
         {/* Monitor de Combustível */}
         <AccordionItem value="combustivel" className="border rounded-xl overflow-hidden bg-card card-hover">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+          <AccordionTrigger className="px-3 sm:px-4 py-3 sm:py-4 hover:no-underline hover:bg-muted/50 min-h-[56px]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10">
                 <Fuel className="h-4 w-4 text-blue-500" />
@@ -383,7 +383,7 @@ export function SettingsTab({
               </div>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 space-y-4">
+          <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
             {/* Distância de monitoramento */}
             <div className="space-y-2">
               <div className="flex justify-between">
@@ -427,7 +427,7 @@ export function SettingsTab({
 
         {/* Perfil do Veículo */}
         <AccordionItem value="veiculo" className="border rounded-xl overflow-hidden bg-card card-hover">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+          <AccordionTrigger className="px-3 sm:px-4 py-3 sm:py-4 hover:no-underline hover:bg-muted/50 min-h-[56px]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-orange-500/10">
                 <Car className="h-4 w-4 text-orange-500" />
@@ -438,7 +438,7 @@ export function SettingsTab({
               </div>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 space-y-4">
+          <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
             <div className="space-y-2">
               <Label className="text-sm">Quilometragem atual</Label>
               <Input
@@ -453,7 +453,7 @@ export function SettingsTab({
 
         {/* App e Conta */}
         <AccordionItem value="app" className="border rounded-xl overflow-hidden bg-card card-hover">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+          <AccordionTrigger className="px-3 sm:px-4 py-3 sm:py-4 hover:no-underline hover:bg-muted/50 min-h-[56px]">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-500/10">
                 <Smartphone className="h-4 w-4 text-purple-500" />
@@ -464,7 +464,7 @@ export function SettingsTab({
               </div>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 space-y-4">
+          <AccordionContent className="px-3 sm:px-4 pb-4 space-y-4">
             {/* Modo Insônia */}
             <div className="flex items-center justify-between">
               <Label className="text-sm flex items-center gap-2">
