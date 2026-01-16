@@ -9,6 +9,7 @@ import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary
 import type { RefuelSettings, RefuelMode, RefuelFlowType, FuelTrimSample, RefuelEntry } from '@/types/refuelTypes';
 import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
 import type { UseMaintenanceScheduleReturn } from '@/hooks/useMaintenanceSchedule';
+import type { VehicleContextForVision } from '@/types/visionTypes';
 
 // Lazy load tab components for better initial load performance
 const DashboardTab = lazy(() => import('@/components/tabs/DashboardTab').then(m => ({ default: m.DashboardTab })));
@@ -92,6 +93,7 @@ interface MainTabsProps {
   onResetRefuelSettings: () => void;
   vehicleBenefits: UseVehicleBenefitsReturn;
   maintenanceSchedule: UseMaintenanceScheduleReturn;
+  vehicleContext?: VehicleContextForVision;
 }
 
 export function MainTabs(props: MainTabsProps) {
@@ -126,7 +128,7 @@ export function MainTabs(props: MainTabsProps) {
 
       <TabsContent value="mecanica" className="mt-4 sm:mt-6">
         <Suspense fallback={<TabSkeleton />}>
-          <MechanicTab sendCommand={props.sendRawCommand} isConnected={isConnected} isPolling={props.isPolling} addLog={props.addLog} stopPolling={props.onStopPolling} logs={props.logs} themeVehicle={props.themeVehicle} currentProfile={props.currentProfile} vehicleBenefits={props.vehicleBenefits} maintenanceSchedule={props.maintenanceSchedule} currentMileage={jarvisSettings.currentMileage} speak={props.speak} isSpeaking={props.isSpeaking} aiModeEnabled={jarvisSettings.aiModeEnabled} />
+          <MechanicTab sendCommand={props.sendRawCommand} isConnected={isConnected} isPolling={props.isPolling} addLog={props.addLog} stopPolling={props.onStopPolling} logs={props.logs} themeVehicle={props.themeVehicle} currentProfile={props.currentProfile} vehicleBenefits={props.vehicleBenefits} maintenanceSchedule={props.maintenanceSchedule} currentMileage={jarvisSettings.currentMileage} speak={props.speak} isSpeaking={props.isSpeaking} aiModeEnabled={jarvisSettings.aiModeEnabled} vehicleContext={props.vehicleContext} />
         </Suspense>
       </TabsContent>
 

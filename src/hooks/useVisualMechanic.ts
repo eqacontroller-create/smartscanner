@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { VisionService } from '@/services/ai/VisionService';
 import { PROGRESS_MESSAGES } from '@/types/visionTypes';
-import type { VisionAnalysisResult, AnalysisType } from '@/types/visionTypes';
+import type { VisionAnalysisResult, AnalysisType, VehicleContextForVision } from '@/types/visionTypes';
 import { toast } from 'sonner';
 
 export interface UseVisualMechanicReturn {
@@ -22,7 +22,7 @@ export interface UseVisualMechanicReturn {
   // Ações
   startCapture: (type: AnalysisType) => void;
   handleFileSelect: (file: File) => void;
-  analyzeMedia: () => Promise<void>;
+  analyzeMedia: (vehicleContext?: VehicleContextForVision) => Promise<void>;
   reset: () => void;
 }
 
@@ -103,7 +103,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
   }, [analysisType]);
   
   // Analisa mídia com IA
-  const analyzeMedia = useCallback(async () => {
+  const analyzeMedia = useCallback(async (vehicleContext?: VehicleContextForVision) => {
     if (!mediaFile) {
       toast.error('Nenhuma mídia selecionada');
       return;
@@ -116,8 +116,8 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
       const isVideo = mediaFile.type.startsWith('video/');
       
       const analysisResult = isVideo
-        ? await VisionService.analyzeVideo(mediaFile)
-        : await VisionService.analyzeImage(mediaFile);
+        ? await VisionService.analyzeVideo(mediaFile, undefined, vehicleContext)
+        : await VisionService.analyzeImage(mediaFile, undefined, vehicleContext);
       
       setResult(analysisResult);
       

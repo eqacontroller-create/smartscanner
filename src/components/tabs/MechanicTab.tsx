@@ -9,6 +9,7 @@ import { ScannerSkeleton, LiveDataSkeleton, VisualMechanicSkeleton } from '@/com
 import { AlertTriangle, Activity, Wrench, Car, Calendar, Eye } from 'lucide-react';
 import type { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
 import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
+import type { VehicleContextForVision } from '@/types/visionTypes';
 import type { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
 
 // Lazy load heavy components
@@ -34,6 +35,7 @@ interface MechanicTabProps {
   speak: (text: string) => void;
   isSpeaking: boolean;
   aiModeEnabled: boolean;
+  vehicleContext?: VehicleContextForVision;
 }
 
 export function MechanicTab({
@@ -51,6 +53,7 @@ export function MechanicTab({
   speak,
   isSpeaking,
   aiModeEnabled,
+  vehicleContext,
 }: MechanicTabProps) {
   return (
     <div className="space-y-4 sm:space-y-6 tab-content-enter">
@@ -93,6 +96,7 @@ export function MechanicTab({
               <VisualMechanic
                 onSpeak={aiModeEnabled ? speak : undefined}
                 isSpeaking={isSpeaking}
+                vehicleContext={vehicleContext}
               />
             </Suspense>
           </div>

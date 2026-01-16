@@ -1,6 +1,6 @@
 /**
  * VisualMechanic - Container principal do diagnóstico visual
- * UX inclusiva para público leigo + modo offline
+ * UX inclusiva para público leigo + modo offline + contexto do veículo
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,15 +14,17 @@ import { OfflineQueue } from './OfflineQueue';
 import { ProcessedResults } from './ProcessedResults';
 import { useVisualMechanic } from '@/hooks/useVisualMechanic';
 import { useOfflineVision } from '@/hooks/useOfflineVision';
-import { Eye, WifiOff, CloudOff } from 'lucide-react';
+import { Eye, WifiOff, CloudOff, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { VehicleContextForVision } from '@/types/visionTypes';
 
 interface VisualMechanicProps {
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
+  vehicleContext?: VehicleContextForVision;
 }
 
-export function VisualMechanic({ onSpeak, isSpeaking }: VisualMechanicProps) {
+export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMechanicProps) {
   const {
     isCapturing,
     isAnalyzing,
@@ -51,12 +53,27 @@ export function VisualMechanic({ onSpeak, isSpeaking }: VisualMechanicProps) {
     getItemPreview,
   } = useOfflineVision();
   
+  // Verifica se tem veículo configurado
+  const hasVehicle = vehicleContext && (vehicleContext.brand || vehicleContext.model);
+  const vehicleDisplayName = hasVehicle 
+    ? [
+        vehicleContext.brand?.charAt(0).toUpperCase() + vehicleContext.brand?.slice(1),
+        vehicleContext.model,
+        vehicleContext.year
+      ].filter(Boolean).join(' ')
+    : null;
+  
   // Salva foto para análise posterior quando offline
   const handleSaveForLater = async () => {
     if (mediaFile && analysisType) {
       await saveForLater(mediaFile, analysisType);
       reset();
     }
+  };
+  
+  // Wrapper para análise com contexto do veículo
+  const handleAnalyze = () => {
+    analyzeMedia(vehicleContext);
   };
   
   return (
@@ -73,6 +90,16 @@ export function VisualMechanic({ onSpeak, isSpeaking }: VisualMechanicProps) {
           <CardDescription className="text-base">
             Tire uma foto ou grave um vídeo curto e descubra o que significa
           </CardDescription>
+          
+          {/* Vehicle badge - mostra veículo conectado */}
+          {vehicleDisplayName && (
+            <div className="flex items-center justify-center gap-2 mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 w-fit mx-auto">
+              <Car className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">
+                {vehicleDisplayName}
+              </span>
+            </div>
+          )}
         </CardHeader>
         
         <CardContent>
@@ -122,7 +149,7 @@ export function VisualMechanic({ onSpeak, isSpeaking }: VisualMechanicProps) {
               <MediaPreview
                 mediaUrl={mediaPreview}
                 analysisType={analysisType}
-                onAnalyze={isOnline ? analyzeMedia : undefined}
+                onAnalyze={isOnline ? handleAnalyze : undefined}
                 onRetry={() => startCapture(analysisType)}
                 onCancel={reset}
                 isAnalyzing={isAnalyzing}
@@ -149,11 +176,12 @@ export function VisualMechanic({ onSpeak, isSpeaking }: VisualMechanicProps) {
         </CardContent>
       </Card>
       
-      {/* Result card - Show diagnosis */}
+      {/* Result card - Show diagnosis with vehicle context */}
       {result && (
         <DiagnosisCard
           result={result}
           mediaUrl={mediaPreview || undefined}
+          vehicleContext={vehicleContext}
           onSpeak={onSpeak}
           onReset={reset}
           isSpeaking={isSpeaking}
@@ -190,6 +218,11 @@ export function VisualMechanic({ onSpeak, isSpeaking }: VisualMechanicProps) {
               💡 <strong>Dica:</strong> Fotografe luzes acesas no painel, 
               vazamentos, peças com aspecto estranho ou qualquer coisa que 
               você não reconheça. Nosso mecânico virtual vai explicar tudo!
+              {hasVehicle && (
+                <span className="block mt-1 text-primary">
+                  Diagnóstico personalizado para seu {vehicleDisplayName}
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>

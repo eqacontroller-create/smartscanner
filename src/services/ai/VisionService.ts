@@ -3,7 +3,7 @@
  * Analisa fotos e vídeos de peças do motor e luzes do painel
  */
 
-import type { VisionAnalysisResult, VisionRequest, VisionResponse, MediaType } from '@/types/visionTypes';
+import type { VisionAnalysisResult, VisionRequest, VisionResponse, MediaType, VehicleContextForVision } from '@/types/visionTypes';
 
 const VISION_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vision-mechanic`;
 
@@ -85,7 +85,8 @@ export async function resizeImage(file: File, maxSize = 1024): Promise<Blob> {
  */
 export async function analyzeImage(
   file: File,
-  userQuestion?: string
+  userQuestion?: string,
+  vehicleContext?: VehicleContextForVision
 ): Promise<VisionAnalysisResult> {
   // Redimensiona imagem para economizar bandwidth
   const resizedBlob = await resizeImage(file);
@@ -98,6 +99,7 @@ export async function analyzeImage(
     mediaType: 'image/jpeg',
     analysisType: 'photo',
     userQuestion,
+    vehicleContext,
   };
   
   const response = await fetch(VISION_FUNCTION_URL, {
@@ -128,7 +130,8 @@ export async function analyzeImage(
  */
 export async function analyzeVideo(
   file: File,
-  userQuestion?: string
+  userQuestion?: string,
+  vehicleContext?: VehicleContextForVision
 ): Promise<VisionAnalysisResult> {
   // Verifica tamanho do vídeo (max 10MB)
   const maxSize = 10 * 1024 * 1024;
@@ -144,6 +147,7 @@ export async function analyzeVideo(
     mediaType,
     analysisType: 'video',
     userQuestion,
+    vehicleContext,
   };
   
   const response = await fetch(VISION_FUNCTION_URL, {
