@@ -109,76 +109,86 @@ export function FinancialTab({
   const [subTab, setSubTab] = useState('taximetro');
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      <SectionHeader
-        icon={DollarSign}
-        title="Controle Financeiro"
-        description="Gerencie custos, viagens e combustível"
-        badge={autoRideEnabled ? 'Auto' : undefined}
-        badgeVariant="success"
-      />
+    <div className="space-y-4 sm:space-y-6 tab-content-enter">
+      <div className="animate-fade-in">
+        <SectionHeader
+          icon={DollarSign}
+          title="Controle Financeiro"
+          description="Gerencie custos, viagens e combustível"
+          badge={autoRideEnabled ? 'Auto' : undefined}
+          badgeVariant="success"
+        />
+      </div>
 
       {/* Status da corrida automática */}
       {autoRideEnabled && (
-        <div className="flex justify-center animate-fade-in">
+        <div className="flex justify-center animate-fade-in stagger-1">
           <RideStatusBadge status={rideStatus} />
         </div>
       )}
 
-      <Tabs value={subTab} onValueChange={setSubTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto tabs-scroll">
-          <TabsTrigger value="taximetro" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+      <Tabs value={subTab} onValueChange={setSubTab} className="w-full animate-fade-in stagger-2">
+        <TabsList className="grid w-full grid-cols-4 h-auto tabs-scroll glass">
+          <TabsTrigger value="taximetro" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <Timer className="h-4 w-4" />
             <span className="hidden xs:inline">Viagem</span>
           </TabsTrigger>
-          <TabsTrigger value="corridas" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+          <TabsTrigger value="corridas" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <Car className="h-4 w-4" />
             <span className="hidden xs:inline">Hoje</span>
           </TabsTrigger>
-          <TabsTrigger value="combustivel" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row relative">
+          <TabsTrigger value="combustivel" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row relative press-effect">
             <Fuel className="h-4 w-4" />
             <span className="hidden xs:inline">Fuel</span>
             {(refuelMode === 'monitoring' || refuelMode === 'analyzing') && (
-              <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-pulse" />
+              <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-glow" />
             )}
           </TabsTrigger>
-          <TabsTrigger value="historico" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+          <TabsTrigger value="historico" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <History className="h-4 w-4" />
             <span className="hidden xs:inline">Histórico</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Taxímetro (Viagem Atual) */}
-        <TabsContent value="taximetro" className="space-y-4 mt-4 animate-fade-in">
-          <TripMonitor 
-            tripData={tripData} 
-            currentSpeed={currentSpeed}
-          />
-          <TripControls
-            tripData={tripData}
-            onStart={onStartTrip}
-            onPause={onPauseTrip}
-            onResume={onResumeTrip}
-            onReset={onResetTrip}
-            onSave={onSaveTrip}
-            onVoiceReport={onVoiceReport}
-            isSpeaking={isSpeaking}
-          />
-          <QuickSettings
-            settings={tripSettings}
-            onUpdateSettings={onUpdateSettings}
-          />
+        <TabsContent value="taximetro" className="space-y-4 mt-4 tab-content-enter">
+          <div className="card-hover rounded-xl">
+            <TripMonitor 
+              tripData={tripData} 
+              currentSpeed={currentSpeed}
+            />
+          </div>
+          <div className="animate-fade-in stagger-1 card-hover rounded-xl">
+            <TripControls
+              tripData={tripData}
+              onStart={onStartTrip}
+              onPause={onPauseTrip}
+              onResume={onResumeTrip}
+              onReset={onResetTrip}
+              onSave={onSaveTrip}
+              onVoiceReport={onVoiceReport}
+              isSpeaking={isSpeaking}
+            />
+          </div>
+          <div className="animate-fade-in stagger-2">
+            <QuickSettings
+              settings={tripSettings}
+              onUpdateSettings={onUpdateSettings}
+            />
+          </div>
         </TabsContent>
 
         {/* Corridas de Hoje (Auto-Ride) */}
-        <TabsContent value="corridas" className="space-y-4 mt-4 animate-fade-in">
+        <TabsContent value="corridas" className="space-y-4 mt-4 tab-content-enter">
           {autoRideEnabled ? (
-            <TodayRides
-              summary={dailySummary}
-              onClear={onClearTodayRides}
-              onVoiceReport={onDailyReport}
-              isSpeaking={isSpeaking}
-            />
+            <div className="card-hover rounded-xl">
+              <TodayRides
+                summary={dailySummary}
+                onClear={onClearTodayRides}
+                onVoiceReport={onDailyReport}
+                isSpeaking={isSpeaking}
+              />
+            </div>
           ) : (
             <EmptyState
               icon={Car}
@@ -189,9 +199,9 @@ export function FinancialTab({
         </TabsContent>
 
         {/* Combustível (Qualidade e Abastecimento) */}
-        <TabsContent value="combustivel" className="space-y-4 mt-4 animate-fade-in">
+        <TabsContent value="combustivel" className="space-y-4 mt-4 tab-content-enter">
           {/* Controles de Combustível */}
-          <Card className="border-primary/20">
+          <Card className="border-primary/20 card-hover">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
@@ -233,7 +243,7 @@ export function FinancialTab({
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <Button 
                     variant="outline" 
-                    className="h-auto py-3 flex-col gap-1 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                    className="h-auto py-3 flex-col gap-1 hover:border-primary/50 hover:bg-primary/5 press-effect transition-all"
                     onClick={() => {
                       onStartRefuelMode();
                       onOpenRefuelModal();
@@ -244,7 +254,7 @@ export function FinancialTab({
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="h-auto py-3 flex-col gap-1 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+                    className="h-auto py-3 flex-col gap-1 hover:border-blue-500/50 hover:bg-blue-500/5 press-effect transition-all"
                     onClick={onStartQuickTest}
                     disabled={!stftSupported}
                   >
@@ -261,32 +271,36 @@ export function FinancialTab({
 
           {/* Monitor de Qualidade (quando ativo) */}
           {(refuelMode === 'monitoring' || refuelMode === 'analyzing') && (
-            <FuelQualityMonitor
-              mode={refuelMode}
-              flowType={refuelFlowType}
-              distanceMonitored={distanceMonitored}
-              currentSTFT={currentSTFT}
-              currentLTFT={currentLTFT}
-              anomalyActive={anomalyActive}
-              anomalyDuration={anomalyDuration}
-              fuelTrimHistory={fuelTrimHistory}
-              settings={refuelSettings}
-              frozenSettings={frozenSettings}
-              isSyncing={isSyncing}
-            />
+            <div className="animate-fade-in stagger-1">
+              <FuelQualityMonitor
+                mode={refuelMode}
+                flowType={refuelFlowType}
+                distanceMonitored={distanceMonitored}
+                currentSTFT={currentSTFT}
+                currentLTFT={currentLTFT}
+                anomalyActive={anomalyActive}
+                anomalyDuration={anomalyDuration}
+                fuelTrimHistory={fuelTrimHistory}
+                settings={refuelSettings}
+                frozenSettings={frozenSettings}
+                isSyncing={isSyncing}
+              />
+            </div>
           )}
 
           {/* Resultado da Análise */}
           {refuelMode === 'completed' && currentRefuel && (
-            <RefuelResult
-              refuel={currentRefuel as RefuelEntry}
-              flowType={refuelFlowType || 'refuel'}
-              onClose={onCancelRefuel}
-            />
+            <div className="animate-scale-in">
+              <RefuelResult
+                refuel={currentRefuel as RefuelEntry}
+                flowType={refuelFlowType || 'refuel'}
+                onClose={onCancelRefuel}
+              />
+            </div>
           )}
 
           {/* Estatísticas de Consumo */}
-          <Card>
+          <Card className="card-hover animate-fade-in stagger-2">
             <CardContent className="p-4">
               <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -294,13 +308,13 @@ export function FinancialTab({
               </h3>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-primary">
+                  <p className="text-2xl font-bold text-primary value-transition">
                     {tripSettings.averageConsumption.toFixed(1)}
                   </p>
                   <p className="text-xs text-muted-foreground">km/L médio</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-2xl font-bold text-foreground value-transition">
                     R$ {tripSettings.fuelPrice.toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground">preço/litro</p>
@@ -311,11 +325,13 @@ export function FinancialTab({
         </TabsContent>
 
         {/* Histórico Geral */}
-        <TabsContent value="historico" className="space-y-4 mt-4 animate-fade-in">
-          <TripHistory
-            history={tripHistory}
-            onClearHistory={onClearHistory}
-          />
+        <TabsContent value="historico" className="space-y-4 mt-4 tab-content-enter">
+          <div className="card-hover rounded-xl">
+            <TripHistory
+              history={tripHistory}
+              onClearHistory={onClearHistory}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

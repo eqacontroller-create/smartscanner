@@ -53,88 +53,104 @@ export function MechanicTab({
   aiModeEnabled,
 }: MechanicTabProps) {
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      <SectionHeader
-        icon={Wrench}
-        title="Central Mecânica"
-        description="Diagnóstico completo e manutenção do veículo"
-      />
+    <div className="space-y-4 sm:space-y-6 tab-content-enter">
+      <div className="animate-fade-in">
+        <SectionHeader
+          icon={Wrench}
+          title="Central Mecânica"
+          description="Diagnóstico completo e manutenção do veículo"
+        />
+      </div>
 
-      <Tabs defaultValue="diagnostico" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto tabs-scroll">
-          <TabsTrigger value="diagnostico" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+      <Tabs defaultValue="diagnostico" className="w-full animate-fade-in stagger-1">
+        <TabsList className="grid w-full grid-cols-4 h-auto tabs-scroll glass">
+          <TabsTrigger value="diagnostico" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <AlertTriangle className="h-4 w-4" />
             <span className="hidden xs:inline">DTCs</span>
           </TabsTrigger>
-          <TabsTrigger value="live" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+          <TabsTrigger value="live" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <Activity className="h-4 w-4" />
             <span className="hidden xs:inline">Sensores</span>
           </TabsTrigger>
-          <TabsTrigger value="manutencao" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+          <TabsTrigger value="manutencao" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <Calendar className="h-4 w-4" />
             <span className="hidden xs:inline">Revisão</span>
           </TabsTrigger>
-          <TabsTrigger value="veiculo" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row">
+          <TabsTrigger value="veiculo" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
             <Car className="h-4 w-4" />
             <span className="hidden xs:inline">Veículo</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Diagnóstico (DTCs) */}
-        <TabsContent value="diagnostico" className="space-y-4 mt-4 animate-fade-in">
-          <DTCScanner 
-            sendCommand={sendCommand}
-            isConnected={isConnected}
-            addLog={addLog}
-            stopPolling={stopPolling}
-            isPolling={isPolling}
-            onSpeakAlert={aiModeEnabled ? speak : undefined}
-          />
-          <LogPanel logs={logs} />
+        <TabsContent value="diagnostico" className="space-y-4 mt-4 tab-content-enter">
+          <div className="card-hover rounded-xl">
+            <DTCScanner 
+              sendCommand={sendCommand}
+              isConnected={isConnected}
+              addLog={addLog}
+              stopPolling={stopPolling}
+              isPolling={isPolling}
+              onSpeakAlert={aiModeEnabled ? speak : undefined}
+            />
+          </div>
+          <div className="animate-fade-in stagger-1">
+            <LogPanel logs={logs} />
+          </div>
         </TabsContent>
 
         {/* Live Data (Sensores) */}
-        <TabsContent value="live" className="space-y-4 mt-4 animate-fade-in">
-          <LiveDataMonitor
-            sendCommand={sendCommand}
-            isConnected={isConnected}
-            addLog={addLog}
-            stopPolling={stopPolling}
-            isPolling={isPolling}
-          />
-          <LogPanel logs={logs} />
+        <TabsContent value="live" className="space-y-4 mt-4 tab-content-enter">
+          <div className="card-hover rounded-xl">
+            <LiveDataMonitor
+              sendCommand={sendCommand}
+              isConnected={isConnected}
+              addLog={addLog}
+              stopPolling={stopPolling}
+              isPolling={isPolling}
+            />
+          </div>
+          <div className="animate-fade-in stagger-1">
+            <LogPanel logs={logs} />
+          </div>
         </TabsContent>
 
         {/* Manutenção */}
-        <TabsContent value="manutencao" className="space-y-4 mt-4 animate-fade-in">
-          <MaintenanceCard
-            alerts={maintenanceSchedule.alerts}
-            intervals={maintenanceSchedule.intervals}
-            currentMileage={currentMileage}
-            brandName={currentProfile.displayName}
-            onRecordMaintenance={maintenanceSchedule.recordMaintenance}
-            onSpeakAlerts={() => {
-              const message = maintenanceSchedule.getVoiceMessage();
-              if (message) speak(message);
-            }}
-            isSpeaking={isSpeaking}
-          />
+        <TabsContent value="manutencao" className="space-y-4 mt-4 tab-content-enter">
+          <div className="card-hover rounded-xl">
+            <MaintenanceCard
+              alerts={maintenanceSchedule.alerts}
+              intervals={maintenanceSchedule.intervals}
+              currentMileage={currentMileage}
+              brandName={currentProfile.displayName}
+              onRecordMaintenance={maintenanceSchedule.recordMaintenance}
+              onSpeakAlerts={() => {
+                const message = maintenanceSchedule.getVoiceMessage();
+                if (message) speak(message);
+              }}
+              isSpeaking={isSpeaking}
+            />
+          </div>
         </TabsContent>
 
         {/* Veículo */}
-        <TabsContent value="veiculo" className="space-y-4 mt-4 animate-fade-in">
-          <VehicleVIN
-            sendCommand={sendCommand}
-            isConnected={isConnected}
-            addLog={addLog}
-          />
-          {themeVehicle && (
-            <VehicleInfoCard
-              brand={themeVehicle.brand}
-              profile={currentProfile}
-              modelYear={themeVehicle.modelYear}
-              benefits={vehicleBenefits}
+        <TabsContent value="veiculo" className="space-y-4 mt-4 tab-content-enter">
+          <div className="animate-fade-in card-hover rounded-xl">
+            <VehicleVIN
+              sendCommand={sendCommand}
+              isConnected={isConnected}
+              addLog={addLog}
             />
+          </div>
+          {themeVehicle && (
+            <div className="animate-fade-in stagger-1 card-hover rounded-xl">
+              <VehicleInfoCard
+                brand={themeVehicle.brand}
+                profile={currentProfile}
+                modelYear={themeVehicle.modelYear}
+                benefits={vehicleBenefits}
+              />
+            </div>
           )}
         </TabsContent>
       </Tabs>

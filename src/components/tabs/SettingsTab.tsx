@@ -56,21 +56,23 @@ export function SettingsTab({
   const voicesToShow = portugueseVoices.length > 0 ? portugueseVoices : availableVoices.slice(0, 10);
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      <SectionHeader
-        icon={Settings}
-        title="Configurações"
-        description="Personalize o app ao seu estilo"
-      />
+    <div className="space-y-4 sm:space-y-6 tab-content-enter">
+      <div className="animate-fade-in">
+        <SectionHeader
+          icon={Settings}
+          title="Configurações"
+          description="Personalize o app ao seu estilo"
+        />
+      </div>
 
       <Accordion 
         type="multiple" 
         value={expandedSections}
         onValueChange={setExpandedSections}
-        className="space-y-3"
+        className="space-y-3 animate-fade-in stagger-1"
       >
         {/* Jarvis AI */}
-        <AccordionItem value="jarvis" className="border rounded-xl overflow-hidden bg-card">
+        <AccordionItem value="jarvis" className="border rounded-xl overflow-hidden bg-card card-hover">
           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -182,7 +184,7 @@ export function SettingsTab({
         </AccordionItem>
 
         {/* Alertas e Limites */}
-        <AccordionItem value="alertas" className="border rounded-xl overflow-hidden bg-card">
+        <AccordionItem value="alertas" className="border rounded-xl overflow-hidden bg-card card-hover">
           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-yellow-500/10">
@@ -291,7 +293,7 @@ export function SettingsTab({
         </AccordionItem>
 
         {/* Configurações Financeiras */}
-        <AccordionItem value="financeiro" className="border rounded-xl overflow-hidden bg-card">
+        <AccordionItem value="financeiro" className="border rounded-xl overflow-hidden bg-card card-hover">
           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-500/10">
@@ -369,7 +371,7 @@ export function SettingsTab({
         </AccordionItem>
 
         {/* Monitor de Combustível */}
-        <AccordionItem value="combustivel" className="border rounded-xl overflow-hidden bg-card">
+        <AccordionItem value="combustivel" className="border rounded-xl overflow-hidden bg-card card-hover">
           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10">
@@ -424,7 +426,7 @@ export function SettingsTab({
         </AccordionItem>
 
         {/* Perfil do Veículo */}
-        <AccordionItem value="veiculo" className="border rounded-xl overflow-hidden bg-card">
+        <AccordionItem value="veiculo" className="border rounded-xl overflow-hidden bg-card card-hover">
           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-orange-500/10">
@@ -450,7 +452,7 @@ export function SettingsTab({
         </AccordionItem>
 
         {/* App e Conta */}
-        <AccordionItem value="app" className="border rounded-xl overflow-hidden bg-card">
+        <AccordionItem value="app" className="border rounded-xl overflow-hidden bg-card card-hover">
           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-500/10">
