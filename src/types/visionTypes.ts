@@ -42,6 +42,16 @@ export interface VisionAnalysisResult {
 }
 
 /**
+ * Contexto do veículo para diagnóstico contextualizado
+ */
+export interface VehicleContextForVision {
+  brand?: string | null;
+  model?: string | null;
+  year?: string | null;
+  engine?: string | null;
+}
+
+/**
  * Request para a Edge Function vision-mechanic
  */
 export interface VisionRequest {
@@ -56,6 +66,9 @@ export interface VisionRequest {
   
   /** Pergunta adicional do usuário */
   userQuestion?: string;
+  
+  /** Contexto do veículo conectado */
+  vehicleContext?: VehicleContextForVision;
 }
 
 /**

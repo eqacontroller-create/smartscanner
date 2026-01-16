@@ -1,8 +1,9 @@
 /**
  * DiagnosisCard - Card didático com resultado do diagnóstico
+ * Inclui badge do veículo e busca contextualizada
  */
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { RiskBadge } from './RiskBadge';
@@ -15,14 +16,16 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  Wrench
+  Wrench,
+  Car
 } from 'lucide-react';
-import { RISK_CONFIG, type VisionAnalysisResult } from '@/types/visionTypes';
+import { RISK_CONFIG, type VisionAnalysisResult, type VehicleContextForVision } from '@/types/visionTypes';
 import { cn } from '@/lib/utils';
 
 interface DiagnosisCardProps {
   result: VisionAnalysisResult;
   mediaUrl?: string;
+  vehicleContext?: VehicleContextForVision;
   onSpeak?: (text: string) => void;
   onReset: () => void;
   isSpeaking?: boolean;
@@ -30,16 +33,34 @@ interface DiagnosisCardProps {
 
 export function DiagnosisCard({ 
   result, 
-  mediaUrl, 
+  mediaUrl,
+  vehicleContext,
   onSpeak, 
   onReset,
   isSpeaking 
 }: DiagnosisCardProps) {
   const riskConfig = RISK_CONFIG[result.riskLevel];
   
+  // Verifica se tem contexto de veículo válido
+  const hasVehicle = vehicleContext && (vehicleContext.brand || vehicleContext.model);
+  
+  // Gera displayName do veículo
+  const vehicleDisplayName = hasVehicle 
+    ? [
+        vehicleContext.brand?.charAt(0).toUpperCase() + vehicleContext.brand?.slice(1),
+        vehicleContext.model,
+        vehicleContext.year,
+        vehicleContext.engine
+      ].filter(Boolean).join(' ')
+    : null;
+  
   // Gera texto para TTS
   const generateSpeechText = () => {
-    return `${result.identification}. ${result.diagnosis}. ${riskConfig.label}: ${result.riskMessage}. Recomendação: ${result.action}`;
+    let text = `${result.identification}. ${result.diagnosis}. ${riskConfig.label}: ${result.riskMessage}. Recomendação: ${result.action}`;
+    if (vehicleDisplayName) {
+      text = `Para seu ${vehicleDisplayName}: ${text}`;
+    }
+    return text;
   };
   
   const handleSpeak = () => {
@@ -49,7 +70,11 @@ export function DiagnosisCard({
   };
   
   const handleShoppingSearch = () => {
-    window.open(VisionService.generateShoppingLink(result.technicalName), '_blank');
+    // Usa busca contextualizada se tiver veículo
+    const url = hasVehicle
+      ? VisionService.generateVehicleShoppingLink(result.technicalName, vehicleContext)
+      : VisionService.generateShoppingLink(result.technicalName);
+    window.open(url, '_blank');
   };
   
   const handleImageSearch = () => {
@@ -92,6 +117,19 @@ export function DiagnosisCard({
       </div>
       
       <CardContent className="p-4 space-y-4">
+        {/* Vehicle badge - exibe se tiver veículo configurado */}
+        {vehicleDisplayName && (
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+            <Car className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">
+              {vehicleDisplayName}
+            </span>
+            <span className="text-xs text-muted-foreground ml-auto">
+              Diagnóstico específico
+            </span>
+          </div>
+        )}
+        
         {/* Image preview if available */}
         {mediaUrl && (
           <div className="aspect-video rounded-lg overflow-hidden bg-muted">
@@ -153,7 +191,10 @@ export function DiagnosisCard({
             className="flex-1 gap-2"
           >
             <ShoppingCart className="h-4 w-4" />
-            Encontrar peça
+            {hasVehicle 
+              ? `Peça para ${vehicleContext.model || vehicleContext.brand}`
+              : 'Encontrar peça'
+            }
           </Button>
           <Button
             variant="outline"

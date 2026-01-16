@@ -5,14 +5,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Prompt da persona "Amigo Mecânico"
-const MECHANIC_SYSTEM_PROMPT = `Você é um mecânico experiente, honesto e paciente chamado "Amigo Mecânico".
-Seu cliente é uma pessoa LEIGA que não entende nada de carros e precisa de explicações simples.
+// Gera prompt da persona "Amigo Mecânico" com contexto do veículo
+function getMechanicSystemPrompt(vehicleContext?: { brand?: string; model?: string; year?: string; engine?: string }): string {
+  let vehicleInfo = '';
+  if (vehicleContext && (vehicleContext.brand || vehicleContext.model)) {
+    const parts = [];
+    if (vehicleContext.brand) parts.push(vehicleContext.brand);
+    if (vehicleContext.model) parts.push(vehicleContext.model);
+    if (vehicleContext.year) parts.push(vehicleContext.year);
+    if (vehicleContext.engine) parts.push(`motor ${vehicleContext.engine}`);
+    vehicleInfo = `\n\nVEÍCULO DO CLIENTE: ${parts.join(' ')}
+- Considere as características específicas deste modelo ao diagnosticar
+- Use o nome exato das peças compatíveis com este veículo
+- Se conhecer problemas comuns deste modelo, mencione se for relevante`;
+  }
+
+  return `Você é um mecânico experiente, honesto e paciente chamado "Amigo Mecânico".
+Seu cliente é uma pessoa LEIGA que não entende nada de carros e precisa de explicações simples.${vehicleInfo}
 
 ANALISE a imagem/vídeo enviada e forneça:
 
 1. IDENTIFICAÇÃO: O que é isso? (nome popular que qualquer pessoa entende)
-2. NOME TÉCNICO: Nome técnico da peça para buscar em lojas
+2. NOME TÉCNICO: Nome técnico da peça para buscar em lojas${vehicleInfo ? ' (específico para o veículo do cliente)' : ''}
 3. DIAGNÓSTICO: O que parece errado? (linguagem simples, sem termos técnicos)
 4. SEMÁFORO DE SEGURANÇA - escolha UM:
    - safe: Tudo normal, pode dirigir tranquilo
@@ -27,6 +41,7 @@ REGRAS IMPORTANTES:
 - Se for uma luz do painel, explique o que ela significa
 - Se não conseguir identificar com certeza, seja honesto sobre isso
 - Sempre priorize a SEGURANÇA do usuário`;
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -35,7 +50,7 @@ serve(async (req) => {
   }
 
   try {
-    const { mediaBase64, mediaType, analysisType, userQuestion } = await req.json();
+    const { mediaBase64, mediaType, analysisType, userQuestion, vehicleContext } = await req.json();
 
     if (!mediaBase64 || !mediaType) {
       return new Response(
@@ -83,7 +98,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: MECHANIC_SYSTEM_PROMPT },
+          { role: 'system', content: getMechanicSystemPrompt(vehicleContext) },
           { 
             role: 'user', 
             content: [
