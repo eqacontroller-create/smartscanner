@@ -71,7 +71,7 @@ export function FuelMonitoringDashboard({
 
   // Determinar status do STFT
   const getStatus = (value: number | null): { color: StatusColor; status: string; trend: TrendType } => {
-    if (value === null) return { color: 'muted', status: 'Lendo...', trend: 'neutral' };
+    if (value === null) return { color: 'muted', status: 'Aguardando...', trend: 'neutral' };
     const abs = Math.abs(value);
     if (abs <= 10) return { color: 'success', status: 'Normal', trend: 'neutral' };
     if (abs <= activeSettings.stftWarningThreshold) return { color: 'warning', status: 'Elevado', trend: value > 0 ? 'up' : 'down' };
@@ -84,7 +84,7 @@ export function FuelMonitoringDashboard({
   // Explicação contextual
   const getExplanation = () => {
     if (currentSTFT === null) {
-      return 'Aguardando dados do sensor de oxigênio...';
+      return '⏳ Lendo sensor de oxigênio... O polling do dashboard foi pausado para garantir leituras precisas.';
     }
     
     const abs = Math.abs(currentSTFT);

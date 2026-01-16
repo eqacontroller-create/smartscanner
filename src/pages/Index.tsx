@@ -67,6 +67,26 @@ const Index = () => {
   useEffect(() => { if (session.status === 'ready') refuelMonitor.checkPIDSupport(); }, [session.status]);
   useEffect(() => { if (wakeLock.isWakeLockActive && session.isConnected) session.addLog('🌙 Modo Insônia ativado - tela permanecerá ligada'); }, [wakeLock.isWakeLockActive, session.isConnected]);
 
+  // CORREÇÃO: Pausar polling do dashboard durante monitoramento de Fuel Trim
+  // Isso libera o barramento OBD-II exclusivamente para leituras de STFT/LTFT
+  useEffect(() => {
+    const isRefuelActive = refuelMonitor.mode === 'monitoring' || 
+                           refuelMonitor.mode === 'analyzing' ||
+                           refuelMonitor.mode === 'waiting' ||
+                           refuelMonitor.mode === 'waiting-quick';
+    
+    if (isRefuelActive && session.isPolling) {
+      console.log('[Index] Pausando polling do dashboard para monitoramento de combustível');
+      session.stopPolling();
+    }
+    
+    // Retomar polling quando refuel terminar (e estiver conectado)
+    if (!isRefuelActive && session.isConnected && !session.isPolling && session.status === 'ready') {
+      console.log('[Index] Retomando polling do dashboard');
+      session.startPolling();
+    }
+  }, [refuelMonitor.mode, session.isPolling, session.isConnected, session.status, session.startPolling, session.stopPolling]);
+
   const handleVoiceReport = useCallback(() => jarvis.speak(tripCalc.getVoiceReport()), [jarvis, tripCalc]);
   const handleDailyReport = useCallback(() => jarvis.speak(autoRide.getVoiceReport()), [jarvis, autoRide]);
   
