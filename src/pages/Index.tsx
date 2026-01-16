@@ -804,6 +804,8 @@ const Index = () => {
             anomalyDuration={refuelMonitor.anomalyDuration}
             fuelTrimHistory={refuelMonitor.fuelTrimHistory}
             settings={refuelMonitor.settings}
+            frozenSettings={refuelMonitor.frozenSettings}
+            isSyncing={refuelSettings.isSyncing}
           />
         </div>
       )}
