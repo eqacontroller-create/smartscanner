@@ -141,8 +141,10 @@ export function useRefuelMonitor({
   const readLTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readFuelLevelRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   
-  // Manter refs atualizados
+  // CORREÇÃO v3: Manter speakRef SEMPRE atualizado com a versão mais recente
+  // Isso garante que mudanças nas configurações de voz sejam refletidas imediatamente
   useEffect(() => {
+    console.log('[Refuel] speakRef atualizado - nova função speak recebida');
     speakRef.current = speak;
   }, [speak]);
   
@@ -389,6 +391,7 @@ export function useRefuelMonitor({
   // Iniciar teste rápido de combustível (sem salvar dados)
   const startQuickTest = useCallback(async () => {
     console.log('[Refuel] startQuickTest - Iniciando teste rápido');
+    console.log('[Refuel] Função speak recebida:', typeof speak);
     
     // Verificar se STFT é suportado
     if (!stftSupported) {
@@ -438,6 +441,8 @@ export function useRefuelMonitor({
     announcedMilestonesRef.current.clear();
     readFailureCountRef.current = 0;
     
+    // Usar speak diretamente (não speakRef) para garantir versão mais recente
+    console.log('[Refuel] Anunciando início do teste rápido com voz configurada');
     await speak('Teste de combustível ativado. Comece a dirigir para iniciar a análise.');
   }, [stftSupported, speak, readLTFT]);
   
@@ -714,9 +719,12 @@ export function useRefuelMonitor({
     }
     
     // Anunciar resultado (mensagem diferente por fluxo)
+    // CORREÇÃO v3: Log de debug para confirmar que speakRef está atualizado
+    console.log('[Refuel] Anunciando resultado final com speakRef.current');
     if (isRefuelFlow) {
       await speakRef.current(getQualityAnnouncement(quality, avgSTFT, ltftDelta, distanceRef.current));
     } else {
+      console.log('[Refuel] Teste rápido - anunciando resultado');
       await speakRef.current(getQuickTestAnnouncement(quality, avgSTFT));
     }
     

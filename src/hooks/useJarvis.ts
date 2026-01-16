@@ -107,6 +107,14 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
       // Cancelar fala anterior
       TTSService.stopBrowserSpeech();
 
+      // DEBUG: Log detalhado das configurações de voz sendo usadas
+      console.log('[Jarvis] Configurações de voz:', {
+        voiceURI: settings.selectedVoiceURI || 'default',
+        rate: settings.rate,
+        pitch: settings.pitch,
+        volume: settings.volume,
+      });
+
       const utterance = TTSService.speakWithBrowser(text, {
         voice: settings.selectedVoiceURI || undefined,
         rate: settings.rate,
