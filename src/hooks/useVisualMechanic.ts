@@ -1,10 +1,11 @@
 /**
  * useVisualMechanic - Hook para gerenciar diagnóstico visual por IA
+ * Suporta múltiplas imagens para diagnóstico mais preciso
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { VisionService } from '@/services/ai/VisionService';
-import { PROGRESS_MESSAGES } from '@/types/visionTypes';
+import { PROGRESS_MESSAGES, MULTI_IMAGE_PROGRESS_MESSAGES, MAX_IMAGES } from '@/types/visionTypes';
 import type { VisionAnalysisResult, AnalysisType, VehicleContextForVision } from '@/types/visionTypes';
 import { toast } from 'sonner';
 
@@ -12,16 +13,19 @@ export interface UseVisualMechanicReturn {
   // Estado
   isCapturing: boolean;
   isAnalyzing: boolean;
-  mediaPreview: string | null;
-  mediaFile: File | null;
+  mediaPreviews: string[];
+  mediaFiles: File[];
   analysisType: AnalysisType | null;
   result: VisionAnalysisResult | null;
   error: string | null;
   progressMessage: string;
+  canAddMore: boolean;
   
   // Ações
   startCapture: (type: AnalysisType) => void;
   handleFileSelect: (file: File) => void;
+  addFile: (file: File) => void;
+  removeFile: (index: number) => void;
   analyzeMedia: (vehicleContext?: VehicleContextForVision) => Promise<void>;
   reset: () => void;
 }
@@ -29,8 +33,8 @@ export interface UseVisualMechanicReturn {
 export function useVisualMechanic(): UseVisualMechanicReturn {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [analysisType, setAnalysisType] = useState<AnalysisType | null>(null);
   const [result, setResult] = useState<VisionAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,15 +42,19 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
   
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Verifica se pode adicionar mais imagens
+  const canAddMore = mediaFiles.length < MAX_IMAGES && analysisType === 'photo';
+  
   // Cicla mensagens de progresso durante análise
   useEffect(() => {
     if (isAnalyzing) {
+      const messages = mediaFiles.length > 1 ? MULTI_IMAGE_PROGRESS_MESSAGES : PROGRESS_MESSAGES;
       let index = 0;
-      setProgressMessage(PROGRESS_MESSAGES[0]);
+      setProgressMessage(messages[0]);
       
       progressIntervalRef.current = setInterval(() => {
-        index = (index + 1) % PROGRESS_MESSAGES.length;
-        setProgressMessage(PROGRESS_MESSAGES[index]);
+        index = (index + 1) % messages.length;
+        setProgressMessage(messages[index]);
       }, 2000);
     } else {
       if (progressIntervalRef.current) {
@@ -61,7 +69,7 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
         clearInterval(progressIntervalRef.current);
       }
     };
-  }, [isAnalyzing]);
+  }, [isAnalyzing, mediaFiles.length]);
   
   // Inicia captura de mídia
   const startCapture = useCallback((type: AnalysisType) => {
@@ -71,40 +79,88 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     setError(null);
   }, []);
   
-  // Processa arquivo selecionado
-  const handleFileSelect = useCallback((file: File) => {
+  // Valida e adiciona arquivo
+  const validateAndAddFile = useCallback((file: File): boolean => {
     // Valida tipo de arquivo
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
     
     if (!isImage && !isVideo) {
       toast.error('Formato não suportado. Use JPG, PNG ou MP4.');
-      return;
+      return false;
     }
     
     // Valida tamanho
     const maxSize = isVideo ? 10 * 1024 * 1024 : 5 * 1024 * 1024; // 10MB vídeo, 5MB imagem
     if (file.size > maxSize) {
       toast.error(`Arquivo muito grande. Máximo: ${isVideo ? '10MB' : '5MB'}`);
-      return;
+      return false;
     }
     
-    setMediaFile(file);
+    return true;
+  }, []);
+  
+  // Processa arquivo selecionado (primeira imagem)
+  const handleFileSelect = useCallback((file: File) => {
+    if (!validateAndAddFile(file)) return;
+    
+    const isVideo = file.type.startsWith('video/');
+    
+    // Limpa previews anteriores
+    mediaPreviews.forEach(url => URL.revokeObjectURL(url));
+    
+    setMediaFiles([file]);
     setIsCapturing(false);
     
     // Cria preview
     const previewUrl = URL.createObjectURL(file);
-    setMediaPreview(previewUrl);
+    setMediaPreviews([previewUrl]);
     
     // Define tipo de análise baseado no arquivo
     if (!analysisType) {
       setAnalysisType(isVideo ? 'video' : 'photo');
     }
-  }, [analysisType]);
+  }, [analysisType, validateAndAddFile, mediaPreviews]);
+  
+  // Adiciona mais uma imagem (até MAX_IMAGES)
+  const addFile = useCallback((file: File) => {
+    if (mediaFiles.length >= MAX_IMAGES) {
+      toast.error(`Máximo de ${MAX_IMAGES} fotos permitidas`);
+      return;
+    }
+    
+    if (!validateAndAddFile(file)) return;
+    
+    const isVideo = file.type.startsWith('video/');
+    if (isVideo) {
+      toast.error('Para análise de vídeo, use apenas um arquivo.');
+      return;
+    }
+    
+    setMediaFiles(prev => [...prev, file]);
+    setIsCapturing(false);
+    
+    // Cria preview
+    const previewUrl = URL.createObjectURL(file);
+    setMediaPreviews(prev => [...prev, previewUrl]);
+    
+    toast.success(`Foto ${mediaFiles.length + 1} adicionada`);
+  }, [mediaFiles.length, validateAndAddFile]);
+  
+  // Remove imagem por índice
+  const removeFile = useCallback((index: number) => {
+    // Revoga URL da preview
+    if (mediaPreviews[index]) {
+      URL.revokeObjectURL(mediaPreviews[index]);
+    }
+    
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    setMediaPreviews(prev => prev.filter((_, i) => i !== index));
+  }, [mediaPreviews]);
   
   // Analisa mídia com IA
   const analyzeMedia = useCallback(async (vehicleContext?: VehicleContextForVision) => {
-    if (!mediaFile) {
+    if (mediaFiles.length === 0) {
       toast.error('Nenhuma mídia selecionada');
       return;
     }
@@ -113,11 +169,24 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     setError(null);
     
     try {
-      const isVideo = mediaFile.type.startsWith('video/');
+      let analysisResult: VisionAnalysisResult;
       
-      const analysisResult = isVideo
-        ? await VisionService.analyzeVideo(mediaFile, undefined, vehicleContext)
-        : await VisionService.analyzeImage(mediaFile, undefined, vehicleContext);
+      if (mediaFiles.length === 1) {
+        // Análise de uma única imagem/vídeo
+        const file = mediaFiles[0];
+        const isVideo = file.type.startsWith('video/');
+        
+        analysisResult = isVideo
+          ? await VisionService.analyzeVideo(file, undefined, vehicleContext)
+          : await VisionService.analyzeImage(file, undefined, vehicleContext);
+      } else {
+        // Análise de múltiplas imagens
+        analysisResult = await VisionService.analyzeMultipleImages(
+          mediaFiles,
+          undefined,
+          vehicleContext
+        );
+      }
       
       setResult(analysisResult);
       
@@ -146,36 +215,37 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [mediaFile]);
+  }, [mediaFiles]);
   
   // Reseta estado
   const reset = useCallback(() => {
-    // Limpa URL do preview
-    if (mediaPreview) {
-      URL.revokeObjectURL(mediaPreview);
-    }
+    // Limpa URLs das previews
+    mediaPreviews.forEach(url => URL.revokeObjectURL(url));
     
     setIsCapturing(false);
     setIsAnalyzing(false);
-    setMediaPreview(null);
-    setMediaFile(null);
+    setMediaPreviews([]);
+    setMediaFiles([]);
     setAnalysisType(null);
     setResult(null);
     setError(null);
     setProgressMessage('');
-  }, [mediaPreview]);
+  }, [mediaPreviews]);
   
   return {
     isCapturing,
     isAnalyzing,
-    mediaPreview,
-    mediaFile,
+    mediaPreviews,
+    mediaFiles,
     analysisType,
     result,
     error,
     progressMessage,
+    canAddMore,
     startCapture,
     handleFileSelect,
+    addFile,
+    removeFile,
     analyzeMedia,
     reset,
   };

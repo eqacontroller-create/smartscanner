@@ -4,7 +4,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { X, RotateCcw, Sparkles } from 'lucide-react';
+import { X, RotateCcw, Sparkles, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AnalysisType } from '@/types/visionTypes';
 
@@ -15,6 +15,8 @@ interface MediaPreviewProps {
   onRetry: () => void;
   onCancel: () => void;
   isAnalyzing: boolean;
+  canAddMore?: boolean;
+  onAddMore?: () => void;
 }
 
 export function MediaPreview({
@@ -24,6 +26,8 @@ export function MediaPreview({
   onRetry,
   onCancel,
   isAnalyzing,
+  canAddMore,
+  onAddMore,
 }: MediaPreviewProps) {
   return (
     <Card className="overflow-hidden border-2 border-border/50 bg-card/80 backdrop-blur-sm animate-scale-in">
@@ -65,6 +69,20 @@ export function MediaPreview({
           >
             <X className="h-4 w-4" />
           </Button>
+          
+          {/* Add more button - shows on single image when can add */}
+          {canAddMore && onAddMore && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onAddMore}
+              disabled={isAnalyzing}
+              className="absolute bottom-3 left-3 gap-2 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background"
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar foto
+            </Button>
+          )}
         </div>
         
         {/* Action buttons */}

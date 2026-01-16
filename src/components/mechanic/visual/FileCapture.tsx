@@ -13,9 +13,10 @@ interface FileCaptureProps {
   analysisType: AnalysisType;
   onFileSelect: (file: File) => void;
   onCancel: () => void;
+  isAddingMore?: boolean;
 }
 
-export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptureProps) {
+export function FileCapture({ analysisType, onFileSelect, onCancel, isAddingMore }: FileCaptureProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
@@ -27,6 +28,8 @@ export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptur
     if (file) {
       onFileSelect(file);
     }
+    // Reset input value to allow selecting same file again
+    e.target.value = '';
   }, [onFileSelect]);
   
   const openFilePicker = () => {
@@ -61,12 +64,18 @@ export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptur
           {/* Title */}
           <div className="text-center space-y-2">
             <h3 className="font-bold text-xl text-foreground">
-              {isVideo ? 'Grave um vídeo do motor' : 'Tire uma foto'}
+              {isAddingMore 
+                ? 'Adicionar mais uma foto'
+                : isVideo 
+                  ? 'Grave um vídeo do motor' 
+                  : 'Tire uma foto'}
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs">
-              {isVideo 
-                ? 'Vídeo curto de até 10 segundos do motor funcionando'
-                : 'Foto da luz do painel ou peça do motor'
+              {isAddingMore
+                ? 'Foto de outro ângulo para diagnóstico mais preciso'
+                : isVideo 
+                  ? 'Vídeo curto de até 10 segundos do motor funcionando'
+                  : 'Foto da luz do painel ou peça do motor'
               }
             </p>
           </div>
@@ -97,15 +106,28 @@ export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptur
             </Button>
           </div>
           
-          {/* Cancel button */}
-          <Button 
-            variant="ghost" 
-            onClick={onCancel} 
-            className="gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-            Cancelar
-          </Button>
+          {/* Cancel button - only show if not adding more */}
+          {!isAddingMore && (
+            <Button 
+              variant="ghost" 
+              onClick={onCancel} 
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              Cancelar
+            </Button>
+          )}
+          
+          {/* Back button when adding more */}
+          {isAddingMore && (
+            <Button 
+              variant="ghost" 
+              onClick={onCancel} 
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              Voltar para as fotos
+            </Button>
+          )}
           
           {/* Hidden inputs */}
           <input

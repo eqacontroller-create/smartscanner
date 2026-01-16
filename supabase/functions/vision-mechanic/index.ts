@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // Gera prompt da persona "Amigo Mecânico" com contexto do veículo
-function getMechanicSystemPrompt(vehicleContext?: { brand?: string; model?: string; year?: string; engine?: string }): string {
+function getMechanicSystemPrompt(vehicleContext?: { brand?: string; model?: string; year?: string; engine?: string }, imageCount?: number): string {
   let vehicleInfo = '';
   if (vehicleContext && (vehicleContext.brand || vehicleContext.model)) {
     const parts = [];
@@ -20,8 +20,19 @@ function getMechanicSystemPrompt(vehicleContext?: { brand?: string; model?: stri
 - Se conhecer problemas comuns deste modelo, mencione se for relevante`;
   }
 
+  let multiImageInfo = '';
+  if (imageCount && imageCount > 1) {
+    multiImageInfo = `\n\nO cliente enviou ${imageCount} FOTOS do mesmo problema de diferentes ângulos.
+INSTRUÇÕES ESPECIAIS para múltiplas imagens:
+- Analise TODAS as imagens em conjunto para um diagnóstico mais preciso
+- Compare detalhes visíveis em cada foto
+- Use informações de diferentes ângulos para confirmar seu diagnóstico
+- Se uma foto mostrar algo que outra não mostra, mencione
+- Dê um diagnóstico CONSOLIDADO considerando todas as evidências`;
+  }
+
   return `Você é um mecânico experiente, honesto e paciente chamado "Amigo Mecânico".
-Seu cliente é uma pessoa LEIGA que não entende nada de carros e precisa de explicações simples.${vehicleInfo}
+Seu cliente é uma pessoa LEIGA que não entende nada de carros e precisa de explicações simples.${vehicleInfo}${multiImageInfo}
 
 ANALISE a imagem/vídeo enviada e forneça:
 
@@ -50,14 +61,56 @@ serve(async (req) => {
   }
 
   try {
-    const { mediaBase64, mediaType, analysisType, userQuestion, vehicleContext } = await req.json();
-
-    if (!mediaBase64 || !mediaType) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Mídia não fornecida' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const requestBody = await req.json();
+    
+    // Detecta se é request de múltiplas imagens ou imagem única
+    const isMultipleImages = Array.isArray(requestBody.media);
+    
+    let mediaContents: Array<{ type: 'image_url'; image_url: { url: string } }> = [];
+    let imageCount = 0;
+    
+    if (isMultipleImages) {
+      // Request com múltiplas imagens
+      const { media, analysisType, userQuestion, vehicleContext } = requestBody;
+      
+      if (!media || media.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Nenhuma mídia fornecida' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      imageCount = media.length;
+      
+      // Cria array de conteúdos de imagem
+      mediaContents = media.map((item: { base64: string; type: string; label?: string }) => ({
+        type: 'image_url' as const,
+        image_url: {
+          url: `data:${item.type};base64,${item.base64}`
+        }
+      }));
+      
+    } else {
+      // Request com imagem única (compatibilidade)
+      const { mediaBase64, mediaType } = requestBody;
+      
+      if (!mediaBase64 || !mediaType) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Mídia não fornecida' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      imageCount = 1;
+      mediaContents = [{
+        type: 'image_url',
+        image_url: {
+          url: `data:${mediaType};base64,${mediaBase64}`
+        }
+      }];
     }
+
+    const { analysisType, userQuestion, vehicleContext } = requestBody;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -69,24 +122,18 @@ serve(async (req) => {
     }
 
     // Preparar prompt do usuário
-    let userPrompt = analysisType === 'video'
-      ? 'Analise este vídeo do motor funcionando. Identifique qualquer barulho estranho ou problema visível.'
-      : 'Analise esta imagem. Identifique o que é e se há algum problema.';
+    let userPrompt = '';
+    if (imageCount > 1) {
+      userPrompt = `Analise estas ${imageCount} fotos do problema. Cada foto mostra um ângulo diferente. Dê um diagnóstico consolidado.`;
+    } else if (analysisType === 'video') {
+      userPrompt = 'Analise este vídeo do motor funcionando. Identifique qualquer barulho estranho ou problema visível.';
+    } else {
+      userPrompt = 'Analise esta imagem. Identifique o que é e se há algum problema.';
+    }
     
     if (userQuestion) {
       userPrompt += `\n\nPergunta adicional do usuário: ${userQuestion}`;
     }
-
-    // Determinar se é imagem ou vídeo
-    const isVideo = mediaType.startsWith('video/');
-    
-    // Preparar mensagem com mídia
-    const mediaContent = {
-      type: 'image_url' as const,
-      image_url: {
-        url: `data:${mediaType};base64,${mediaBase64}`
-      }
-    };
 
     // Usar tool calling para resposta estruturada
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -98,12 +145,12 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: getMechanicSystemPrompt(vehicleContext) },
+          { role: 'system', content: getMechanicSystemPrompt(vehicleContext, imageCount) },
           { 
             role: 'user', 
             content: [
               { type: 'text', text: userPrompt },
-              mediaContent
+              ...mediaContents
             ]
           }
         ],

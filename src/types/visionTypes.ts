@@ -1,6 +1,11 @@
 // Vision AI Types - Diagnóstico Visual por Foto/Vídeo
 
 /**
+ * Máximo de imagens permitidas por análise
+ */
+export const MAX_IMAGES = 4;
+
+/**
  * Níveis de risco com semáforo visual
  */
 export type RiskLevel = 'safe' | 'attention' | 'danger';
@@ -52,7 +57,7 @@ export interface VehicleContextForVision {
 }
 
 /**
- * Request para a Edge Function vision-mechanic
+ * Request para a Edge Function vision-mechanic (imagem única)
  */
 export interface VisionRequest {
   /** Mídia em Base64 */
@@ -60,6 +65,32 @@ export interface VisionRequest {
   
   /** Tipo da mídia */
   mediaType: MediaType;
+  
+  /** Tipo de análise */
+  analysisType: AnalysisType;
+  
+  /** Pergunta adicional do usuário */
+  userQuestion?: string;
+  
+  /** Contexto do veículo conectado */
+  vehicleContext?: VehicleContextForVision;
+}
+
+/**
+ * Mídia individual no request de múltiplas imagens
+ */
+export interface MediaItem {
+  base64: string;
+  type: MediaType;
+  label?: string;
+}
+
+/**
+ * Request para múltiplas imagens
+ */
+export interface VisionRequestMultiple {
+  /** Array de mídias */
+  media: MediaItem[];
   
   /** Tipo de análise */
   analysisType: AnalysisType;
@@ -126,4 +157,15 @@ export const PROGRESS_MESSAGES = [
   'Consultando banco de dados mecânico...',
   'Verificando padrões conhecidos...',
   'Preparando diagnóstico...',
+];
+
+/**
+ * Mensagens de progresso para múltiplas imagens
+ */
+export const MULTI_IMAGE_PROGRESS_MESSAGES = [
+  'Analisando todas as imagens...',
+  'Comparando diferentes ângulos...',
+  'Identificando padrões em comum...',
+  'Cruzando informações visuais...',
+  'Consolidando diagnóstico...',
 ];
