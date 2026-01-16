@@ -15,6 +15,7 @@ export { FuelActionCards } from './FuelActionCards';
 export { FuelMonitoringDashboard } from './FuelMonitoringDashboard';
 export { FuelGauge } from './FuelGauge';
 export { FuelHistory } from './FuelHistory';
+export { FuelWaitingCard } from './FuelWaitingCard';
 
 // Componentes de Comparação de Postos
 export { StationRanking } from './StationRanking';

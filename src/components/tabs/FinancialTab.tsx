@@ -11,6 +11,7 @@ import {
   FuelActionCards,
   FuelMonitoringDashboard,
   FuelHistory,
+  FuelWaitingCard,
   RefuelResult,
   RefuelSettingsSheet,
 } from '@/components/refuel';
@@ -18,6 +19,7 @@ import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, Timer, Fuel, History, Car, TrendingUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
 
@@ -145,8 +147,11 @@ export function FinancialTab({
           <TabsTrigger value="combustivel" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row relative press-effect">
             <Fuel className="h-4 w-4" />
             <span className="hidden xs:inline">Fuel</span>
-            {(refuelMode === 'monitoring' || refuelMode === 'analyzing') && (
-              <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-glow" />
+            {refuelMode !== 'inactive' && refuelMode !== 'completed' && (
+              <span className={cn(
+                "absolute -top-1 -right-1 h-2 w-2 rounded-full animate-glow",
+                refuelMode === 'waiting-quick' ? 'bg-blue-500' : 'bg-primary'
+              )} />
             )}
           </TabsTrigger>
           <TabsTrigger value="historico" className="gap-1.5 py-2.5 text-xs touch-target flex-col sm:flex-row press-effect">
@@ -235,6 +240,18 @@ export function FinancialTab({
                 isAuthenticated={isAuthenticated} 
               />
             </>
+          )}
+
+          {/* Estados de Espera - Card visual com instrução */}
+          {(refuelMode === 'waiting' || refuelMode === 'waiting-quick') && (
+            <FuelWaitingCard
+              mode={refuelMode}
+              flowType={refuelFlowType}
+              currentSpeed={currentSpeed}
+              isAuthenticated={isAuthenticated}
+              onCancel={onCancelRefuel}
+              onOpenModal={refuelMode === 'waiting' ? onOpenRefuelModal : undefined}
+            />
           )}
 
           {/* Estado Monitorando - Dashboard em tempo real */}
