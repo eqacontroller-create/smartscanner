@@ -10,6 +10,9 @@ export interface ProfileData {
   vehicle_brand?: string | null;
   vehicle_model?: string | null;
   model_year?: string | null;
+  vehicle_engine?: string | null;
+  vehicle_transmission?: string | null;
+  vehicle_nickname?: string | null;
   // Fuel/Trip
   fuel_price?: number | null;
   average_consumption?: number | null;
