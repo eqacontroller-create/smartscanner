@@ -1,6 +1,6 @@
 /**
  * VisualMechanic - Container principal do diagnóstico visual
- * UX inclusiva para público leigo + modo offline + contexto do veículo + histórico
+ * UX premium inclusiva para público leigo + modo offline + contexto do veículo + histórico
  */
 
 import { useState, useCallback } from 'react';
@@ -19,8 +19,9 @@ import { useVisualMechanic } from '@/hooks/useVisualMechanic';
 import { useOfflineVision } from '@/hooks/useOfflineVision';
 import { useDiagnosisHistory } from '@/hooks/useDiagnosisHistory';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, WifiOff, CloudOff, Car, Camera, History } from 'lucide-react';
+import { Eye, WifiOff, CloudOff, Car, Camera, History, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { VehicleContextForVision } from '@/types/visionTypes';
 
 interface VisualMechanicProps {
@@ -136,53 +137,96 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
   
   return (
     <div className="space-y-4">
-      {/* Tabs for Capture vs History */}
+      {/* Premium Tabs with sliding indicator */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="capture" className="gap-2">
-            <Camera className="h-4 w-4" />
-            Analisar
+        <TabsList className="relative p-1.5 bg-secondary/50 backdrop-blur-sm rounded-2xl border border-border/50 grid w-full grid-cols-2 gap-1">
+          {/* Sliding indicator */}
+          <div 
+            className={cn(
+              'absolute h-[calc(100%-12px)] top-1.5 rounded-xl bg-background shadow-lg transition-all duration-300 ease-out',
+              activeTab === 'capture' ? 'left-1.5 w-[calc(50%-6px)]' : 'left-[calc(50%+1.5px)] w-[calc(50%-6px)]'
+            )} 
+          />
+          
+          <TabsTrigger 
+            value="capture" 
+            className="relative z-10 gap-2 py-2.5 rounded-xl data-[state=active]:bg-transparent data-[state=active]:shadow-none transition-colors"
+          >
+            <Camera className={cn('h-4 w-4 transition-colors', activeTab === 'capture' && 'text-primary')} />
+            <span className={cn('font-medium', activeTab === 'capture' && 'text-primary')}>Analisar</span>
           </TabsTrigger>
-          <TabsTrigger value="history" className="gap-2">
-            <History className="h-4 w-4" />
-            Histórico
+          
+          <TabsTrigger 
+            value="history" 
+            className="relative z-10 gap-2 py-2.5 rounded-xl data-[state=active]:bg-transparent data-[state=active]:shadow-none transition-colors"
+          >
+            <History className={cn('h-4 w-4 transition-colors', activeTab === 'history' && 'text-primary')} />
+            <span className={cn('font-medium', activeTab === 'history' && 'text-primary')}>Histórico</span>
             {diagnoses.length > 0 && (
-              <span className="ml-1 text-xs bg-primary/20 px-1.5 rounded-full">
+              <span className={cn(
+                'text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
+                activeTab === 'history' 
+                  ? 'bg-primary/20 text-primary' 
+                  : 'bg-muted text-muted-foreground'
+              )}>
                 {diagnoses.length}
               </span>
             )}
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="capture" className="mt-4 space-y-4">
-          {/* Header card */}
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <CardHeader className="text-center pb-2">
-              <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit mb-2">
-                <Eye className="h-8 w-8 text-primary" />
+        <TabsContent value="capture" className="mt-4 space-y-4 animate-fade-in">
+          {/* Premium Hero Section */}
+          <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+            {/* Decorative orb */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl" />
+            
+            {/* Scanner line animation during analysis */}
+            {isAnalyzing && (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-primary to-transparent animate-scan" />
               </div>
-              <CardTitle className="text-xl sm:text-2xl">
+            )}
+            
+            <CardHeader className="relative text-center pb-2">
+              {/* Animated icon with glow */}
+              <div className="relative mx-auto w-fit mb-3">
+                <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
+                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+                  <Eye className="h-8 w-8 text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+                </div>
+              </div>
+              
+              <CardTitle className="text-xl sm:text-2xl font-bold">
                 O que está acontecendo?
               </CardTitle>
               <CardDescription className="text-base">
                 Tire uma foto ou grave um vídeo curto e descubra o que significa
               </CardDescription>
               
-              {/* Vehicle badge - mostra veículo conectado */}
+              {/* Premium Vehicle badge */}
               {vehicleDisplayName && (
-                <div className="flex items-center justify-center gap-2 mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 w-fit mx-auto">
-                  <Car className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-primary">
-                    {vehicleDisplayName}
-                  </span>
+                <div className="flex items-center justify-center gap-2 mt-4 animate-fade-in">
+                  <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 backdrop-blur-sm">
+                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Car className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-sm font-semibold text-primary">
+                      {vehicleDisplayName}
+                    </span>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      Diagnóstico específico
+                    </span>
+                  </div>
                 </div>
               )}
             </CardHeader>
             
-            <CardContent>
+            <CardContent className="relative">
               {/* Offline info - agora permite salvar para depois */}
               {!isOnline && !mediaPreview && (
-                <Alert className="mb-4 border-amber-500/30 bg-amber-500/10">
+                <Alert className="mb-4 border-amber-500/30 bg-amber-500/10 backdrop-blur-sm">
                   <CloudOff className="h-4 w-4 text-amber-500" />
                   <AlertDescription className="text-amber-700">
                     Modo offline: tire a foto agora e ela será analisada quando a conexão retornar.
@@ -192,12 +236,12 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
               
               {/* Error display */}
               {error && !result && (
-                <Alert variant="destructive" className="mb-4">
+                <Alert variant="destructive" className="mb-4 backdrop-blur-sm">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
               
-              {/* Initial state - Show capture buttons (agora funciona offline) */}
+              {/* Initial state - Show capture buttons */}
               {!isCapturing && !mediaPreview && !result && !isAnalyzing && (
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <CaptureButton
@@ -255,17 +299,19 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
           
           {/* Result card - Show diagnosis with vehicle context */}
           {result && (
-            <DiagnosisCard
-              result={result}
-              mediaUrl={mediaPreview || undefined}
-              vehicleContext={vehicleContext}
-              onSpeak={onSpeak}
-              onReset={handleReset}
-              onSave={isAuthenticated ? handleSaveDiagnosis : undefined}
-              isSpeaking={isSpeaking}
-              isSaving={historySaving}
-              isSaved={isSaved}
-            />
+            <div className="animate-scale-in">
+              <DiagnosisCard
+                result={result}
+                mediaUrl={mediaPreview || undefined}
+                vehicleContext={vehicleContext}
+                onSpeak={onSpeak}
+                onReset={handleReset}
+                onSave={isAuthenticated ? handleSaveDiagnosis : undefined}
+                isSpeaking={isSpeaking}
+                isSaving={historySaving}
+                isSaved={isSaved}
+              />
+            </div>
           )}
           
           {/* Fila de fotos offline pendentes */}
@@ -290,26 +336,34 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
             />
           )}
           
-          {/* Tips for first-time users */}
+          {/* Premium Tips for first-time users */}
           {!isCapturing && !mediaPreview && !result && !isAnalyzing && pendingItems.length === 0 && (
-            <Card className="bg-muted/50">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground text-center">
-                  💡 <strong>Dica:</strong> Fotografe luzes acesas no painel, 
-                  vazamentos, peças com aspecto estranho ou qualquer coisa que 
-                  você não reconheça. Nosso mecânico virtual vai explicar tudo!
-                  {hasVehicle && (
-                    <span className="block mt-1 text-primary">
-                      Diagnóstico personalizado para seu {vehicleDisplayName}
-                    </span>
-                  )}
-                </p>
+            <Card className="relative overflow-hidden border-dashed border-muted-foreground/20 bg-muted/30 backdrop-blur-sm">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
+              <CardContent className="relative p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">Dica do mecânico</p>
+                    <p className="text-sm text-muted-foreground">
+                      Fotografe luzes acesas no painel, vazamentos, peças com aspecto estranho 
+                      ou qualquer coisa que você não reconheça.
+                    </p>
+                    {hasVehicle && (
+                      <p className="text-sm text-primary font-medium pt-1">
+                        Diagnóstico personalizado para seu {vehicleDisplayName}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
         </TabsContent>
         
-        <TabsContent value="history" className="mt-4">
+        <TabsContent value="history" className="mt-4 animate-fade-in">
           {isAuthenticated ? (
             <DiagnosisHistory
               diagnoses={diagnoses}
@@ -318,13 +372,13 @@ export function VisualMechanic({ onSpeak, isSpeaking, vehicleContext }: VisualMe
               onRefresh={refreshHistory}
             />
           ) : (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="p-3 rounded-full bg-muted mb-3">
-                  <History className="h-6 w-6 text-muted-foreground" />
+            <Card className="border-dashed bg-muted/30 backdrop-blur-sm">
+              <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="p-4 rounded-2xl bg-muted mb-4">
+                  <History className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium">Faça login para ver seu histórico</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-base font-medium">Faça login para ver seu histórico</p>
+                <p className="text-sm text-muted-foreground mt-1.5">
                   Seus diagnósticos serão salvos automaticamente
                 </p>
               </CardContent>

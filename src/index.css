@@ -434,3 +434,33 @@ body {
 .tabs-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Scanner line animation */
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+/* Dash animation for circular progress */
+@keyframes dash {
+  0% { 
+    stroke-dashoffset: 301; 
+    opacity: 0.5;
+  }
+  50% { 
+    stroke-dashoffset: 0; 
+    opacity: 1;
+  }
+  100% { 
+    stroke-dashoffset: -301; 
+    opacity: 0.5;
+  }
+}
+
+.animate-dash {
+  animation: dash 2.5s ease-in-out infinite;
+}

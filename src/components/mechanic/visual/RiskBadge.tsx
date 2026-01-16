@@ -1,10 +1,9 @@
 /**
- * RiskBadge - Badge colorido para exibir nível de risco
+ * RiskBadge - Badge premium pill para exibir nível de risco
  */
 
 import { cn } from '@/lib/utils';
 import { RISK_CONFIG, type RiskLevel } from '@/types/visionTypes';
-import { Shield, AlertTriangle, XOctagon } from 'lucide-react';
 
 interface RiskBadgeProps {
   level: RiskLevel;
@@ -14,34 +13,56 @@ interface RiskBadgeProps {
 }
 
 const sizeClasses = {
-  sm: 'text-xs px-2 py-1',
-  md: 'text-sm px-3 py-1.5',
-  lg: 'text-base px-4 py-2',
+  sm: 'text-xs px-2.5 py-1 gap-1.5',
+  md: 'text-sm px-3.5 py-1.5 gap-2',
+  lg: 'text-base px-4 py-2 gap-2.5',
 };
 
-const iconSizes = {
-  sm: 'h-3 w-3',
-  md: 'h-4 w-4',
-  lg: 'h-5 w-5',
+const dotSizes = {
+  sm: 'w-1.5 h-1.5',
+  md: 'w-2 h-2',
+  lg: 'w-2.5 h-2.5',
+};
+
+// Premium color config with glow
+const riskStyles = {
+  safe: {
+    bg: 'bg-emerald-500/15',
+    text: 'text-emerald-400',
+    dot: 'bg-emerald-400',
+    glow: 'shadow-[0_0_12px_-2px] shadow-emerald-500/40',
+    border: 'border-emerald-500/30',
+  },
+  attention: {
+    bg: 'bg-amber-500/15',
+    text: 'text-amber-400',
+    dot: 'bg-amber-400 animate-pulse',
+    glow: 'shadow-[0_0_12px_-2px] shadow-amber-500/40',
+    border: 'border-amber-500/30',
+  },
+  danger: {
+    bg: 'bg-red-500/15',
+    text: 'text-red-400',
+    dot: 'bg-red-400 animate-pulse',
+    glow: 'shadow-[0_0_15px_-2px] shadow-red-500/50',
+    border: 'border-red-500/30',
+  },
 };
 
 export function RiskBadge({ level, size = 'md', showIcon = true, className }: RiskBadgeProps) {
   const config = RISK_CONFIG[level];
-  
-  const IconComponent = level === 'safe' 
-    ? Shield 
-    : level === 'attention' 
-      ? AlertTriangle 
-      : XOctagon;
+  const styles = riskStyles[level];
   
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 font-bold rounded-full',
-        config.bgColor,
-        config.color,
-        config.borderColor,
-        'border-2',
+        'inline-flex items-center font-semibold rounded-full',
+        'border backdrop-blur-sm',
+        'tracking-wide uppercase',
+        styles.bg,
+        styles.text,
+        styles.glow,
+        styles.border,
         sizeClasses[size],
         className
       )}
@@ -49,7 +70,7 @@ export function RiskBadge({ level, size = 'md', showIcon = true, className }: Ri
       {showIcon && (
         <>
           <span className="text-lg">{config.icon}</span>
-          <IconComponent className={iconSizes[size]} />
+          <div className={cn('rounded-full', dotSizes[size], styles.dot)} />
         </>
       )}
       <span>{config.label}</span>

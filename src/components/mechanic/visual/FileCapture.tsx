@@ -1,11 +1,12 @@
 /**
- * FileCapture - Componente para captura de arquivo via input
+ * FileCapture - Componente premium para captura de arquivo
  */
 
 import { useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, Video, Upload, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { AnalysisType } from '@/types/visionTypes';
 
 interface FileCaptureProps {
@@ -37,24 +38,32 @@ export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptur
   };
   
   return (
-    <Card className="border-2 border-dashed border-primary/30">
-      <CardContent className="p-6">
-        <div className="flex flex-col items-center gap-4">
-          {/* Icon */}
-          <div className="p-4 rounded-full bg-primary/10">
-            {isVideo ? (
-              <Video className="h-10 w-10 text-primary" />
-            ) : (
-              <Camera className="h-10 w-10 text-primary" />
-            )}
+    <Card className="relative overflow-hidden border-2 border-dashed border-primary/30 bg-card/50 backdrop-blur-sm animate-scale-in">
+      {/* Decorative gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+      
+      <CardContent className="relative p-8">
+        <div className="flex flex-col items-center gap-5">
+          {/* Animated icon with rings */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="absolute inset-[-8px] rounded-full border border-primary/10" />
+            <div className="absolute inset-[-16px] rounded-full border border-primary/5" />
+            <div className="relative p-5 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+              {isVideo ? (
+                <Video className="h-10 w-10 text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+              ) : (
+                <Camera className="h-10 w-10 text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+              )}
+            </div>
           </div>
           
           {/* Title */}
-          <div className="text-center space-y-1">
-            <h3 className="font-semibold text-lg">
+          <div className="text-center space-y-2">
+            <h3 className="font-bold text-xl text-foreground">
               {isVideo ? 'Grave um vídeo do motor' : 'Tire uma foto'}
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground max-w-xs">
               {isVideo 
                 ? 'Vídeo curto de até 10 segundos do motor funcionando'
                 : 'Foto da luz do painel ou peça do motor'
@@ -63,20 +72,37 @@ export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptur
           </div>
           
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-            <Button onClick={openCamera} className="flex-1 gap-2">
-              {isVideo ? <Video className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
-              {isVideo ? 'Gravar agora' : 'Tirar foto'}
+          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+            <Button 
+              onClick={openCamera} 
+              className={cn(
+                'flex-1 gap-2.5 h-12 rounded-xl',
+                'bg-primary hover:bg-primary/90',
+                'shadow-[0_0_20px_-5px] shadow-primary/40',
+                'transition-all duration-200',
+                'hover:shadow-[0_0_30px_-5px] hover:shadow-primary/50'
+              )}
+            >
+              {isVideo ? <Video className="h-5 w-5" /> : <Camera className="h-5 w-5" />}
+              <span className="font-medium">{isVideo ? 'Gravar agora' : 'Tirar foto'}</span>
             </Button>
             
-            <Button variant="outline" onClick={openFilePicker} className="flex-1 gap-2">
-              <Upload className="h-4 w-4" />
-              Da galeria
+            <Button 
+              variant="outline" 
+              onClick={openFilePicker} 
+              className="flex-1 gap-2.5 h-12 rounded-xl border-2 hover:bg-secondary/50"
+            >
+              <Upload className="h-5 w-5" />
+              <span className="font-medium">Da galeria</span>
             </Button>
           </div>
           
           {/* Cancel button */}
-          <Button variant="ghost" onClick={onCancel} className="gap-2 text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            onClick={onCancel} 
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
             <X className="h-4 w-4" />
             Cancelar
           </Button>
@@ -95,7 +121,7 @@ export function FileCapture({ analysisType, onFileSelect, onCancel }: FileCaptur
             ref={cameraInputRef}
             type="file"
             accept={accept}
-            capture={isVideo ? 'environment' : 'environment'}
+            capture="environment"
             onChange={handleFileChange}
             className="hidden"
           />
