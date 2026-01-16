@@ -32,12 +32,11 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import type { MaintenanceAlert, MaintenanceType } from '@/types/maintenanceTypes';
-import type { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
+import type { MaintenanceAlert, MaintenanceInterval, MaintenanceType } from '@/types/maintenanceTypes';
 
 interface MaintenanceCardProps {
   alerts: MaintenanceAlert[];
-  intervals: ReturnType<typeof useMaintenanceSchedule>['intervals'];
+  intervals: MaintenanceInterval[];
   currentMileage: number;
   brandName: string;
   onRecordMaintenance: (type: MaintenanceType, mileage: number, notes?: string) => void;
