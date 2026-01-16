@@ -12,6 +12,8 @@ interface UseRefuelOptions {
   speak: (text: string, options?: { priority?: number; interrupt?: boolean }) => Promise<void>;
   onFuelPriceUpdate?: (price: number) => void;
   userId?: string;
+  // AUTO-RECONNECT: Função para tentar reconectar ao Bluetooth
+  reconnect?: () => Promise<boolean>;
 }
 
 export function useRefuel(options: UseRefuelOptions): RefuelContext {
@@ -25,6 +27,7 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     onFuelPriceUpdate: options.onFuelPriceUpdate,
     userId: options.userId,
     settings: refuelSettings.settings,
+    reconnect: options.reconnect,
   });
 
   return {

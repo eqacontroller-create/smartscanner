@@ -30,6 +30,8 @@ interface UseRefuelMonitorOptions {
   onFuelPriceUpdate?: (price: number) => void;
   userId?: string;
   settings?: RefuelSettings;
+  // AUTO-RECONNECT: Função para tentar reconectar ao Bluetooth
+  reconnect?: () => Promise<boolean>;
 }
 
 interface UseRefuelMonitorReturn {
@@ -62,6 +64,7 @@ export function useRefuelMonitor({
   onFuelPriceUpdate,
   userId,
   settings: externalSettings,
+  reconnect,
 }: UseRefuelMonitorOptions): UseRefuelMonitorReturn {
   // Estados principais
   const [mode, setMode] = useState<RefuelMode>('inactive');
@@ -125,6 +128,13 @@ export function useRefuelMonitor({
   const isConnectedRef = useRef(isConnected);
   const disconnectionAnnouncedRef = useRef(false);
   
+  // AUTO-RECONNECT: Refs para controle de reconexão automática
+  const reconnectRef = useRef(reconnect);
+  const isReconnectingRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
+  const RECONNECT_DELAY_MS = 2000;
+  
   // CORREÇÃO v2: Refs estáveis para funções (evita mudanças de dependência no useEffect)
   const speakRef = useRef(speak);
   const readSTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
@@ -136,12 +146,53 @@ export function useRefuelMonitor({
     speakRef.current = speak;
   }, [speak]);
   
+  // Manter reconnectRef atualizado
+  useEffect(() => {
+    reconnectRef.current = reconnect;
+  }, [reconnect]);
+  
   // BUG FIX 4: Manter speedRef atualizado (sem recriar interval)
   useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
   
-  // BUG FIX 3: Manter isConnectedRef atualizado e detectar desconexão
+  // AUTO-RECONNECT: Função de reconexão automática durante monitoramento
+  const attemptAutoReconnect = useCallback(async (): Promise<boolean> => {
+    if (!reconnectRef.current || isReconnectingRef.current) {
+      return false;
+    }
+    
+    isReconnectingRef.current = true;
+    
+    while (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttemptsRef.current++;
+      const attempt = reconnectAttemptsRef.current;
+      
+      console.log(`[Refuel] Auto-reconnect attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS}`);
+      
+      try {
+        const success = await reconnectRef.current();
+        
+        if (success) {
+          reconnectAttemptsRef.current = 0;
+          isReconnectingRef.current = false;
+          return true;
+        }
+      } catch (error) {
+        console.error(`[Refuel] Reconnect attempt ${attempt} failed:`, error);
+      }
+      
+      // Esperar antes da próxima tentativa
+      if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY_MS));
+      }
+    }
+    
+    isReconnectingRef.current = false;
+    return false;
+  }, []);
+  
+  // BUG FIX 3 + AUTO-RECONNECT: Detectar desconexão e tentar reconectar automaticamente
   useEffect(() => {
     const wasConnected = isConnectedRef.current;
     isConnectedRef.current = isConnected;
@@ -150,18 +201,32 @@ export function useRefuelMonitor({
     if (wasConnected && !isConnected && mode === 'monitoring') {
       if (!disconnectionAnnouncedRef.current) {
         disconnectionAnnouncedRef.current = true;
-        speakRef.current('Atenção. Conexão com o adaptador perdida. O monitoramento será pausado até reconectar.');
-        console.warn('[Refuel] Bluetooth disconnected during monitoring');
+        speakRef.current('Atenção. Conexão com o adaptador perdida. Tentando reconectar automaticamente.');
+        console.warn('[Refuel] Bluetooth disconnected during monitoring - attempting auto-reconnect');
+        
+        // Tentar reconectar automaticamente
+        attemptAutoReconnect().then(success => {
+          if (success) {
+            disconnectionAnnouncedRef.current = false;
+            speakRef.current('Conexão restaurada. Monitoramento retomado.');
+            console.log('[Refuel] Auto-reconnect successful');
+          } else {
+            speakRef.current('Não foi possível reconectar. O monitoramento continua pausado. Verifique o adaptador.');
+            console.error('[Refuel] Auto-reconnect failed after all attempts');
+          }
+        });
       }
     }
     
-    // Reconexão durante monitoramento
+    // Reconexão manual durante monitoramento (usuário reconectou por conta própria)
     if (!wasConnected && isConnected && mode === 'monitoring' && disconnectionAnnouncedRef.current) {
       disconnectionAnnouncedRef.current = false;
+      reconnectAttemptsRef.current = 0;
+      isReconnectingRef.current = false;
       speakRef.current('Conexão restaurada. Monitoramento retomado.');
       console.log('[Refuel] Bluetooth reconnected during monitoring');
     }
-  }, [isConnected, mode]);
+  }, [isConnected, mode, attemptAutoReconnect]);
   
   // Cleanup geral no unmount do componente
   useEffect(() => {
