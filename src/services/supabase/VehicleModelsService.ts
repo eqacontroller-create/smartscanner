@@ -32,6 +32,24 @@ export interface VehicleModelData {
 
 export const VehicleModelsService = {
   /**
+   * Busca todos os modelos em uma única query (otimizado)
+   */
+  async getAllModels(): Promise<VehicleModelData[]> {
+    const { data, error } = await supabase
+      .from('vehicle_models')
+      .select('*')
+      .order('brand')
+      .order('model_name');
+    
+    if (error) {
+      console.error('[VehicleModelsService] Error fetching all models:', error);
+      throw error;
+    }
+    
+    return (data || []) as unknown as VehicleModelData[];
+  },
+
+  /**
    * Lista todas as marcas disponíveis
    */
   async getBrands(): Promise<string[]> {

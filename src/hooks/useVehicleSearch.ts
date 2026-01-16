@@ -44,23 +44,20 @@ export function useVehicleSearch(): UseVehicleSearchResult {
     }
   }, []);
 
-  // Load brands and models
+  // Load brands and models in single optimized query
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       setError(null);
       
       try {
-        const brandsData = await VehicleModelsService.getBrands();
-        setBrands(brandsData);
-        
-        // Load all models for search
-        const allModels: VehicleModelData[] = [];
-        for (const brand of brandsData) {
-          const brandModels = await VehicleModelsService.getModelsByBrand(brand);
-          allModels.push(...brandModels);
-        }
+        // Single query to fetch all models
+        const allModels = await VehicleModelsService.getAllModels();
         setModels(allModels);
+        
+        // Extract unique brands from models
+        const uniqueBrands = [...new Set(allModels.map(m => m.brand))].sort();
+        setBrands(uniqueBrands);
       } catch (err) {
         console.error('Error loading vehicle data:', err);
         setError('Erro ao carregar veículos');

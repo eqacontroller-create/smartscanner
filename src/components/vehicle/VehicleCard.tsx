@@ -42,10 +42,7 @@ export function VehicleCard({
           : "border-border/50 hover:border-primary/30 hover:shadow-lg",
         className
       )}
-      style={{ 
-        animationDelay: `${animationDelay}ms`,
-        '--brand-color': `hsl(${asset.color})`
-      } as React.CSSProperties}
+      style={{ animationDelay: `${animationDelay}ms` }}
     >
       <div className="flex items-start gap-3">
         {/* Brand logo */}

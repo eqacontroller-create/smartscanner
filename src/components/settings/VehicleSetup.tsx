@@ -85,18 +85,20 @@ export function VehicleSetup({
     setSelectedModel(found || null);
   }, [model, models]);
 
-  // Auto-set brand from VIN detection
+  // Auto-set brand from VIN detection (only once)
   useEffect(() => {
     if (detectedBrand && !brand) {
       setBrand(detectedBrand.toLowerCase());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detectedBrand]);
 
-  // Auto-set year from VIN detection
+  // Auto-set year from VIN detection (only once)
   useEffect(() => {
     if (detectedYear && !year) {
       setYear(detectedYear);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detectedYear]);
 
   const loadBrands = async () => {
