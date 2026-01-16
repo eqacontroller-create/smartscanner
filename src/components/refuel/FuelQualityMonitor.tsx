@@ -1,9 +1,10 @@
 // Card de monitoramento de qualidade de combustível em tempo real
+// CORREÇÃO v2: Mostrar indicador quando settings foram alterados durante monitoramento
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Fuel, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Fuel, Activity, AlertTriangle, CheckCircle2, Settings, Cloud } from 'lucide-react';
 import { RefuelMode, RefuelSettings } from '@/types/refuelTypes';
 import { FuelTrimChart } from './FuelTrimChart';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,8 @@ interface FuelQualityMonitorProps {
   anomalyDuration: number;
   fuelTrimHistory: Array<{ timestamp: number; stft: number; ltft: number; distance: number }>;
   settings: RefuelSettings;
+  frozenSettings?: RefuelSettings | null; // NOVO: Settings congelados durante monitoramento
+  isSyncing?: boolean; // NOVO: Indicador de sincronização
 }
 
 export function FuelQualityMonitor({
@@ -28,17 +31,25 @@ export function FuelQualityMonitor({
   anomalyDuration,
   fuelTrimHistory,
   settings,
+  frozenSettings,
+  isSyncing,
 }: FuelQualityMonitorProps) {
   if (mode !== 'monitoring' && mode !== 'analyzing') return null;
   
-  const progress = (distanceMonitored / settings.monitoringDistance) * 100;
+  // CORREÇÃO v2: Usar settings congelados se disponíveis (durante monitoramento)
+  const activeSettings = frozenSettings || settings;
+  const progress = (distanceMonitored / activeSettings.monitoringDistance) * 100;
+  
+  // Detectar se configurações mudaram durante monitoramento
+  const settingsChanged = frozenSettings && 
+    frozenSettings.monitoringDistance !== settings.monitoringDistance;
   
   // Determinar cor do STFT
   const getSTFTStatus = (value: number | null) => {
     if (value === null) return { color: 'text-muted-foreground', status: 'Lendo...' };
     const abs = Math.abs(value);
     if (abs <= 10) return { color: 'text-green-500', status: 'Normal' };
-    if (abs <= settings.stftWarningThreshold) return { color: 'text-yellow-500', status: 'Elevado' };
+    if (abs <= activeSettings.stftWarningThreshold) return { color: 'text-yellow-500', status: 'Elevado' };
     return { color: 'text-red-500', status: 'Crítico' };
   };
   
@@ -55,6 +66,9 @@ export function FuelQualityMonitor({
           <span className="flex items-center gap-2">
             <Fuel className="h-5 w-5 text-primary" />
             Hora do Posto
+            {isSyncing && (
+              <Cloud className="h-4 w-4 text-muted-foreground animate-pulse" />
+            )}
           </span>
           {anomalyActive ? (
             <Badge variant="destructive" className="animate-pulse gap-1">
@@ -71,15 +85,26 @@ export function FuelQualityMonitor({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Indicador de configurações congeladas */}
+        {settingsChanged && (
+          <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center gap-2 text-xs">
+            <Settings className="h-4 w-4 text-blue-500 shrink-0" />
+            <span className="text-blue-600 dark:text-blue-400">
+              Configuração alterada para {settings.monitoringDistance}km. 
+              Esta sessão usa {frozenSettings?.monitoringDistance}km.
+            </span>
+          </div>
+        )}
+        
         {/* Progresso da distância */}
         <div className="space-y-1.5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Distância Monitorada</span>
             <span className="font-mono font-medium">
-              {distanceMonitored.toFixed(1)} / {settings.monitoringDistance} km
+              {distanceMonitored.toFixed(1)} / {activeSettings.monitoringDistance} km
             </span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={Math.min(progress, 100)} className="h-2" />
         </div>
         
         {/* Fuel Trim atual */}
@@ -145,7 +170,7 @@ export function FuelQualityMonitor({
             <div className="flex-1">
               <div className="text-sm font-medium text-yellow-500">Correção Excessiva Detectada</div>
               <div className="text-xs text-muted-foreground">
-                Duração: {anomalyDuration.toFixed(0)}s / {settings.anomalyDurationWarning}s para alerta
+                Duração: {anomalyDuration.toFixed(0)}s / {activeSettings.anomalyDurationWarning}s para alerta
               </div>
             </div>
           </div>
@@ -155,7 +180,7 @@ export function FuelQualityMonitor({
         {fuelTrimHistory.length > 0 && (
           <FuelTrimChart 
             data={fuelTrimHistory} 
-            warningThreshold={settings.stftWarningThreshold}
+            warningThreshold={activeSettings.stftWarningThreshold}
           />
         )}
         

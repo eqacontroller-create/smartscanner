@@ -125,6 +125,7 @@ export type Database = {
           openai_tts_enabled: boolean | null
           openai_voice: string | null
           redline_rpm: number | null
+          refuel_settings: Json | null
           selected_voice_uri: string | null
           shift_light_enabled: boolean | null
           speed_alert_enabled: boolean | null
@@ -165,6 +166,7 @@ export type Database = {
           openai_tts_enabled?: boolean | null
           openai_voice?: string | null
           redline_rpm?: number | null
+          refuel_settings?: Json | null
           selected_voice_uri?: string | null
           shift_light_enabled?: boolean | null
           speed_alert_enabled?: boolean | null
@@ -205,6 +207,7 @@ export type Database = {
           openai_tts_enabled?: boolean | null
           openai_voice?: string | null
           redline_rpm?: number | null
+          refuel_settings?: Json | null
           selected_voice_uri?: string | null
           shift_light_enabled?: boolean | null
           speed_alert_enabled?: boolean | null
