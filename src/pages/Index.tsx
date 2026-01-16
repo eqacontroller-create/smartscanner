@@ -563,7 +563,7 @@ const Index = () => {
                 fuelTrimHistory={refuelMonitor.fuelTrimHistory}
                 refuelSettings={refuelSettings.settings}
                 frozenSettings={refuelMonitor.frozenSettings}
-                currentRefuel={refuelMonitor.currentRefuel as any}
+                currentRefuel={refuelMonitor.currentRefuel}
                 isSyncing={refuelSettings.isSyncing}
                 stftSupported={refuelMonitor.stftSupported ?? false}
                 isConnected={isReady || isReading}

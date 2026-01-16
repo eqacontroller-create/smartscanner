@@ -21,17 +21,14 @@ import {
   CollapsibleTrigger 
 } from '@/components/ui/collapsible';
 import type { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
-import type { VehicleBenefits } from '@/types/vehicleTypes';
+import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
 
 interface VehicleInfoCardProps {
   brand: VehicleBrand;
   profile: VehicleProfile;
   modelYear?: string | null;
   country?: string | null;
-  benefits: VehicleBenefits & {
-    applyRecommendedSettings: () => void;
-    hasSettingsDifference: boolean;
-  };
+  benefits: UseVehicleBenefitsReturn;
 }
 
 export function VehicleInfoCard({

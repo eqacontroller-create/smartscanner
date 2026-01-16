@@ -8,7 +8,8 @@ import { LogPanel } from '@/components/dashboard/LogPanel';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { AlertTriangle, Activity, Wrench, Car, Calendar } from 'lucide-react';
 import type { VehicleProfile, VehicleBrand } from '@/lib/vehicleProfiles';
-import type { MaintenanceAlert, MaintenanceInterval, MaintenanceType } from '@/types/maintenanceTypes';
+import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
+import type { useMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
 
 interface MechanicTabProps {
   sendCommand: (cmd: string) => Promise<string>;
@@ -23,13 +24,8 @@ interface MechanicTabProps {
     modelYear?: string;
   } | null;
   currentProfile: VehicleProfile;
-  vehicleBenefits: any;
-  maintenanceSchedule: {
-    alerts: MaintenanceAlert[];
-    intervals: MaintenanceInterval[];
-    recordMaintenance: (type: MaintenanceType, mileage: number, notes?: string) => void;
-    getVoiceMessage: () => string | null;
-  };
+  vehicleBenefits: UseVehicleBenefitsReturn;
+  maintenanceSchedule: ReturnType<typeof useMaintenanceSchedule>;
   currentMileage: number;
   speak: (text: string) => void;
   isSpeaking: boolean;

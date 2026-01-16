@@ -30,7 +30,7 @@ interface UseVehicleBenefitsOptions {
   }) => void;
 }
 
-interface UseVehicleBenefitsReturn extends VehicleBenefits {
+export interface UseVehicleBenefitsReturn extends VehicleBenefits {
   applyRecommendedSettings: () => void;
   getWelcomeTip: () => string;
   hasSettingsDifference: boolean;
