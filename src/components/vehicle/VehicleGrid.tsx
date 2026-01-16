@@ -97,7 +97,7 @@ export function VehicleGrid({
           model={model}
           isSelected={selectedModel?.id === model.id}
           onClick={() => onSelectModel(model)}
-          animationDelay={index * 50}
+          animationDelay={index < 12 ? index * 40 : 0}
         />
       ))}
     </div>

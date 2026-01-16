@@ -123,10 +123,17 @@ export const VehicleModelsService = {
     return data as unknown as VehicleModelData | null;
   },
 
+  // Cache for parsed years to avoid recalculation
+  _yearsCache: new Map<string, number[]>(),
+  
   /**
-   * Gera range de anos a partir do years_available
+   * Gera range de anos a partir do years_available (com cache)
    */
   parseYearsRange(yearsAvailable: string): number[] {
+    // Check cache first
+    const cached = this._yearsCache.get(yearsAvailable);
+    if (cached) return cached;
+    
     const [start, end] = yearsAvailable.split('-').map(y => parseInt(y.trim()));
     const years: number[] = [];
     const currentYear = new Date().getFullYear();
@@ -136,7 +143,12 @@ export const VehicleModelsService = {
       years.push(year);
     }
     
-    return years.reverse(); // Mais recentes primeiro
+    const result = years.reverse(); // Mais recentes primeiro
+    
+    // Store in cache
+    this._yearsCache.set(yearsAvailable, result);
+    
+    return result;
   },
 
   /**
