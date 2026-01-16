@@ -44,6 +44,16 @@ import {
   Smartphone,
   Users,
   Star,
+  Download,
+  Eye,
+  Images,
+  Camera,
+  DollarSign,
+  Timer,
+  RefreshCw,
+  History,
+  Settings,
+  FileText,
 } from "lucide-react";
 
 export default function Help() {
@@ -51,16 +61,26 @@ export default function Help() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border safe-area-top">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" asChild className="h-10 w-10 min-h-[44px]">
-            <Link to="/">
-              <ArrowLeft className="h-5 w-5" />
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" asChild className="h-10 w-10 min-h-[44px]">
+              <Link to="/">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <div className="flex items-center gap-2">
+              <HelpCircle className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-bold text-foreground">Central de Ajuda</h1>
+            </div>
+          </div>
+          
+          {/* Download Manual Button */}
+          <Button variant="outline" size="sm" asChild className="gap-2">
+            <Link to="/manual">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Baixar Manual</span>
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
-            <HelpCircle className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Central de Ajuda</h1>
-          </div>
         </div>
       </header>
 
@@ -153,7 +173,15 @@ export default function Help() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                <span>IA Híbrida (Grátis ou OpenAI)</span>
+                <span>Mecânico Visual com IA (fotos)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Controle financeiro para motoristas</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Catálogo de veículos premium</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
@@ -431,6 +459,188 @@ export default function Help() {
           />
         </HelpSection>
 
+        {/* Catálogo de Veículos - NOVA SEÇÃO */}
+        <HelpSection id="catalogo-veiculos" title="Catálogo de Veículos" icon={Car}>
+          <HelpCard
+            title="Base de Dados Premium"
+            description="O catálogo contém centenas de modelos de veículos brasileiros com informações detalhadas de motor, câmbio e especificações técnicas. Use a busca inteligente ou navegue pelo carrossel de marcas."
+            icon={Search}
+            variant="info"
+          />
+
+          <StepByStep
+            steps={[
+              {
+                title: "Acesse Configurações",
+                description: "Clique na aba 'Configurações' e depois no botão 'Trocar Veículo' para abrir o catálogo.",
+                icon: Settings,
+              },
+              {
+                title: "Busque ou navegue",
+                description: "Use a barra de busca para encontrar por nome, ou clique em uma marca no carrossel de logos.",
+                icon: Search,
+              },
+              {
+                title: "Selecione o modelo",
+                description: "Escolha seu modelo na grade de veículos. Cada card mostra marca, modelo e anos disponíveis.",
+                icon: Car,
+              },
+              {
+                title: "Configure os detalhes",
+                description: "Defina o ano do modelo, motorização, tipo de câmbio e dê um apelido para identificar seu veículo.",
+                icon: Wrench,
+              },
+            ]}
+          />
+
+          <HelpCard
+            title="Filtros por Ano"
+            description="Use os chips de filtro para ver apenas veículos de uma faixa de anos específica. Útil para encontrar modelos mais novos ou clássicos."
+            icon={History}
+            variant="default"
+          />
+
+          <HelpCard
+            title="Carrossel de Marcas"
+            description="Na parte superior do catálogo, você encontra os logos das principais montadoras. Clique em uma marca para filtrar automaticamente os modelos dela."
+            icon={Car}
+            variant="default"
+          />
+        </HelpSection>
+
+        {/* Mecânico Visual - NOVA SEÇÃO */}
+        <HelpSection id="mecanico-visual" title="Mecânico Visual (IA)" icon={Eye}>
+          <HelpCard
+            title="Diagnóstico por Foto ou Vídeo"
+            description="Tire uma foto de qualquer problema no veículo (luz no painel, vazamento, peça estranha) e a Inteligência Artificial analisa e explica o que pode estar errado."
+            icon={Camera}
+            variant="info"
+          />
+
+          <HelpCard
+            title="Até 4 Fotos para Maior Precisão"
+            description="Fotografe de ângulos diferentes para um diagnóstico mais preciso. Mais fotos significam mais contexto para a IA analisar o problema."
+            icon={Images}
+            variant="success"
+          />
+
+          <div className="p-4 bg-muted/30 rounded-lg border border-border">
+            <h4 className="font-medium text-foreground mb-3">Níveis de Risco:</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-foreground font-medium">Seguro</span>
+                <span className="text-muted-foreground">- Pode continuar dirigindo normalmente</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                <span className="text-foreground font-medium">Atenção</span>
+                <span className="text-muted-foreground">- Agende manutenção em breve</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-foreground font-medium">Perigo</span>
+                <span className="text-muted-foreground">- Não dirija, procure um mecânico</span>
+              </div>
+            </div>
+          </div>
+
+          <StepByStep
+            steps={[
+              {
+                title: "Acesse a aba 'Mecânico'",
+                description: "Na aba Mecânico, role até encontrar a seção 'Mecânico Visual' ou clique no ícone de câmera.",
+                icon: Wrench,
+              },
+              {
+                title: "Tire a foto",
+                description: "Use a câmera do dispositivo ou selecione uma imagem da galeria. Você pode adicionar até 4 fotos.",
+                icon: Camera,
+              },
+              {
+                title: "Aguarde a análise",
+                description: "A IA vai processar as imagens e identificar possíveis problemas. Pode levar alguns segundos.",
+                icon: Brain,
+              },
+              {
+                title: "Veja o diagnóstico",
+                description: "O resultado mostra: título do problema, descrição, nível de risco, recomendações e peças possivelmente envolvidas.",
+                icon: CheckCircle,
+              },
+            ]}
+          />
+
+          <HelpCard
+            title="Funciona Offline"
+            description="Você pode tirar a foto sem internet! A análise será feita automaticamente quando a conexão retornar. O histórico de diagnósticos também é salvo localmente."
+            icon={Cloud}
+            variant="default"
+          />
+
+          <HelpCard
+            title="Dicas para Boas Fotos"
+            description="Para melhores resultados: use boa iluminação, mantenha a câmera estável, inclua contexto ao redor do problema e evite fotos muito distantes ou borradas."
+            icon={Camera}
+            variant="info"
+          />
+        </HelpSection>
+
+        {/* Controle Financeiro - NOVA SEÇÃO */}
+        <HelpSection id="controle-financeiro" title="Controle Financeiro (Uber/99)" icon={PiggyBank}>
+          <HelpCard
+            title="Feito para Motoristas de App"
+            description="Detecta automaticamente quando você inicia e finaliza uma corrida, calculando o custo de combustível em tempo real e mostrando o lucro real de cada viagem."
+            icon={DollarSign}
+            variant="info"
+          />
+
+          <StepByStep
+            steps={[
+              {
+                title: "Configure seus custos",
+                description: "Vá em Configurações e informe: preço do combustível (R$/L), consumo médio do veículo (km/L) e custo adicional por km (manutenção, depreciação).",
+                icon: Settings,
+              },
+              {
+                title: "Ative a detecção automática",
+                description: "O sistema detecta início de corrida (velocidade > 10km/h por 5 segundos) e fim (parado por 30 segundos). Você pode ajustar esses valores.",
+                icon: Timer,
+              },
+              {
+                title: "Informe o valor recebido",
+                description: "Ao finalizar a corrida, uma tela aparece pedindo quanto você recebeu do passageiro. Digite o valor do aplicativo.",
+                icon: DollarSign,
+              },
+              {
+                title: "Veja seu lucro real",
+                description: "O app calcula: Lucro = Valor Recebido - Custo de Combustível - Custos Adicionais. Veja exatamente quanto sobrou no bolso.",
+                icon: TrendingUp,
+              },
+            ]}
+          />
+
+          <HelpCard
+            title="Histórico do Dia (Fechamento de Caixa)"
+            description="No final do dia, veja um resumo completo: total de corridas, quilômetros rodados, custo total e lucro líquido. Ótimo para controle financeiro."
+            icon={History}
+            variant="success"
+          />
+
+          <HelpCard
+            title="Recuperação de Corridas"
+            description="Se o app fechar durante uma corrida (bateria, travamento), ao reabrir você pode recuperar os dados da corrida em andamento e continuar de onde parou."
+            icon={RefreshCw}
+            variant="default"
+          />
+
+          <HelpCard
+            title="Relatório por Voz (Jarvis)"
+            description="Pergunte ao Jarvis: 'Como foi o dia de trabalho?' e ele resume verbalmente suas corridas, ganhos e custos do dia."
+            icon={Bot}
+            variant="default"
+          />
+        </HelpSection>
+
         {/* Monitor de Dados ao Vivo */}
         <HelpSection id="dados-vivo" title="Monitor de Dados ao Vivo" icon={Activity}>
           <HelpCard
@@ -487,13 +697,15 @@ export default function Help() {
               <MessageSquare className="h-4 w-4 text-primary" />
               Exemplos de perguntas:
             </h4>
-            <div className="grid gap-2 text-sm text-muted-foreground">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
               <p>• "Como está o motor?"</p>
               <p>• "A temperatura está normal?"</p>
               <p>• "Posso acelerar agora?"</p>
               <p>• "O que significa o código P0300?"</p>
               <p>• "Quando devo trocar o óleo?"</p>
               <p>• "A bateria está boa?"</p>
+              <p>• "Como foi o dia de trabalho?"</p>
+              <p>• "Qual o lucro das corridas hoje?"</p>
             </div>
           </div>
 
@@ -506,9 +718,16 @@ export default function Help() {
 
           <HelpCard
             title="Alertas Automáticos"
-            description="O Jarvis pode avisar automaticamente sobre: RPM alto com motor frio, superaquecimento, velocidade alta, bateria fraca, e lembretes de manutenção. Configure nas preferências."
+            description="O Jarvis avisa automaticamente sobre: RPM alto com motor frio, superaquecimento, velocidade alta, bateria fraca, lembretes de manutenção e resultados de abastecimento."
             icon={Bell}
             variant="default"
+          />
+
+          <HelpCard
+            title="Integração com Diagnóstico Visual"
+            description="Após uma análise de foto pelo Mecânico Visual, você pode perguntar ao Jarvis detalhes sobre o problema detectado ou pedir recomendações adicionais."
+            icon={Eye}
+            variant="success"
           />
 
           <HelpCard
@@ -692,6 +911,26 @@ export default function Help() {
               question="Quanto tempo leva a análise do combustível?"
               answer="O padrão é monitorar por 5 km. Você pode ajustar essa distância nas configurações de abastecimento. Quanto mais distância, mais precisa é a análise."
             />
+            <FAQItem
+              id="faq-14"
+              question="Como funciona a detecção automática de corridas?"
+              answer="O sistema detecta quando você está acima de 10 km/h por 5 segundos (início da corrida) e quando fica parado por 30 segundos (fim). Você pode ajustar esses valores nas configurações da aba Financeiro."
+            />
+            <FAQItem
+              id="faq-15"
+              question="A análise de foto funciona offline?"
+              answer="Sim! Você pode tirar a foto sem internet e ela será analisada automaticamente quando a conexão retornar. O histórico de diagnósticos visuais também é salvo localmente no dispositivo."
+            />
+            <FAQItem
+              id="faq-16"
+              question="Como seleciono meu veículo no catálogo?"
+              answer="Acesse Configurações → Trocar Veículo. Use a busca por nome ou navegue pelo carrossel de marcas. Selecione seu modelo, configure ano, motor e câmbio, dê um apelido e salve."
+            />
+            <FAQItem
+              id="faq-17"
+              question="O Jarvis consegue resumir minhas corridas?"
+              answer="Sim! Pergunte 'Como foi o dia de trabalho?' ou 'Qual o lucro das corridas hoje?' e o Jarvis resume verbalmente: total de corridas, quilômetros, custos e lucro líquido."
+            />
           </div>
         </HelpSection>
 
@@ -753,20 +992,43 @@ export default function Help() {
               definition="Ajuste que o motor faz na quantidade de combustível injetado para manter a mistura ideal."
               analogy="É o motor 'compensando' quando o combustível é diferente do ideal esperado."
             />
+            <GlossaryItem
+              term="Mecânico Visual"
+              definition="Ferramenta de IA que analisa fotos e vídeos do seu veículo para identificar possíveis problemas."
+              analogy="É como ter um mecânico experiente olhando sua foto e dizendo o que pode estar errado."
+            />
+            <GlossaryItem
+              term="Detecção Automática"
+              definition="Sistema que identifica início e fim de corridas baseado em velocidade e tempo parado."
+              analogy="É como um cronômetro inteligente que sabe quando você começou e terminou uma viagem."
+            />
+            <GlossaryItem
+              term="Lucro Líquido"
+              definition="O valor que realmente sobra no bolso após descontar todos os custos (combustível, manutenção, etc)."
+              analogy="É a diferença entre o que você recebeu e o que gastou para fazer a corrida."
+            />
           </div>
         </HelpSection>
 
         {/* Footer */}
         <div className="text-center py-8 border-t border-border mt-8">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-4">
             Ainda tem dúvidas? Fale com o Jarvis! Ele pode ajudar com perguntas específicas sobre seu veículo.
           </p>
-          <Button asChild className="mt-4">
-            <Link to="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar ao App
-            </Link>
-          </Button>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button variant="outline" asChild>
+              <Link to="/manual">
+                <FileText className="mr-2 h-4 w-4" />
+                Baixar Manual (PDF)
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar ao App
+              </Link>
+            </Button>
+          </div>
         </div>
       </main>
     </div>
