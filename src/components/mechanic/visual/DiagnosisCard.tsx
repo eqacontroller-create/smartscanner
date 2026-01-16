@@ -1,5 +1,5 @@
 /**
- * DiagnosisCard - Card didático com resultado do diagnóstico
+ * DiagnosisCard - Card premium didático com resultado do diagnóstico
  * Inclui badge do veículo, busca contextualizada e opção de salvar
  */
 
@@ -19,7 +19,8 @@ import {
   Wrench,
   Car,
   Save,
-  Loader2
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { RISK_CONFIG, type VisionAnalysisResult, type VehicleContextForVision } from '@/types/visionTypes';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,28 @@ interface DiagnosisCardProps {
   isSaving?: boolean;
   isSaved?: boolean;
 }
+
+// Section icons with colored backgrounds
+const sectionConfig = {
+  identification: { 
+    icon: Info, 
+    title: 'O que é isso?',
+    bgClass: 'bg-blue-500/10',
+    iconClass: 'text-blue-500'
+  },
+  diagnosis: { 
+    icon: AlertCircle, 
+    title: 'O que está acontecendo?',
+    bgClass: 'bg-amber-500/10',
+    iconClass: 'text-amber-500'
+  },
+  action: { 
+    icon: Wrench, 
+    title: 'O que fazer agora?',
+    bgClass: 'bg-emerald-500/10',
+    iconClass: 'text-emerald-500'
+  },
+};
 
 export function DiagnosisCard({ 
   result, 
@@ -78,7 +101,6 @@ export function DiagnosisCard({
   };
   
   const handleShoppingSearch = () => {
-    // Usa busca contextualizada se tiver veículo
     const url = hasVehicle
       ? VisionService.generateVehicleShoppingLink(result.technicalName, vehicleContext)
       : VisionService.generateShoppingLink(result.technicalName);
@@ -89,58 +111,92 @@ export function DiagnosisCard({
     window.open(VisionService.generateImageSearchLink(result.technicalName), '_blank');
   };
   
+  // Get risk-based gradient
+  const getRiskGradient = () => {
+    switch (result.riskLevel) {
+      case 'safe':
+        return 'from-emerald-500/20 via-emerald-500/10 to-transparent';
+      case 'attention':
+        return 'from-amber-500/20 via-amber-500/10 to-transparent';
+      case 'danger':
+        return 'from-red-500/20 via-red-500/10 to-transparent';
+      default:
+        return 'from-muted/50 via-muted/25 to-transparent';
+    }
+  };
+  
+  const getRiskOrb = () => {
+    switch (result.riskLevel) {
+      case 'safe':
+        return 'bg-emerald-500/20';
+      case 'attention':
+        return 'bg-amber-500/20';
+      case 'danger':
+        return 'bg-red-500/20';
+      default:
+        return 'bg-muted/50';
+    }
+  };
+  
   return (
-    <Card className={cn('overflow-hidden border-2', riskConfig.borderColor)}>
-      {/* Risk header */}
-      <div className={cn('p-4', riskConfig.bgColor)}>
-        <div className="flex items-center justify-between gap-4">
+    <Card className="overflow-hidden border-2 border-border/50 bg-card/90 backdrop-blur-sm">
+      {/* Premium gradient header */}
+      <div className={cn('relative p-5 overflow-hidden bg-gradient-to-r', getRiskGradient())}>
+        {/* Decorative orb */}
+        <div className={cn('absolute -right-12 -top-12 w-32 h-32 rounded-full blur-3xl', getRiskOrb())} />
+        
+        <div className="relative flex items-center justify-between gap-4">
           <RiskBadge level={result.riskLevel} size="lg" />
           <div className="flex items-center gap-2">
             {onSpeak && (
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 onClick={handleSpeak}
                 disabled={isSpeaking}
-                className="gap-2"
+                className="gap-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
               >
-                <Volume2 className={cn('h-4 w-4', isSpeaking && 'animate-pulse')} />
+                <Volume2 className={cn('h-4 w-4', isSpeaking && 'animate-pulse text-primary')} />
                 <span className="hidden sm:inline">Ouvir</span>
               </Button>
             )}
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={onReset}
-              className="gap-2"
+              className="gap-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
             >
               <RotateCcw className="h-4 w-4" />
               <span className="hidden sm:inline">Nova análise</span>
             </Button>
           </div>
         </div>
-        <p className={cn('mt-2 font-medium', riskConfig.color)}>
+        <p className={cn('relative mt-3 font-medium text-foreground')}>
           {result.riskMessage}
         </p>
       </div>
       
-      <CardContent className="p-4 space-y-4">
-        {/* Vehicle badge - exibe se tiver veículo configurado */}
+      <CardContent className="p-5 space-y-5">
+        {/* Premium vehicle badge */}
         {vehicleDisplayName && (
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
-            <Car className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              {vehicleDisplayName}
-            </span>
-            <span className="text-xs text-muted-foreground ml-auto">
-              Diagnóstico específico
-            </span>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 animate-fade-in">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+              <Car className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-semibold text-primary block truncate">
+                {vehicleDisplayName}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Diagnóstico específico para seu veículo
+              </span>
+            </div>
           </div>
         )}
         
-        {/* Image preview if available */}
+        {/* Image preview */}
         {mediaUrl && (
-          <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+          <div className="aspect-video rounded-xl overflow-hidden bg-black/90 border border-border/50">
             <img
               src={mediaUrl}
               alt="Imagem analisada"
@@ -149,68 +205,89 @@ export function DiagnosisCard({
           </div>
         )}
         
-        {/* Identification */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <Info className="h-5 w-5" />
-            <h3 className="font-semibold">O que é isso?</h3>
+        {/* Identification Section */}
+        <div className="space-y-2.5 animate-fade-in" style={{ animationDelay: '100ms' }}>
+          <div className="flex items-center gap-3">
+            <div className={cn('p-2 rounded-lg', sectionConfig.identification.bgClass)}>
+              <Info className={cn('h-5 w-5', sectionConfig.identification.iconClass)} />
+            </div>
+            <h3 className="font-semibold text-foreground">{sectionConfig.identification.title}</h3>
           </div>
-          <p className="text-foreground pl-7">{result.identification}</p>
-          <p className="text-sm text-muted-foreground pl-7">
-            Nome técnico: <span className="font-medium">{result.technicalName}</span>
-          </p>
+          <div className="pl-12">
+            <p className="text-foreground">{result.identification}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Nome técnico: <span className="font-medium text-foreground">{result.technicalName}</span>
+            </p>
+          </div>
         </div>
         
-        <Separator />
+        <Separator className="bg-border/50" />
         
-        {/* Diagnosis */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <AlertCircle className="h-5 w-5" />
-            <h3 className="font-semibold">O que está acontecendo?</h3>
+        {/* Diagnosis Section */}
+        <div className="space-y-2.5 animate-fade-in" style={{ animationDelay: '200ms' }}>
+          <div className="flex items-center gap-3">
+            <div className={cn('p-2 rounded-lg', sectionConfig.diagnosis.bgClass)}>
+              <AlertCircle className={cn('h-5 w-5', sectionConfig.diagnosis.iconClass)} />
+            </div>
+            <h3 className="font-semibold text-foreground">{sectionConfig.diagnosis.title}</h3>
           </div>
-          <p className="text-foreground pl-7">{result.diagnosis}</p>
+          <p className="text-foreground pl-12">{result.diagnosis}</p>
         </div>
         
-        <Separator />
+        <Separator className="bg-border/50" />
         
-        {/* Action */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <Wrench className="h-5 w-5" />
-            <h3 className="font-semibold">O que fazer agora?</h3>
+        {/* Action Section */}
+        <div className="space-y-2.5 animate-fade-in" style={{ animationDelay: '300ms' }}>
+          <div className="flex items-center gap-3">
+            <div className={cn('p-2 rounded-lg', sectionConfig.action.bgClass)}>
+              <Wrench className={cn('h-5 w-5', sectionConfig.action.iconClass)} />
+            </div>
+            <h3 className="font-semibold text-foreground">{sectionConfig.action.title}</h3>
           </div>
-          <p className="text-foreground pl-7">{result.action}</p>
+          <p className="text-foreground pl-12">{result.action}</p>
         </div>
         
         {/* Confidence indicator */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>Confiança da análise: {result.confidence}%</span>
+        <div className="flex items-center gap-3 pt-2 animate-fade-in" style={{ animationDelay: '400ms' }}>
+          <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Confiança:</span>
+            <div className="flex-1 h-2 bg-muted/50 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full transition-all duration-1000"
+                style={{ width: `${result.confidence}%` }}
+              />
+            </div>
+            <span className="text-sm font-medium text-foreground">{result.confidence}%</span>
+          </div>
         </div>
         
-        <Separator />
+        <Separator className="bg-border/50" />
         
         {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 animate-fade-in" style={{ animationDelay: '500ms' }}>
           <Button
             variant="outline"
             onClick={handleShoppingSearch}
-            className="flex-1 gap-2"
+            className="flex-1 gap-2 h-11 rounded-xl border-2 hover:bg-secondary/50 group"
           >
             <ShoppingCart className="h-4 w-4" />
-            {hasVehicle 
-              ? `Peça para ${vehicleContext.model || vehicleContext.brand}`
-              : 'Encontrar peça'
-            }
+            <span className="truncate">
+              {hasVehicle 
+                ? `Peça para ${vehicleContext.model || vehicleContext.brand}`
+                : 'Encontrar peça'
+              }
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
           </Button>
           <Button
             variant="outline"
             onClick={handleImageSearch}
-            className="flex-1 gap-2"
+            className="flex-1 gap-2 h-11 rounded-xl border-2 hover:bg-secondary/50 group"
           >
             <Search className="h-4 w-4" />
             Ver referências
+            <ExternalLink className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
           </Button>
         </div>
         
@@ -219,17 +296,24 @@ export function DiagnosisCard({
           <Button
             onClick={onSave}
             disabled={isSaving || isSaved}
-            className="w-full gap-2"
-            variant={isSaved ? "secondary" : "default"}
+            className={cn(
+              'w-full gap-2 h-12 rounded-xl transition-all duration-300',
+              isSaved 
+                ? 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 border-2 border-emerald-500/30' 
+                : 'bg-primary hover:bg-primary/90 shadow-[0_0_20px_-5px] shadow-primary/40 hover:shadow-[0_0_30px_-5px] hover:shadow-primary/50'
+            )}
+            variant={isSaved ? "outline" : "default"}
           >
             {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : isSaved ? (
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="h-5 w-5" />
             ) : (
-              <Save className="h-4 w-4" />
+              <Save className="h-5 w-5" />
             )}
-            {isSaved ? 'Salvo no histórico' : 'Salvar diagnóstico'}
+            <span className="font-medium">
+              {isSaved ? 'Salvo no histórico' : 'Salvar diagnóstico'}
+            </span>
           </Button>
         )}
       </CardContent>
