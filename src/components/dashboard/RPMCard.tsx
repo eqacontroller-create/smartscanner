@@ -10,15 +10,15 @@ export function RPMCard({ value, isReading }: RPMCardProps) {
   const displayValue = value !== null ? value.toLocaleString() : '---';
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="glass border-border/50 card-hover">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
+            <div className="p-2.5 rounded-xl bg-primary/20 backdrop-blur-sm">
               <Gauge className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Rotação do Motor</p>
+              <p className="text-sm text-muted-foreground font-medium">Rotação do Motor</p>
               <p className="text-xs text-muted-foreground/70">PID: 010C</p>
             </div>
           </div>
