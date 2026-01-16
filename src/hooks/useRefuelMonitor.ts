@@ -303,13 +303,24 @@ export function useRefuelMonitor({
     isReadingOBDRef.current = true;
     try {
       const response = await sendRawCommand('0106', 2000);
-      console.log('[Refuel] STFT raw response:', response);
-      const match = response.match(/41\s*06\s*([0-9A-Fa-f]{2})/i);
+      console.log('[Refuel] STFT raw response:', JSON.stringify(response));
+      
+      // Limpar resposta - remover espaços extras, newlines, headers
+      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+      console.log('[Refuel] STFT clean response:', cleanResponse);
+      
+      // Tentar múltiplos formatos de resposta
+      const match = cleanResponse.match(/41\s*06\s*([0-9A-F]{2})/i) || 
+                    cleanResponse.match(/(?:^|\s)06\s*([0-9A-F]{2})(?:\s|$)/i);
+      console.log('[Refuel] STFT regex match:', match);
+      
       if (match) {
         const a = parseInt(match[1], 16);
         const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
         console.log('[Refuel] STFT parsed:', value);
         return value;
+      } else {
+        console.warn('[Refuel] STFT regex failed - unexpected format');
       }
     } catch (error) {
       console.error('[Refuel] Error reading STFT:', error);
@@ -329,13 +340,24 @@ export function useRefuelMonitor({
     isReadingOBDRef.current = true;
     try {
       const response = await sendRawCommand('0107', 2000);
-      console.log('[Refuel] LTFT raw response:', response);
-      const match = response.match(/41\s*07\s*([0-9A-Fa-f]{2})/i);
+      console.log('[Refuel] LTFT raw response:', JSON.stringify(response));
+      
+      // Limpar resposta
+      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+      console.log('[Refuel] LTFT clean response:', cleanResponse);
+      
+      // Tentar múltiplos formatos
+      const match = cleanResponse.match(/41\s*07\s*([0-9A-F]{2})/i) ||
+                    cleanResponse.match(/(?:^|\s)07\s*([0-9A-F]{2})(?:\s|$)/i);
+      console.log('[Refuel] LTFT regex match:', match);
+      
       if (match) {
         const a = parseInt(match[1], 16);
         const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
         console.log('[Refuel] LTFT parsed:', value);
         return value;
+      } else {
+        console.warn('[Refuel] LTFT regex failed - unexpected format');
       }
     } catch (error) {
       console.error('[Refuel] Error reading LTFT:', error);
@@ -954,16 +976,19 @@ export function useRefuelMonitor({
           setCurrentLTFT(ltft);
         }
         
-        // Adicionar ao histórico (Limitar a 500 amostras)
-        setFuelTrimHistory(prev => {
-          const updated = [...prev, {
-            timestamp: Date.now(),
-            stft: stft ?? 0,
-            ltft: ltft ?? 0,
-            distance: distanceRef.current,
-          }];
-          return updated.slice(-500);
-        });
+        // Adicionar ao histórico só com valores válidos (mantém último valor se null)
+        if (stft !== null || ltft !== null) {
+          setFuelTrimHistory(prev => {
+            const lastEntry = prev[prev.length - 1];
+            const updated = [...prev, {
+              timestamp: Date.now(),
+              stft: stft ?? lastEntry?.stft ?? 0,
+              ltft: ltft ?? lastEntry?.ltft ?? 0,
+              distance: distanceRef.current,
+            }];
+            return updated.slice(-500);
+          });
+        }
       }
       
       // ========== 4. LER FUEL LEVEL INTEGRADO (THROTTLED 5s) ==========
