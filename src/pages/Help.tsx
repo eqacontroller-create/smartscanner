@@ -6,6 +6,8 @@ import { StepByStep } from "@/components/help/StepByStep";
 import { GlossaryItem } from "@/components/help/GlossaryItem";
 import { FAQItem } from "@/components/help/FAQItem";
 import { BenefitCard } from "@/components/help/BenefitCard";
+import { HelpSearch } from "@/components/help/HelpSearch";
+import { useHelpSearch } from "@/hooks/useHelpSearch";
 import {
   ArrowLeft,
   Bluetooth,
@@ -57,6 +59,7 @@ import {
 } from "lucide-react";
 
 export default function Help() {
+  const { results, isSearching, handleSearch, scrollToSection } = useHelpSearch();
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -87,14 +90,24 @@ export default function Help() {
       {/* Content */}
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-3xl space-y-4 safe-area-x">
         {/* Intro */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-foreground mb-2">
             Bem-vindo ao OBD-II Scanner! 🚗
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             Aqui você encontra tutoriais e explicações simples para aproveitar
             ao máximo o diagnóstico do seu veículo.
           </p>
+          
+          {/* Search Bar */}
+          <div className="max-w-md mx-auto">
+            <HelpSearch
+              onSearch={handleSearch}
+              onResultClick={scrollToSection}
+              results={results}
+              isSearching={isSearching}
+            />
+          </div>
         </div>
 
         {/* Benefícios - Seção Comercial */}
