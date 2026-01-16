@@ -3,26 +3,7 @@ import { useVoiceRecognition } from './useVoiceRecognition';
 import { useJarvis } from './useJarvis';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
 import { TripData } from '@/types/tripSettings';
-import { supabase } from '@/integrations/supabase/client';
-
-interface VehicleContext {
-  rpm: number | null;
-  speed: number | null;
-  temperature: number | null;
-  voltage: number | null;
-  fuelLevel: number | null;
-  engineLoad: number | null;
-  isConnected: boolean;
-  isPolling: boolean;
-  brand?: string;
-  brandCharacteristics?: string;
-  modelYear?: string;
-}
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { JarvisService, VehicleContext, Message } from '@/services/ai/JarvisService';
 
 interface UseJarvisAIOptions {
   settings?: JarvisSettings;
@@ -123,20 +104,15 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
       const newUserMessage: Message = { role: 'user', content: userMessage };
       setConversationHistory(prev => [...prev, newUserMessage]);
       
-      const { data, error } = await supabase.functions.invoke('jarvis-ai', {
-        body: {
-          message: userMessage,
-          vehicleContext: vehicleContextRef.current,
-          tripData: tripDataRef.current,
-          conversationHistory: conversationHistory.slice(-6),
-        },
+      // Usar JarvisService em vez de chamada direta
+      const response = await JarvisService.chat({
+        message: userMessage,
+        vehicleContext: vehicleContextRef.current,
+        tripData: tripDataRef.current,
+        conversationHistory: conversationHistory.slice(-6),
       });
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      const aiResponse = data?.response || 'Desculpe, não entendi.';
+      const aiResponse = response.response;
       setLastResponse(aiResponse);
       
       // Adicionar resposta ao histórico
@@ -272,3 +248,6 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
     isVoiceSupported: isSTTSupported,
   };
 }
+
+// Re-export types for external use
+export type { VehicleContext, Message };

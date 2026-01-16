@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { JarvisSettings, defaultJarvisSettings, FuelType, AIProvider, OpenAIVoice } from '@/types/jarvisSettings';
 import { TripSettings, defaultTripSettings } from '@/types/tripSettings';
+import { ProfileService, ProfileData } from '@/services/supabase/ProfileService';
 import { toast } from 'sonner';
 
 // Chaves do localStorage para migração
@@ -47,21 +47,21 @@ const defaultProfile: SyncedProfile = {
 };
 
 // Converte dados do banco para o formato do app
-function dbToProfile(dbData: Record<string, unknown>): SyncedProfile {
+function dbToProfile(dbData: ProfileData): SyncedProfile {
   return {
     vehicle: {
-      vin: dbData.vin as string | null,
-      vehicleBrand: dbData.vehicle_brand as string | null,
-      vehicleModel: dbData.vehicle_model as string | null,
-      modelYear: dbData.model_year as string | null,
+      vin: dbData.vin ?? null,
+      vehicleBrand: dbData.vehicle_brand ?? null,
+      vehicleModel: dbData.vehicle_model ?? null,
+      modelYear: dbData.model_year ?? null,
     },
     jarvisSettings: {
       fuelType: (dbData.fuel_type as FuelType) || 'gasoline',
-      redlineRPM: (dbData.redline_rpm as number) || 6500,
-      highTempThreshold: (dbData.high_temp_threshold as number) || 100,
-      speedLimit: (dbData.speed_limit as number) || 120,
-      lowVoltageThreshold: (dbData.low_voltage_threshold as number) || 12.5,
-      currentMileage: (dbData.current_mileage as number) || 0,
+      redlineRPM: dbData.redline_rpm ?? 6500,
+      highTempThreshold: dbData.high_temp_threshold ?? 100,
+      speedLimit: dbData.speed_limit ?? 120,
+      lowVoltageThreshold: dbData.low_voltage_threshold ?? 12.5,
+      currentMileage: dbData.current_mileage ?? 0,
       nextOilChange: 15000,
       nextInspection: 30000,
       welcomeEnabled: dbData.welcome_enabled !== false,
@@ -80,30 +80,30 @@ function dbToProfile(dbData: Record<string, unknown>): SyncedProfile {
       wakeWord: 'jarvis',
       keepAwakeEnabled: dbData.keep_awake_enabled !== false,
       autoReconnectEnabled: true,
-      volume: (dbData.voice_volume as number) || 1.0,
-      rate: (dbData.voice_rate as number) || 0.9,
-      pitch: (dbData.voice_pitch as number) || 0.95,
-      selectedVoiceURI: dbData.selected_voice_uri as string | null || null,
+      volume: dbData.voice_volume ?? 1.0,
+      rate: dbData.voice_rate ?? 0.9,
+      pitch: dbData.voice_pitch ?? 0.95,
+      selectedVoiceURI: dbData.selected_voice_uri ?? null,
       // Cérebro do Jarvis (IA Híbrida)
       aiProvider: (dbData.ai_provider as AIProvider) || 'basic',
-      openaiApiKey: dbData.openai_api_key as string | null || null,
+      openaiApiKey: dbData.openai_api_key ?? null,
       openaiVoice: (dbData.openai_voice as OpenAIVoice) || 'onyx',
       openaiTTSEnabled: dbData.openai_tts_enabled !== false,
     },
     tripSettings: {
-      fuelPrice: (dbData.fuel_price as number) || 6.00,
-      averageConsumption: (dbData.average_consumption as number) || 12,
-      vehicleCostPerKm: (dbData.vehicle_cost_per_km as number) || 0.10,
+      fuelPrice: dbData.fuel_price ?? 6.00,
+      averageConsumption: dbData.average_consumption ?? 12,
+      vehicleCostPerKm: dbData.vehicle_cost_per_km ?? 0.10,
       autoRideEnabled: dbData.auto_ride_enabled !== false,
-      autoStartDelay: (dbData.auto_start_delay as number) || 5,
-      autoStopDelay: (dbData.auto_stop_delay as number) || 30,
-      speedThreshold: (dbData.speed_threshold as number) || 10,
+      autoStartDelay: dbData.auto_start_delay ?? 5,
+      autoStopDelay: dbData.auto_stop_delay ?? 30,
+      speedThreshold: dbData.speed_threshold ?? 10,
     },
   };
 }
 
 // Converte dados do app para o formato do banco
-function profileToDb(profile: SyncedProfile, userId: string): Record<string, unknown> {
+function profileToDb(profile: SyncedProfile, userId: string): ProfileData {
   return {
     id: userId,
     // Vehicle
@@ -207,19 +207,8 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
       setLoading(true);
       
       try {
-        // Tenta carregar do Supabase
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Erro ao carregar perfil:', error);
-          toast.error('Erro ao carregar configurações');
-          setLoading(false);
-          return;
-        }
+        // Tenta carregar do Supabase usando ProfileService
+        const data = await ProfileService.getById(user.id);
 
         // Se encontrou perfil no banco
         if (data) {
@@ -242,15 +231,9 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
           // Prepara dados para inserção
           const dbData = profileToDb(newProfile, user.id);
           
-          // Cria perfil no banco
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert(dbData as any);
-          
-          if (insertError) {
-            console.error('Erro ao criar perfil:', insertError);
-            toast.error('Erro ao criar configurações');
-          } else {
+          // Cria perfil no banco usando ProfileService
+          try {
+            await ProfileService.insert(dbData);
             console.log('✅ Perfil criado no Cloud');
             setProfile(newProfile);
             setSynced(true);
@@ -261,10 +244,14 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
               clearLocalStorageData();
               toast.success('Suas configurações foram sincronizadas na nuvem!');
             }
+          } catch (insertError) {
+            console.error('Erro ao criar perfil:', insertError);
+            toast.error('Erro ao criar configurações');
           }
         }
       } catch (err) {
         console.error('Erro inesperado:', err);
+        toast.error('Erro ao carregar configurações');
       }
       
       setLoading(false);
@@ -279,19 +266,16 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
     
     setSynced(false);
     
-    const dbData = profileToDb(updatedProfile, user.id);
-    const { error } = await supabase
-      .from('profiles')
-      .upsert(dbData as any);
-    
-    if (error) {
-      console.error('Erro ao salvar perfil:', error);
-      toast.error('Erro ao salvar configurações');
-      setSynced(false);
-    } else {
+    try {
+      const dbData = profileToDb(updatedProfile, user.id);
+      await ProfileService.upsert(dbData);
       console.log('✅ Perfil salvo no Cloud');
       setSynced(true);
       setLastSyncedAt(new Date());
+    } catch (error) {
+      console.error('Erro ao salvar perfil:', error);
+      toast.error('Erro ao salvar configurações');
+      setSynced(false);
     }
   }, [user]);
 

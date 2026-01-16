@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { RideEntry, DailySummary } from '@/types/tripSettings';
+import { RidesService } from '@/services/supabase/RidesService';
 
 const LOCAL_STORAGE_KEY = 'smartscanner-today-rides';
 
@@ -55,41 +55,16 @@ export function useSyncedRides(): UseSyncedRidesReturn {
         }
       }
 
-      // If authenticated, sync from Supabase
+      // If authenticated, sync from Supabase using RidesService
       if (isAuthenticated && user) {
         try {
-          const startOfDay = new Date(todayStr);
-          const endOfDay = new Date(todayStr);
-          endOfDay.setDate(endOfDay.getDate() + 1);
-
-          const { data, error } = await supabase
-            .from('rides')
-            .select('*')
-            .eq('user_id', user.id)
-            .gte('start_time', startOfDay.toISOString())
-            .lt('start_time', endOfDay.toISOString())
-            .order('start_time', { ascending: true });
-
-          if (data && !error) {
-            const cloudRides: RideEntry[] = data.map(r => ({
-              id: r.id,
-              startTime: new Date(r.start_time).getTime(),
-              endTime: r.end_time ? new Date(r.end_time).getTime() : Date.now(),
-              distance: Number(r.distance),
-              cost: Number(r.cost),
-              costPerKm: Number(r.cost_per_km),
-              duration: r.duration ?? 0,
-              averageSpeed: Number(r.average_speed),
-              amountReceived: r.amount_received ? Number(r.amount_received) : undefined,
-              profit: r.profit ? Number(r.profit) : undefined,
-            }));
-            setTodayRides(cloudRides);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-              date: todayStr,
-              rides: cloudRides,
-            }));
-            setSynced(true);
-          }
+          const cloudRides = await RidesService.getTodayRides(user.id);
+          setTodayRides(cloudRides);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+            date: todayStr,
+            rides: cloudRides,
+          }));
+          setSynced(true);
         } catch (err) {
           console.error('Error loading rides from cloud:', err);
         }
@@ -105,54 +80,42 @@ export function useSyncedRides(): UseSyncedRidesReturn {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const channel = supabase
-      .channel('rides-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rides',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const todayStr = getTodayDateString();
-          
-          if (payload.eventType === 'INSERT') {
-            const newRide = payload.new;
-            const rideDate = new Date(newRide.start_time).toISOString().split('T')[0];
-            if (rideDate === todayStr) {
-              const ride: RideEntry = {
-                id: newRide.id,
-                startTime: new Date(newRide.start_time).getTime(),
-                endTime: newRide.end_time ? new Date(newRide.end_time).getTime() : Date.now(),
-                distance: Number(newRide.distance),
-                cost: Number(newRide.cost),
-                costPerKm: Number(newRide.cost_per_km),
-                duration: newRide.duration ?? 0,
-                averageSpeed: Number(newRide.average_speed),
-                amountReceived: newRide.amount_received ? Number(newRide.amount_received) : undefined,
-                profit: newRide.profit ? Number(newRide.profit) : undefined,
-              };
-              setTodayRides(prev => [...prev, ride]);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new;
-            setTodayRides(prev => prev.map(r => 
-              r.id === updated.id 
-                ? {
-                    ...r,
-                    amountReceived: updated.amount_received ? Number(updated.amount_received) : undefined,
-                    profit: updated.profit ? Number(updated.profit) : undefined,
-                  }
-                : r
-            ));
-          } else if (payload.eventType === 'DELETE') {
-            setTodayRides(prev => prev.filter(r => r.id !== payload.old.id));
-          }
+    const channel = RidesService.subscribeToChanges(user.id, (payload) => {
+      const todayStr = getTodayDateString();
+      
+      if (payload.eventType === 'INSERT') {
+        const newRide = payload.new;
+        const rideDate = new Date(newRide.start_time).toISOString().split('T')[0];
+        if (rideDate === todayStr) {
+          const ride: RideEntry = {
+            id: newRide.id,
+            startTime: new Date(newRide.start_time).getTime(),
+            endTime: newRide.end_time ? new Date(newRide.end_time).getTime() : Date.now(),
+            distance: Number(newRide.distance),
+            cost: Number(newRide.cost),
+            costPerKm: Number(newRide.cost_per_km),
+            duration: newRide.duration ?? 0,
+            averageSpeed: Number(newRide.average_speed),
+            amountReceived: newRide.amount_received ? Number(newRide.amount_received) : undefined,
+            profit: newRide.profit ? Number(newRide.profit) : undefined,
+          };
+          setTodayRides(prev => [...prev, ride]);
         }
-      )
-      .subscribe();
+      } else if (payload.eventType === 'UPDATE') {
+        const updated = payload.new;
+        setTodayRides(prev => prev.map(r => 
+          r.id === updated.id 
+            ? {
+                ...r,
+                amountReceived: updated.amount_received ? Number(updated.amount_received) : undefined,
+                profit: updated.profit ? Number(updated.profit) : undefined,
+              }
+            : r
+        ));
+      } else if (payload.eventType === 'DELETE') {
+        setTodayRides(prev => prev.filter(r => r.id !== payload.old.id));
+      }
+    });
 
     return () => {
       channel.unsubscribe();
@@ -172,22 +135,10 @@ export function useSyncedRides(): UseSyncedRidesReturn {
       return updated;
     });
 
-    // Sync to Supabase if authenticated
+    // Sync to Supabase if authenticated using RidesService
     if (isAuthenticated && user) {
       try {
-        await supabase.from('rides').insert({
-          id: ride.id,
-          user_id: user.id,
-          start_time: new Date(ride.startTime).toISOString(),
-          end_time: new Date(ride.endTime).toISOString(),
-          distance: ride.distance,
-          cost: ride.cost,
-          cost_per_km: ride.costPerKm,
-          duration: ride.duration,
-          average_speed: ride.averageSpeed,
-          amount_received: ride.amountReceived,
-          profit: ride.profit,
-        });
+        await RidesService.save(ride, user.id);
         setSynced(true);
       } catch (err) {
         console.error('Error saving ride to cloud:', err);
@@ -209,19 +160,10 @@ export function useSyncedRides(): UseSyncedRidesReturn {
       return updated;
     });
 
-    // Sync to Supabase if authenticated
+    // Sync to Supabase if authenticated using RidesService
     if (isAuthenticated && user) {
       try {
-        const dbUpdates: Record<string, unknown> = {};
-        if (updates.amountReceived !== undefined) dbUpdates.amount_received = updates.amountReceived;
-        if (updates.profit !== undefined) dbUpdates.profit = updates.profit;
-        if (updates.distance !== undefined) dbUpdates.distance = updates.distance;
-        if (updates.cost !== undefined) dbUpdates.cost = updates.cost;
-
-        await supabase
-          .from('rides')
-          .update(dbUpdates)
-          .eq('id', id);
+        await RidesService.update(id, updates);
         setSynced(true);
       } catch (err) {
         console.error('Error updating ride in cloud:', err);
@@ -240,19 +182,10 @@ export function useSyncedRides(): UseSyncedRidesReturn {
       rides: [],
     }));
 
-    // Clear from Supabase if authenticated
+    // Clear from Supabase if authenticated using RidesService
     if (isAuthenticated && user) {
       try {
-        const startOfDay = new Date(todayStr);
-        const endOfDay = new Date(todayStr);
-        endOfDay.setDate(endOfDay.getDate() + 1);
-
-        await supabase
-          .from('rides')
-          .delete()
-          .eq('user_id', user.id)
-          .gte('start_time', startOfDay.toISOString())
-          .lt('start_time', endOfDay.toISOString());
+        await RidesService.deleteTodayRides(user.id);
         setSynced(true);
       } catch (err) {
         console.error('Error clearing rides from cloud:', err);
