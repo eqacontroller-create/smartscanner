@@ -664,13 +664,16 @@ export function useRefuelMonitor({
           setCurrentLTFT(ltft);
         }
         
-        // Adicionar ao histórico
-        setFuelTrimHistory(prev => [...prev, {
-          timestamp: Date.now(),
-          stft: stft ?? 0,
-          ltft: ltft ?? 0,
-          distance: distanceRef.current,
-        }]);
+        // Adicionar ao histórico (CORREÇÃO: Limitar a 500 amostras)
+        setFuelTrimHistory(prev => {
+          const updated = [...prev, {
+            timestamp: Date.now(),
+            stft: stft ?? 0,
+            ltft: ltft ?? 0,
+            distance: distanceRef.current,
+          }];
+          return updated.slice(-500); // Manter apenas últimas 500 amostras
+        });
       }
       
       // CORREÇÃO 3: LER FUEL LEVEL INTEGRADO (THROTTLED 5s)

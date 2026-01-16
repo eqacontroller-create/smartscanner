@@ -103,9 +103,9 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
     // Amostras de velocidade para média
     if (currentSpeed > 0) {
       speedSamplesRef.current.push(currentSpeed);
-      // Limitar amostras para evitar crescimento infinito
-      if (speedSamplesRef.current.length > 1000) {
-        speedSamplesRef.current = speedSamplesRef.current.slice(-500);
+      // CORREÇÃO: Limitar amostras de forma mais agressiva para evitar pico de memória
+      if (speedSamplesRef.current.length > 200) {
+        speedSamplesRef.current = speedSamplesRef.current.slice(-100);
       }
     }
     
