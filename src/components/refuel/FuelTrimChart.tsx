@@ -52,7 +52,7 @@ export function FuelTrimChart({ data, warningThreshold }: FuelTrimChartProps) {
   };
   
   return (
-    <div className="h-[120px] w-full">
+    <div className="h-[100px] sm:h-[120px] md:h-[140px] w-full">
       <ChartContainer config={chartConfig} className="h-full w-full">
         <ComposedChart data={sampledData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <defs>

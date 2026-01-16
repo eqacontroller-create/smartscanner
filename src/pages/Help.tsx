@@ -50,9 +50,9 @@ export default function Help() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border safe-area-top">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
+          <Button variant="ghost" size="icon" asChild className="h-10 w-10 min-h-[44px]">
             <Link to="/">
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -65,7 +65,7 @@ export default function Help() {
       </header>
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-6 max-w-3xl space-y-4">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-3xl space-y-4 safe-area-x">
         {/* Intro */}
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-foreground mb-2">
@@ -93,7 +93,7 @@ export default function Help() {
           </div>
 
           {/* Grid de Benefícios */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-5">
             <BenefitCard 
               icon={PiggyBank} 
               title="Economize Dinheiro" 

@@ -189,29 +189,31 @@ export function TripHistory({ history, onClearHistory }: TripHistoryProps) {
             <History className="h-4 w-4" />
             Histórico de Viagens
           </CardTitle>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-money hover:text-money hover:bg-money/10"
+              className="h-9 w-9 sm:h-8 sm:w-auto sm:px-2 text-money hover:text-money hover:bg-money/10"
               onClick={exportToCSV}
               title="Exportar CSV"
             >
               <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1 text-xs">CSV</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-money hover:text-money hover:bg-money/10"
+              className="h-9 w-9 sm:h-8 sm:w-auto sm:px-2 text-money hover:text-money hover:bg-money/10"
               onClick={exportToPDF}
               title="Exportar PDF"
             >
               <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1 text-xs">PDF</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="h-9 w-9 sm:h-8 sm:w-auto sm:px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={onClearHistory}
               title="Limpar histórico"
             >

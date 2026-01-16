@@ -49,10 +49,13 @@ export default function Install() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 safe-area-y">
+      <div className="w-full max-w-md space-y-4 sm:space-y-6">
+        <Link 
+          to="/" 
+          className="inline-flex items-center min-h-[44px] py-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
           Voltar ao App
         </Link>
 

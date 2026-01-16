@@ -94,10 +94,11 @@ export function JarvisFloatingWidget({
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 safe-area-bottom">
+    <div className="fixed bottom-4 right-2 sm:right-4 z-50 safe-area-bottom safe-area-x">
       <div className={cn(
         "bg-card border border-border rounded-2xl shadow-xl transition-all duration-300 overflow-hidden",
-        isExpanded ? "w-80" : "w-72",
+        "w-[calc(100vw-1rem)] max-w-72 sm:max-w-80",
+        isExpanded && "max-w-80 sm:max-w-96",
         isWakeWordDetected && "border-primary"
       )}>
         {/* Header */}
