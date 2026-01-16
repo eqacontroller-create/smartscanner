@@ -288,82 +288,99 @@ export function useRefuelMonitor({
     return null;
   }, [fuelLevelSupported, sendRawCommand]);
   
-  // CORREÇÃO 4: Ler STFT com proteção de mutex
-  // BUG FIX: Só bloquear se stftSupported === false (não quando null/verificando)
+  // CORREÇÃO v4: Ler STFT com RETRY e timeout maior
+  // Polling do dashboard é pausado durante monitoramento, então mutex é menos crítico
   const readSTFT = useCallback(async (): Promise<number | null> => {
     if (stftSupported === false) {
       console.log('[Refuel] readSTFT bloqueado - PID não suportado');
       return null;
     }
+    
+    // Permitir leitura mesmo com mutex ocupado (polling pausado)
+    // Apenas log de warning
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readSTFT ignorado - outra leitura em andamento');
-      return null;
+      console.log('[Refuel] readSTFT - aguardando mutex...');
+      await new Promise(r => setTimeout(r, 100));
     }
     
     isReadingOBDRef.current = true;
-    try {
-      const response = await sendRawCommand('0106', 2000);
-      console.log('[Refuel] STFT raw response:', JSON.stringify(response));
-      
-      // Limpar resposta - remover espaços extras, newlines, headers
-      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
-      console.log('[Refuel] STFT clean response:', cleanResponse);
-      
-      // Tentar múltiplos formatos de resposta
-      const match = cleanResponse.match(/41\s*06\s*([0-9A-F]{2})/i) || 
-                    cleanResponse.match(/(?:^|\s)06\s*([0-9A-F]{2})(?:\s|$)/i);
-      console.log('[Refuel] STFT regex match:', match);
-      
-      if (match) {
-        const a = parseInt(match[1], 16);
-        const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
-        console.log('[Refuel] STFT parsed:', value);
-        return value;
-      } else {
-        console.warn('[Refuel] STFT regex failed - unexpected format');
+    
+    // RETRY: Tentar até 2 vezes com timeout maior
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await sendRawCommand('0106', 2500); // Timeout maior
+        console.log(`[Refuel] STFT attempt ${attempt} raw:`, JSON.stringify(response));
+        
+        // Limpar resposta - remover espaços extras, newlines, headers
+        const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+        
+        // Tentar múltiplos formatos de resposta
+        const match = cleanResponse.match(/41\s*06\s*([0-9A-F]{2})/i) || 
+                      cleanResponse.match(/(?:^|\s)06\s*([0-9A-F]{2})(?:\s|$)/i);
+        
+        if (match) {
+          const a = parseInt(match[1], 16);
+          const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
+          console.log('[Refuel] STFT parsed:', value);
+          isReadingOBDRef.current = false;
+          return value;
+        } else if (!cleanResponse.includes('NODATA') && !cleanResponse.includes('ERROR')) {
+          console.warn(`[Refuel] STFT attempt ${attempt} - unexpected format:`, cleanResponse);
+        }
+      } catch (error) {
+        console.error(`[Refuel] STFT attempt ${attempt} error:`, error);
       }
-    } catch (error) {
-      console.error('[Refuel] Error reading STFT:', error);
-    } finally {
-      isReadingOBDRef.current = false;
+      
+      // Pequeno delay antes de retry
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 150));
+      }
     }
+    
+    isReadingOBDRef.current = false;
     return null;
   }, [stftSupported, sendRawCommand]);
   
-  // CORREÇÃO 4: Ler LTFT com proteção de mutex
+  // CORREÇÃO v4: Ler LTFT com RETRY e timeout maior
   const readLTFT = useCallback(async (): Promise<number | null> => {
+    // Aguardar se mutex ocupado
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readLTFT ignorado - outra leitura em andamento');
-      return null;
+      console.log('[Refuel] readLTFT - aguardando mutex...');
+      await new Promise(r => setTimeout(r, 100));
     }
     
     isReadingOBDRef.current = true;
-    try {
-      const response = await sendRawCommand('0107', 2000);
-      console.log('[Refuel] LTFT raw response:', JSON.stringify(response));
-      
-      // Limpar resposta
-      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
-      console.log('[Refuel] LTFT clean response:', cleanResponse);
-      
-      // Tentar múltiplos formatos
-      const match = cleanResponse.match(/41\s*07\s*([0-9A-F]{2})/i) ||
-                    cleanResponse.match(/(?:^|\s)07\s*([0-9A-F]{2})(?:\s|$)/i);
-      console.log('[Refuel] LTFT regex match:', match);
-      
-      if (match) {
-        const a = parseInt(match[1], 16);
-        const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
-        console.log('[Refuel] LTFT parsed:', value);
-        return value;
-      } else {
-        console.warn('[Refuel] LTFT regex failed - unexpected format');
+    
+    // RETRY: Tentar até 2 vezes
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await sendRawCommand('0107', 2500);
+        console.log(`[Refuel] LTFT attempt ${attempt} raw:`, JSON.stringify(response));
+        
+        const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+        
+        const match = cleanResponse.match(/41\s*07\s*([0-9A-F]{2})/i) ||
+                      cleanResponse.match(/(?:^|\s)07\s*([0-9A-F]{2})(?:\s|$)/i);
+        
+        if (match) {
+          const a = parseInt(match[1], 16);
+          const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
+          console.log('[Refuel] LTFT parsed:', value);
+          isReadingOBDRef.current = false;
+          return value;
+        } else if (!cleanResponse.includes('NODATA') && !cleanResponse.includes('ERROR')) {
+          console.warn(`[Refuel] LTFT attempt ${attempt} - unexpected format:`, cleanResponse);
+        }
+      } catch (error) {
+        console.error(`[Refuel] LTFT attempt ${attempt} error:`, error);
       }
-    } catch (error) {
-      console.error('[Refuel] Error reading LTFT:', error);
-    } finally {
-      isReadingOBDRef.current = false;
+      
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 150));
+      }
     }
+    
+    isReadingOBDRef.current = false;
     return null;
   }, [sendRawCommand]);
   

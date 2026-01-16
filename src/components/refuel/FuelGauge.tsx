@@ -1,7 +1,7 @@
 // Gauge visual para valores de Fuel Trim (STFT/LTFT)
 
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -92,13 +92,17 @@ export function FuelGauge({
 
             {/* Value */}
             <div className={cn(
-              'text-2xl font-mono font-bold mb-2 transition-colors',
+              'text-2xl font-mono font-bold mb-2 transition-colors flex items-center gap-2',
               currentColors.text
             )}>
-              {value !== null 
-                ? `${value > 0 ? '+' : ''}${value.toFixed(1)}%` 
-                : '--'
-              }
+              {value !== null ? (
+                `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-lg">--</span>
+                </span>
+              )}
             </div>
 
             {/* Visual Bar */}
