@@ -57,11 +57,14 @@ export function RefuelFlowSelector({
           {/* Opção 1: Abastecimento Completo */}
           <Button
             variant="outline"
-            className="h-auto p-4 flex flex-col items-start gap-2 text-left hover:border-primary/50 transition-colors"
+            className="h-auto p-4 flex flex-col items-start gap-2 text-left 
+                       hover:border-primary/50 hover:bg-primary/5 hover:scale-[1.02]
+                       active:scale-[0.98] transition-all duration-200 ease-out
+                       animate-fade-in [animation-delay:100ms]"
             onClick={handleSelectRefuel}
           >
             <div className="flex items-center gap-2 w-full">
-              <Fuel className="h-5 w-5 text-primary shrink-0" />
+              <Fuel className="h-5 w-5 text-primary shrink-0 transition-transform group-hover:scale-110" />
               <span className="font-semibold flex-1">Vou Abastecer</span>
               {isAuthenticated ? (
                 <Cloud className="h-4 w-4 text-muted-foreground" />
@@ -78,12 +81,16 @@ export function RefuelFlowSelector({
           {/* Opção 2: Teste Rápido */}
           <Button
             variant="outline"
-            className="h-auto p-4 flex flex-col items-start gap-2 text-left hover:border-blue-500/50 transition-colors"
+            className="h-auto p-4 flex flex-col items-start gap-2 text-left 
+                       hover:border-blue-500/50 hover:bg-blue-500/5 hover:scale-[1.02]
+                       active:scale-[0.98] transition-all duration-200 ease-out
+                       animate-fade-in [animation-delay:200ms]
+                       disabled:opacity-50 disabled:hover:scale-100"
             onClick={handleSelectQuickTest}
             disabled={isStftUnavailable}
           >
             <div className="flex items-center gap-2 w-full">
-              <FlaskConical className="h-5 w-5 text-blue-500 shrink-0" />
+              <FlaskConical className="h-5 w-5 text-blue-500 shrink-0 transition-transform group-hover:scale-110" />
               <span className="font-semibold flex-1">Testar Combustível</span>
             </div>
             <span className="text-xs text-muted-foreground">
@@ -94,7 +101,7 @@ export function RefuelFlowSelector({
           </Button>
 
           {/* Nota informativa */}
-          <p className="text-xs text-center text-muted-foreground pt-2">
+          <p className="text-xs text-center text-muted-foreground pt-2 animate-fade-in [animation-delay:300ms]">
             Ambos os modos analisam o Fuel Trim enquanto você dirige
           </p>
         </div>
