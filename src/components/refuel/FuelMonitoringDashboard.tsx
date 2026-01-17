@@ -14,13 +14,13 @@ import {
   FlaskConical,
   X,
   Info,
-  TrendingUp,
-  TrendingDown,
-  Minus,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { RefuelMode, RefuelFlowType, RefuelSettings, FuelTrimSample } from '@/types/refuelTypes';
 import { FuelTrimChart } from './FuelTrimChart';
 import { FuelGauge } from './FuelGauge';
+import { O2SensorMonitor } from './O2SensorMonitor';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -28,6 +28,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { useState } from 'react';
+import type { O2SensorReading } from '@/types/fuelForensics';
 
 interface FuelMonitoringDashboardProps {
   mode: RefuelMode;
@@ -35,6 +42,9 @@ interface FuelMonitoringDashboardProps {
   distanceMonitored: number;
   currentSTFT: number | null;
   currentLTFT: number | null;
+  currentO2: number | null;
+  o2Readings: O2SensorReading[];
+  o2FrozenDuration?: number;
   anomalyActive: boolean;
   anomalyDuration: number;
   fuelTrimHistory: FuelTrimSample[];
@@ -50,6 +60,9 @@ export function FuelMonitoringDashboard({
   distanceMonitored,
   currentSTFT,
   currentLTFT,
+  currentO2,
+  o2Readings,
+  o2FrozenDuration = 0,
   anomalyActive,
   anomalyDuration,
   fuelTrimHistory,
@@ -58,6 +71,7 @@ export function FuelMonitoringDashboard({
   isSyncing,
   onCancel,
 }: FuelMonitoringDashboardProps) {
+  const [showO2Monitor, setShowO2Monitor] = useState(true);
   const isQuickTest = flowType === 'quick-test';
   const activeSettings = frozenSettings || settings;
   const progress = (distanceMonitored / activeSettings.monitoringDistance) * 100;
@@ -270,6 +284,25 @@ export function FuelMonitoringDashboard({
             </p>
           </div>
         </div>
+        
+        {/* Monitor O2 Sensor em tempo real */}
+        {o2Readings.length > 0 && (
+          <Collapsible open={showO2Monitor} onOpenChange={setShowO2Monitor}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between">
+                <span className="text-sm font-medium">Sensor O2 (Sonda Lambda)</span>
+                {showO2Monitor ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <O2SensorMonitor
+                currentO2={currentO2}
+                o2Readings={o2Readings}
+                frozenDuration={o2FrozenDuration}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
         
         {/* Gráfico de Fuel Trim */}
         {fuelTrimHistory.length > 0 && (

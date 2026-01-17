@@ -16,6 +16,8 @@ export { FuelMonitoringDashboard } from './FuelMonitoringDashboard';
 export { FuelGauge } from './FuelGauge';
 export { FuelHistory } from './FuelHistory';
 export { FuelWaitingCard } from './FuelWaitingCard';
+export { O2SensorMonitor } from './O2SensorMonitor';
+export { AdaptationProgress } from './AdaptationProgress';
 
 // Componentes de Comparação de Postos
 export { StationRanking } from './StationRanking';

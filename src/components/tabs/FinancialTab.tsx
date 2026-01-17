@@ -22,6 +22,7 @@ import { DollarSign, Timer, Fuel, History, Car, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
+import type { O2SensorReading } from '@/types/fuelForensics';
 
 interface FinancialTabProps {
   // Trip Calculator
@@ -52,6 +53,9 @@ interface FinancialTabProps {
   distanceMonitored: number;
   currentSTFT: number | null;
   currentLTFT: number | null;
+  currentO2: number | null;
+  o2Readings: O2SensorReading[];
+  o2FrozenDuration?: number;
   anomalyActive: boolean;
   anomalyDuration: number;
   fuelTrimHistory: FuelTrimSample[];
@@ -95,6 +99,9 @@ export function FinancialTab({
   distanceMonitored,
   currentSTFT,
   currentLTFT,
+  currentO2,
+  o2Readings,
+  o2FrozenDuration,
   anomalyActive,
   anomalyDuration,
   fuelTrimHistory,
@@ -262,6 +269,9 @@ export function FinancialTab({
               distanceMonitored={distanceMonitored}
               currentSTFT={currentSTFT}
               currentLTFT={currentLTFT}
+              currentO2={currentO2}
+              o2Readings={o2Readings}
+              o2FrozenDuration={o2FrozenDuration}
               anomalyActive={anomalyActive}
               anomalyDuration={anomalyDuration}
               fuelTrimHistory={fuelTrimHistory}
