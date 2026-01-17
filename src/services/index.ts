@@ -17,6 +17,9 @@ export { TTSService } from './ai/TTSService';
 export { VisionService } from './ai/VisionService';
 export { DTCEstimateService, getDTCEstimate } from './ai/DTCEstimateService';
 
+// Report Services
+export { generateDTCReportPDF, downloadPDF } from './report/DTCScanReportService';
+
 // Re-export types
 export type { ProfileData } from './supabase/ProfileService';
 export type { RideData } from './supabase/RidesService';
