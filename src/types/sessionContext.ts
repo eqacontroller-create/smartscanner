@@ -6,6 +6,7 @@ import type { DetectedVehicle, VehicleProfile } from '@/lib/vehicleProfiles';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary, RideEntry } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
+import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData } from '@/types/fuelForensics';
 
 // Contexto da sessão do veículo
 export interface SessionContext {
@@ -122,10 +123,17 @@ export interface RefuelContext {
   currentSTFT: number | null;
   currentLTFT: number | null;
   currentFuelLevel: number | null;
+  currentO2: number | null;
   distanceMonitored: number;
   anomalyActive: boolean;
   anomalyDuration: number;
   frozenSettings: RefuelSettings | null;
+  
+  // Fuel State Machine
+  fuelContext: FuelChangeContext;
+  setFuelContext: (context: FuelChangeContext) => void;
+  forensicResult: FuelDiagnosticResult | null;
+  monitoringData: FuelMonitoringData | null;
   
   // Settings
   settings: RefuelSettings;
