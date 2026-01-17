@@ -8,7 +8,7 @@ interface UseSplashScreenOptions {
 }
 
 export function useSplashScreen(options: UseSplashScreenOptions = {}) {
-  const { minDuration = 2800, enabled = true } = options;
+  const { minDuration = 3200, enabled = true } = options; // Duração maior para experiência premium
   
   const [isVisible, setIsVisible] = useState(enabled);
   const [phase, setPhase] = useState<SplashPhase>('ignition');
@@ -40,17 +40,17 @@ export function useSplashScreen(options: UseSplashScreenOptions = {}) {
     // Marcar como mostrado
     sessionStorage.setItem('splash_shown', 'true');
     
-    // Sequência de fases
+    // Sequência de fases sincronizada com áudio premium
     const timers = [
-      // Ignição → Boot (após 400ms)
-      setTimeout(() => setPhase('boot'), 400),
-      // Boot → Ready (após 1600ms)
-      setTimeout(() => setPhase('ready'), 1600),
-      // Ready → Hidden (após minDuration)
+      // Ignição → Boot (curto, para iniciar áudio)
+      setTimeout(() => setPhase('boot'), 300),
+      // Boot → Ready (sincronizado com fim do áudio ~1.6s)
+      setTimeout(() => setPhase('ready'), 1800),
+      // Ready → Hidden (após experiência completa)
       setTimeout(() => {
         setPhase('hidden');
-        // Pequeno delay antes de esconder completamente para fade out
-        setTimeout(() => setIsVisible(false), 300);
+        // Fade out elegante
+        setTimeout(() => setIsVisible(false), 400);
       }, minDuration),
     ];
     
