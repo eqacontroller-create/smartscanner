@@ -236,15 +236,20 @@ export type Database = {
       }
       refuel_entries: {
         Row: {
+          adaptation_complete: boolean | null
           anomaly_details: string | null
           anomaly_detected: boolean | null
           created_at: string | null
           distance_monitored: number | null
+          fuel_context: string | null
           fuel_level_after: number | null
           fuel_level_before: number | null
+          fuel_state: string | null
           id: string
           liters_added: number
           ltft_delta: number | null
+          ltft_final: number | null
+          o2_avg: number | null
           price_per_liter: number
           pump_accuracy_percent: number | null
           quality: string | null
@@ -256,15 +261,20 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          adaptation_complete?: boolean | null
           anomaly_details?: string | null
           anomaly_detected?: boolean | null
           created_at?: string | null
           distance_monitored?: number | null
+          fuel_context?: string | null
           fuel_level_after?: number | null
           fuel_level_before?: number | null
+          fuel_state?: string | null
           id?: string
           liters_added: number
           ltft_delta?: number | null
+          ltft_final?: number | null
+          o2_avg?: number | null
           price_per_liter: number
           pump_accuracy_percent?: number | null
           quality?: string | null
@@ -276,15 +286,20 @@ export type Database = {
           user_id: string
         }
         Update: {
+          adaptation_complete?: boolean | null
           anomaly_details?: string | null
           anomaly_detected?: boolean | null
           created_at?: string | null
           distance_monitored?: number | null
+          fuel_context?: string | null
           fuel_level_after?: number | null
           fuel_level_before?: number | null
+          fuel_state?: string | null
           id?: string
           liters_added?: number
           ltft_delta?: number | null
+          ltft_final?: number | null
+          o2_avg?: number | null
           price_per_liter?: number
           pump_accuracy_percent?: number | null
           quality?: string | null
