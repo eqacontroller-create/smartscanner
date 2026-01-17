@@ -2,35 +2,45 @@ import { useEffect, useRef, memo, useMemo } from 'react';
 import { AnimatedGauge } from './AnimatedGauge';
 import { playIgnitionSound, cleanupAudio } from './IgnitionSound';
 import type { SplashPhase } from '@/hooks/useSplashScreen';
+import { DEFAULT_THEME, type SplashTheme } from '@/lib/splashThemes';
 
 interface SplashScreenProps {
   phase: SplashPhase;
   onSkip?: () => void;
+  theme?: SplashTheme;
 }
 
-// Gerar partículas estilo aurora boreal
-function generateAuroraParticles(count: number) {
+// Gerar partículas estilo aurora boreal - agora aceita hue da marca
+function generateAuroraParticles(count: number, baseHue: number) {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
     y: Math.random() * 100,
     size: Math.random() * 4 + 2,
-    hue: 142 + Math.random() * 40 - 20, // Verde com variação
+    hue: baseHue + Math.random() * 40 - 20, // Variação em torno do hue da marca
     delay: Math.random() * 3,
     duration: 4 + Math.random() * 4,
     amplitude: 15 + Math.random() * 20,
   }));
 }
 
-export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: SplashScreenProps) {
+export const SplashScreen = memo(function SplashScreen({ 
+  phase, 
+  onSkip,
+  theme = DEFAULT_THEME 
+}: SplashScreenProps) {
   const hasPlayedSound = useRef(false);
-  const particles = useMemo(() => generateAuroraParticles(25), []);
+  
+  // Gerar partículas baseadas no hue da marca
+  const particles = useMemo(() => {
+    const count = theme.premium ? 35 : 25; // Mais partículas para marcas premium
+    return generateAuroraParticles(count, theme.colors.particleHue);
+  }, [theme.colors.particleHue, theme.premium]);
   
   // Tocar som premium quando entrar na fase boot
   useEffect(() => {
     if (phase === 'boot' && !hasPlayedSound.current) {
       hasPlayedSound.current = true;
-      // Sincronizado com a animação visual - volume mais alto para presença
       setTimeout(() => {
         playIgnitionSound(0.55);
       }, 50);
@@ -61,6 +71,11 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
   const isReady = phase === 'ready';
   const isBoot = phase === 'boot';
   const isExiting = phase === 'exiting';
+
+  // Glow com cor da marca
+  const glowColor = `hsl(${theme.colors.glow})`;
+  const glowOpacityReady = theme.premium ? 0.18 : 0.15;
+  const glowOpacityNormal = theme.premium ? 0.1 : 0.08;
   
   return (
     <div
@@ -70,11 +85,7 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
           : 'opacity-100 scale-100 blur-0'
       }`}
       style={{
-        background: `
-          radial-gradient(ellipse at 50% 30%, hsl(222 47% 14%) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 80%, hsl(142 40% 8% / 0.5) 0%, transparent 40%),
-          linear-gradient(180deg, hsl(222 47% 5%) 0%, hsl(222 47% 9%) 50%, hsl(222 47% 6%) 100%)
-        `,
+        background: theme.gradient.background,
       }}
       onClick={onSkip}
       role="presentation"
@@ -82,13 +93,24 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
     >
       {/* Noise texture overlay para profundidade */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        className={`absolute inset-0 pointer-events-none ${theme.premium ? 'opacity-[0.04]' : 'opacity-[0.03]'}`}
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
       />
       
-      {/* Partículas Aurora Boreal */}
+      {/* Shimmer metálico para marcas premium */}
+      {theme.premium && !isIgnition && (
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-[0.03] animate-pulse"
+          style={{
+            background: `linear-gradient(45deg, transparent 30%, ${glowColor} 50%, transparent 70%)`,
+            backgroundSize: '200% 200%',
+          }}
+        />
+      )}
+      
+      {/* Partículas Aurora Boreal com cor da marca */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {!isIgnition && particles.map((p) => (
           <div
@@ -109,7 +131,7 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
         ))}
       </div>
       
-      {/* Glow principal atrás do gauge */}
+      {/* Glow principal atrás do gauge - cor da marca */}
       <div 
         className={`absolute w-[500px] h-[500px] rounded-full transition-all duration-1000 ${
           isIgnition ? 'opacity-0 scale-75' : 'opacity-100 scale-100'
@@ -117,8 +139,8 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
         style={{
           background: `
             radial-gradient(circle, 
-              hsl(142 76% 45% / ${isReady ? 0.15 : 0.08}) 0%, 
-              hsl(142 76% 40% / ${isReady ? 0.08 : 0.04}) 30%,
+              ${glowColor.replace(')', ` / ${isReady ? glowOpacityReady : glowOpacityNormal})`)} 0%, 
+              ${glowColor.replace(')', ` / ${isReady ? glowOpacityNormal : 0.04})`)} 30%,
               transparent 70%
             )
           `,
@@ -126,7 +148,25 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
         }}
       />
       
-      {/* Logo com efeito "acordar" (blur → focus) */}
+      {/* Segundo glow para marcas premium */}
+      {theme.premium && (
+        <div 
+          className={`absolute w-[600px] h-[600px] rounded-full transition-all duration-1200 ${
+            isIgnition ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
+          }`}
+          style={{
+            background: `
+              radial-gradient(circle, 
+                ${glowColor.replace(')', ' / 0.05)')} 0%, 
+                transparent 60%
+              )
+            `,
+            filter: 'blur(60px)',
+          }}
+        />
+      )}
+      
+      {/* Logo com nome e slogan da marca */}
       <div 
         className={`mb-10 text-center transition-all duration-700 ease-out ${
           isIgnition 
@@ -139,25 +179,24 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
         <h1 
           className="text-4xl md:text-5xl font-bold tracking-tight"
           style={{
-            background: `linear-gradient(135deg, 
-              hsl(142 76% 60%) 0%, 
-              hsl(142 76% 48%) 50%,
-              hsl(152 70% 45%) 100%
-            )`,
+            background: theme.gradient.logo,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            filter: isReady ? 'drop-shadow(0 0 30px hsl(142 76% 45% / 0.5))' : 'none',
+            filter: isReady ? `drop-shadow(0 0 30px ${glowColor.replace(')', ' / 0.5)')})` : 'none',
             transition: 'filter 0.5s ease-out',
           }}
         >
-          SmartScanner
+          {theme.displayName}
         </h1>
         <p 
           className={`text-sm mt-2 tracking-wide transition-all duration-500 ${
             isReady ? 'text-muted-foreground' : 'text-muted-foreground/60'
           }`}
+          style={{
+            fontStyle: theme.brand !== 'generic' ? 'italic' : 'normal',
+          }}
         >
-          Diagnóstico OBD-II Inteligente
+          {theme.slogan}
         </p>
       </div>
       
@@ -168,7 +207,7 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
         <AnimatedGauge phase={isExiting ? 'ready' : phase} />
       </div>
       
-      {/* Barra de progresso com glow pulsante */}
+      {/* Barra de progresso com cor da marca */}
       <div className="mt-12 w-56 md:w-72">
         <div 
           className="h-1 rounded-full overflow-hidden relative"
@@ -180,20 +219,20 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
               isBoot ? 'opacity-100 animate-pulse' : 'opacity-0'
             }`}
             style={{
-              background: 'linear-gradient(90deg, transparent 0%, hsl(142 76% 45% / 0.3) 50%, transparent 100%)',
+              background: `linear-gradient(90deg, transparent 0%, ${glowColor.replace(')', ' / 0.3)')} 50%, transparent 100%)`,
             }}
           />
           
-          {/* Barra de progresso */}
+          {/* Barra de progresso com gradiente da marca */}
           <div
             className={`h-full rounded-full relative ${
               isIgnition ? 'w-0' : ''
-            } ${isBoot ? 'w-[70%]' : ''} ${isReady ? 'w-full' : ''}`}
+            } ${isBoot ? 'w-[70%]' : ''} ${isReady || isExiting ? 'w-full' : ''}`}
             style={{
-              background: 'linear-gradient(90deg, hsl(142 76% 40%) 0%, hsl(142 76% 55%) 100%)',
+              background: theme.gradient.progress,
               boxShadow: isReady 
-                ? '0 0 20px hsl(142 76% 45% / 0.8), 0 0 40px hsl(142 76% 45% / 0.4)'
-                : '0 0 10px hsl(142 76% 45% / 0.5)',
+                ? `0 0 20px ${glowColor.replace(')', ' / 0.8)')}, 0 0 40px ${glowColor.replace(')', ' / 0.4)')}`
+                : `0 0 10px ${glowColor.replace(')', ' / 0.5)')}`,
               transition: isBoot 
                 ? 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)' 
                 : 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -209,7 +248,8 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
               : 'text-muted-foreground/70'
           }`}
           style={{
-            textShadow: isReady ? '0 0 20px hsl(142 76% 45% / 0.6)' : 'none',
+            textShadow: isReady ? `0 0 20px ${glowColor.replace(')', ' / 0.6)')}` : 'none',
+            color: isReady ? glowColor : undefined,
           }}
         >
           {isIgnition && (
@@ -220,13 +260,19 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
           )}
           {isBoot && (
             <span className="inline-flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse" />
+              <span 
+                className="w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ background: glowColor.replace(')', ' / 0.7)') }}
+              />
               Verificando sistemas
             </span>
           )}
-          {isReady && (
+          {(isReady || isExiting) && (
             <span className="inline-flex items-center gap-2 animate-fade-in">
-              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span 
+                className="w-2 h-2 rounded-full"
+                style={{ background: glowColor }}
+              />
               PRONTO
             </span>
           )}
@@ -236,7 +282,7 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
       {/* Rodapé elegante */}
       <div className="absolute bottom-8 text-center">
         <p className="text-muted-foreground/40 text-xs font-light tracking-wide">
-          v1.0.0
+          {theme.brand !== 'generic' ? 'SmartScanner' : 'v1.0.0'}
         </p>
         {onSkip && (
           <p className="text-muted-foreground/25 text-[10px] mt-2 tracking-wider uppercase">
