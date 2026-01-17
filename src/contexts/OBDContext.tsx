@@ -6,7 +6,7 @@ import {
   buildMode01Command 
 } from '@/services/obd/OBDProtocol';
 import { parseOBDResponse, parseVINResponse } from '@/services/obd/OBDParser';
-
+import { saveSplashBrand } from '@/hooks/useSplashTheme';
 // Destructure constants from protocol
 const { SERVICE, WRITE_CHAR, NOTIFY_CHAR } = BLUETOOTH_UUIDS;
 const { 
@@ -381,6 +381,11 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
             country: vinInfo.country,
           });
           addLogRef.current(`✅ VIN detectado: ${vinInfo.vin} (${vinInfo.manufacturer || 'Fabricante desconhecido'})`);
+          
+          // Salvar marca para próximas splashs
+          if (vinInfo.manufacturer) {
+            saveSplashBrand(vinInfo.manufacturer);
+          }
         } else {
           addLogRef.current('⚠️ VIN não disponível - usando modo genérico');
           setDetectedVehicle(null);
