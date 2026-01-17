@@ -921,6 +921,56 @@ export default function Help() {
             </div>
           </HelpCard>
 
+          {/* NOVO: Proteção de Motor Frio (Closed Loop) */}
+          <HelpCard
+            title="Proteção de Motor Frio (Closed Loop)"
+            description="O sistema só coleta dados de Fuel Trim quando o motor está em 'Closed Loop' (aquecido). Se o motor ainda está frio, você verá o aviso 'Aguardando Aquecimento' com ícone de termômetro pulsando."
+            icon={Thermometer}
+            variant="warning"
+          >
+            <div className="text-xs space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-orange-500" />
+                <span>Motor Frio: Análise pausada (continua contando KM)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span>Aceleração Forte: Pausa temporária na coleta</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span>Closed Loop: Análise ativa e dados confiáveis</span>
+              </div>
+            </div>
+          </HelpCard>
+
+          {/* NOVO: Estados do Sistema de Combustível (PID 03) */}
+          <HelpCard
+            title="Estados do Sistema de Combustível (PID 03)"
+            description="Durante o monitoramento, o sistema mostra o estado atual da ECU. Isso ajuda a entender quando os dados são confiáveis para análise."
+            icon={Gauge}
+            variant="default"
+          >
+            <div className="text-xs space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span><strong>Closed Loop:</strong> Dados confiáveis, análise ativa</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-orange-500" />
+                <span><strong>Aguardando Aquecimento:</strong> Motor frio, aguarde ~60°C</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span><strong>Aceleração/Corte:</strong> Pausa na coleta durante WOT</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500" />
+                <span><strong>Falha:</strong> Problema no sistema, procure mecânico</span>
+              </div>
+            </div>
+          </HelpCard>
+
           {/* NOVO: Modo Offline */}
           <HelpCard
             title="Modo Offline"
@@ -1067,6 +1117,21 @@ export default function Help() {
               question="Os diagnósticos de combustível funcionam offline?"
               answer="Sim! Se você estiver sem internet, o diagnóstico é salvo localmente no dispositivo. Quando a conexão retornar, os dados são sincronizados automaticamente com a nuvem. Um indicador mostra quantos diagnósticos estão aguardando sincronização."
             />
+            <FAQItem
+              id="faq-22"
+              question="Por que aparece 'Aguardando Aquecimento'?"
+              answer="Quando o motor está frio (abaixo de ~60°C), a ECU opera em 'Open Loop' e não usa o sensor de oxigênio para ajustar a mistura. Nesse estado, os dados de Fuel Trim não são confiáveis. O sistema aguarda o motor aquecer para garantir análise precisa. A barra de progresso de KM continua andando normalmente."
+            />
+            <FAQItem
+              id="faq-23"
+              question="O que significa 'Aceleração/Corte' no status?"
+              answer="Quando você acelera fundo (WOT) ou freia bruscamente, a ECU entra em 'Open Loop Load' para proteger o motor. Durante esses momentos, a coleta de Fuel Trim é pausada automaticamente. Quando você volta a dirigir normalmente, a análise retoma."
+            />
+            <FAQItem
+              id="faq-24"
+              question="O que é o badge vermelho no botão de abastecimento?"
+              answer="O badge indica quantos diagnósticos estão aguardando sincronização com a nuvem. Isso acontece quando você fez um teste offline. Quando reconectar à internet, os dados serão enviados automaticamente e o badge desaparece."
+            />
           </div>
         </HelpSection>
 
@@ -1162,6 +1227,21 @@ export default function Help() {
               term="Adaptação Flex"
               definition="Processo onde a ECU aprende a nova proporção de combustível após troca entre gasolina e etanol."
               analogy="É como o motor 'se acostumando' com o novo combustível, ajustando a receita da mistura."
+            />
+            <GlossaryItem
+              term="Closed Loop"
+              definition="Modo de operação onde a ECU usa o sensor de oxigênio para ajustar a mistura ar/combustível em tempo real."
+              analogy="É como cozinhar provando a comida - você ajusta o tempero conforme o gosto."
+            />
+            <GlossaryItem
+              term="Open Loop"
+              definition="Modo onde a ECU usa valores pré-programados sem feedback do sensor O2. Ocorre com motor frio ou aceleração forte."
+              analogy="É como seguir uma receita sem provar - você confia nos valores fixos."
+            />
+            <GlossaryItem
+              term="PID 03"
+              definition="Parâmetro OBD-II que indica o status do sistema de combustível (Open Loop ou Closed Loop)."
+              analogy="É um semáforo que diz quando os dados do motor são confiáveis para análise."
             />
           </div>
         </HelpSection>
