@@ -79,7 +79,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] z-50">
         <DialogHeader>
           <DialogTitle>Editar Perfil</DialogTitle>
           <DialogDescription>
@@ -105,9 +105,11 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="displayName">Nome de exibição</Label>
+            <Label htmlFor="edit-displayName">Nome de exibição</Label>
             <Input
-              id="displayName"
+              id="edit-displayName"
+              name="displayName"
+              autoComplete="off"
               placeholder="Como você quer ser chamado?"
               value={formData.displayName || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value || null }))}
@@ -115,10 +117,12 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="phone">Telefone (opcional)</Label>
+            <Label htmlFor="edit-phone">Telefone (opcional)</Label>
             <Input
-              id="phone"
+              id="edit-phone"
+              name="phone"
               type="tel"
+              autoComplete="off"
               placeholder="(11) 99999-9999"
               value={formData.phone || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value || null }))}
@@ -126,9 +130,11 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="city">Cidade (opcional)</Label>
+            <Label htmlFor="edit-city">Cidade (opcional)</Label>
             <Input
-              id="city"
+              id="edit-city"
+              name="city"
+              autoComplete="off"
               placeholder="São Paulo, SP"
               value={formData.city || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value || null }))}
@@ -136,15 +142,15 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="driverType">Tipo de motorista</Label>
+            <Label htmlFor="edit-driverType">Tipo de motorista</Label>
             <Select
               value={formData.driverType}
               onValueChange={(value) => setFormData(prev => ({ ...prev, driverType: value }))}
             >
-              <SelectTrigger id="driverType">
+              <SelectTrigger id="edit-driverType">
                 <SelectValue placeholder="Selecione..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]">
                 {driverTypes.map(type => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
