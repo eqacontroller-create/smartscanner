@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { VehicleHealthService } from '@/services/supabase/VehicleHealthService';
+import logger from '@/lib/logger';
 import type {
   VehicleHealthSnapshot,
   BatteryHealthStatus,
@@ -166,7 +167,7 @@ export function useVehicleHealth({
   // Escutar evento de atualização de saúde (disparado pelo useBatteryHistory)
   useEffect(() => {
     const handleHealthUpdate = () => {
-      console.log('[useVehicleHealth] Health update event received, refreshing...');
+      logger.debug('[useVehicleHealth] Health update event received, refreshing...');
       fetchHealth(true);
     };
     

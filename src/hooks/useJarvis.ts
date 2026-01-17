@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
 import { TTSService } from '@/services/ai/TTSService';
+import logger from '@/lib/logger';
 
 interface UseJarvisOptions {
   settings?: JarvisSettings;
@@ -108,7 +109,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
       TTSService.stopBrowserSpeech();
 
       // DEBUG: Log detalhado das configurações de voz sendo usadas
-      console.log('[Jarvis] Configurações de voz:', {
+      logger.debug('[Jarvis] Configurações de voz:', {
         voiceURI: settings.selectedVoiceURI || 'default',
         rate: settings.rate,
         pitch: settings.pitch,
@@ -140,14 +141,14 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
 
   // Função interna que fala e espera terminar
   const speakAndWait = useCallback(async (text: string): Promise<void> => {
-    console.log('[Jarvis] Falando:', text.substring(0, 50) + '...');
+    logger.debug('[Jarvis] Falando:', text.substring(0, 50) + '...');
     
     // Se IA Avançada está configurada, tenta usar OpenAI TTS
     if (settings.aiProvider === 'openai' && settings.openaiTTSEnabled && settings.openaiApiKey) {
       const success = await speakWithOpenAI(text);
       if (success) return;
       // Se falhar, cai para o navegador
-      console.log('[Jarvis] Fallback para Web Speech API');
+      logger.debug('[Jarvis] Fallback para Web Speech API');
     }
 
     // Fallback: usa Web Speech API (voz de robô)
@@ -173,7 +174,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
       return;
     }
 
-    console.log(`[Jarvis] Processando fila - Mensagem: "${message.text.substring(0, 30)}..." | Restantes: ${speechQueueRef.current.length}`);
+    logger.debug(`[Jarvis] Processando fila - Mensagem: "${message.text.substring(0, 30)}..." | Restantes: ${speechQueueRef.current.length}`);
     
     // Falar e esperar terminar
     await speakAndWait(message.text);
@@ -208,7 +209,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
 
     if (interrupt) {
       // Limpa fila e para fala atual
-      console.log('[Jarvis] Interrompendo fila para mensagem prioritária');
+      logger.debug('[Jarvis] Interrompendo fila para mensagem prioritária');
       speechQueueRef.current.forEach(msg => msg.resolve()); // Resolve pendentes
       speechQueueRef.current = [];
       stopSpeaking();
@@ -228,7 +229,7 @@ export function useJarvis(options: UseJarvisOptions = {}): UseJarvisReturn {
       speechQueueRef.current.sort((a, b) => b.priority - a.priority);
       
       updateQueueLength();
-      console.log(`[Jarvis] Mensagem adicionada à fila - Total: ${speechQueueRef.current.length}`);
+      logger.debug(`[Jarvis] Mensagem adicionada à fila - Total: ${speechQueueRef.current.length}`);
       
       // Inicia processamento se não estiver processando
       if (!isProcessingQueueRef.current) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useVehicleSession } from '@/hooks/useVehicleSession';
+import logger from '@/lib/logger';
 import { useJarvisSystem } from '@/hooks/useJarvisSystem';
 import { useTripCalculator } from '@/hooks/useTripCalculator';
 import { useAutoRide } from '@/hooks/useAutoRide';
@@ -78,13 +79,13 @@ const Index = () => {
                            refuelMonitor.mode === 'waiting-quick';
     
     if (isRefuelActive && session.isPolling) {
-      console.log('[Index] Pausando polling do dashboard para monitoramento de combustível');
+      logger.debug('[Index] Pausando polling do dashboard para monitoramento de combustível');
       session.stopPolling();
     }
     
     // Retomar polling quando refuel terminar (e estiver conectado)
     if (!isRefuelActive && session.isConnected && !session.isPolling && session.status === 'ready') {
-      console.log('[Index] Retomando polling do dashboard');
+      logger.debug('[Index] Retomando polling do dashboard');
       session.startPolling();
     }
   }, [refuelMonitor.mode, session.isPolling, session.isConnected, session.status, session.startPolling, session.stopPolling]);
