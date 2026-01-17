@@ -18,6 +18,7 @@ export { FuelHistory } from './FuelHistory';
 export { FuelWaitingCard } from './FuelWaitingCard';
 export { O2SensorMonitor } from './O2SensorMonitor';
 export { AdaptationProgress } from './AdaptationProgress';
+export { OfflineSyncStatus } from './OfflineSyncStatus';
 
 // Componentes de Comparação de Postos
 export { StationRanking } from './StationRanking';

@@ -6,7 +6,31 @@ import type { DetectedVehicle, VehicleProfile } from '@/lib/vehicleProfiles';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary, RideEntry } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
-import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData } from '@/types/fuelForensics';
+import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData, O2SensorReading } from '@/types/fuelForensics';
+
+// Interface simplificada para evitar importação circular
+export interface OfflineRefuelEntryBase {
+  timestamp: number;
+  pricePerLiter: number;
+  litersAdded: number;
+  totalPaid: number;
+  fuelLevelBefore: number | null;
+  fuelLevelAfter: number | null;
+  tankCapacity: number;
+  stationName?: string;
+  quality: string;
+  stftAverage: number;
+  ltftDelta: number;
+  distanceMonitored: number;
+  anomalyDetected: boolean;
+  anomalyDetails?: string;
+  pumpAccuracyPercent?: number;
+  ltftFinal?: number;
+  o2Avg?: number;
+  fuelContext?: string;
+  fuelState?: string;
+  adaptationComplete?: boolean;
+}
 
 // Contexto da sessão do veículo
 export interface SessionContext {
@@ -135,14 +159,24 @@ export interface RefuelContext {
   forensicResult: FuelDiagnosticResult | null;
   monitoringData: FuelMonitoringData | null;
   
+  // O2 Sensor data for real-time monitor
+  o2Readings: O2SensorReading[];
+  o2FrozenDuration: number;
+  
   // Settings
   settings: RefuelSettings;
   isSyncing: boolean;
   
+  // Offline
+  isOnline: boolean;
+  pendingOfflineCount: number;
+  saveOffline: (entry: OfflineRefuelEntryBase) => void;
+  syncOffline: () => Promise<void>;
+  
   // Ações Monitor
   startRefuelMode: () => void;
   startQuickTest: () => void;
-  confirmRefuel: (pricePerLiter: number, litersAdded: number) => void;
+  confirmRefuel: (pricePerLiter: number, litersAdded: number, stationName?: string) => void;
   cancelRefuel: () => void;
   checkPIDSupport: () => Promise<void>;
   

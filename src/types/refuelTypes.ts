@@ -30,6 +30,13 @@ export interface RefuelEntry {
   anomalyDetected: boolean;
   anomalyDetails?: string;
   pumpAccuracyPercent?: number;   // % de precisão da bomba
+  
+  // Campos forenses (opcionais para compatibilidade)
+  ltftFinal?: number;             // LTFT final após adaptação
+  o2Avg?: number;                 // Média do sensor O2 (volts)
+  fuelContext?: string;           // Contexto do usuário
+  fuelState?: string;             // Estado forense (ok, adapting, suspect, etc.)
+  adaptationComplete?: boolean;   // Se a adaptação completou
 }
 
 // Histórico de Fuel Trim para gráfico
