@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
 import type { RideEntry } from '@/types/tripSettings';
+import type { FuelChangeContext, FuelDiagnosticResult } from '@/types/fuelForensics';
 
 interface FloatingControlsProps {
   // Jarvis AI
@@ -72,7 +73,7 @@ interface FloatingControlsProps {
   confirmRefuel: (pricePerLiter: number, litersAdded: number) => void;
   cancelRefuel: () => void;
   startRefuelMode: () => void;
-  startQuickTest: () => void;
+  startQuickTest: (context?: FuelChangeContext) => void;
   stftSupported: boolean | null;
   onUpdateRefuelSettings: (settings: Partial<RefuelSettings>) => void;
   onResetRefuelSettings: () => void;
@@ -84,6 +85,10 @@ interface FloatingControlsProps {
   isRefuelModalOpen: boolean;
   onFlowSelectorChange: (open: boolean) => void;
   onRefuelModalChange: (open: boolean) => void;
+  // Forensic State Machine
+  forensicResult: FuelDiagnosticResult | null;
+  fuelContext: FuelChangeContext;
+  setFuelContext: (ctx: FuelChangeContext) => void;
 }
 
 export function FloatingControls(props: FloatingControlsProps) {
@@ -149,7 +154,13 @@ export function FloatingControls(props: FloatingControlsProps) {
       
       {props.refuelMode === 'completed' && props.currentRefuel && (
         <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
-          <RefuelResult refuel={props.currentRefuel as RefuelEntry} flowType={props.refuelFlowType} onClose={props.cancelRefuel} />
+          <RefuelResult 
+            refuel={props.currentRefuel as RefuelEntry} 
+            flowType={props.refuelFlowType} 
+            forensicResult={props.forensicResult}
+            fuelContext={props.fuelContext}
+            onClose={props.cancelRefuel} 
+          />
         </div>
       )}
       
@@ -160,7 +171,21 @@ export function FloatingControls(props: FloatingControlsProps) {
         </div>
       )}
       
-      <RefuelFlowSelector open={props.isFlowSelectorOpen} onOpenChange={props.onFlowSelectorChange} stftSupported={props.stftSupported} isAuthenticated={props.isAuthenticated} onSelectRefuel={() => { props.startRefuelMode(); props.onRefuelModalChange(true); }} onSelectQuickTest={props.startQuickTest} />
+      <RefuelFlowSelector 
+        open={props.isFlowSelectorOpen} 
+        onOpenChange={props.onFlowSelectorChange} 
+        stftSupported={props.stftSupported} 
+        isAuthenticated={props.isAuthenticated} 
+        onSelectRefuel={(context) => { 
+          props.setFuelContext(context); 
+          props.startRefuelMode(); 
+          props.onRefuelModalChange(true); 
+        }} 
+        onSelectQuickTest={(context) => {
+          props.setFuelContext(context);
+          props.startQuickTest(context);
+        }} 
+      />
     </>
   );
 }
