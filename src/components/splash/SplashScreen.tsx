@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo, useMemo } from 'react';
 import { AnimatedGauge } from './AnimatedGauge';
 import { playIgnitionSound, cleanupAudio } from './IgnitionSound';
+import { BrandLogo } from './logos';
 import type { SplashPhase } from '@/hooks/useSplashScreen';
 import { DEFAULT_THEME, type SplashTheme } from '@/lib/splashThemes';
 
@@ -166,9 +167,24 @@ export const SplashScreen = memo(function SplashScreen({
         />
       )}
       
-      {/* Logo com nome e slogan da marca */}
+      {/* Logo animado da marca */}
       <div 
-        className={`mb-10 text-center transition-all duration-700 ease-out ${
+        className={`mb-6 transition-all duration-700 ease-out ${
+          isIgnition 
+            ? 'opacity-0 scale-75' 
+            : 'opacity-100 scale-100'
+        }`}
+      >
+        <BrandLogo 
+          brand={theme.brand}
+          phase={phase}
+          glowColor={glowColor}
+        />
+      </div>
+      
+      {/* Nome e slogan da marca */}
+      <div 
+        className={`mb-8 text-center transition-all duration-700 ease-out ${
           isIgnition 
             ? 'opacity-0 scale-90 blur-lg translate-y-4' 
             : isReady
@@ -177,7 +193,7 @@ export const SplashScreen = memo(function SplashScreen({
         }`}
       >
         <h1 
-          className="text-4xl md:text-5xl font-bold tracking-tight"
+          className="text-3xl md:text-4xl font-bold tracking-tight"
           style={{
             background: theme.gradient.logo,
             WebkitBackgroundClip: 'text',

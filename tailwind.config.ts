@@ -86,6 +86,19 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Logo animations
+        "logo-pulse": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.95" },
+          "50%": { transform: "scale(1.03)", opacity: "1" },
+        },
+        "spin-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "draw-stroke": {
+          "0%": { strokeDashoffset: "var(--stroke-length, 1000)" },
+          "100%": { strokeDashoffset: "0" },
+        },
         "needle-bounce": {
           "0%, 100%": { transform: "rotate(var(--needle-rotation))" },
           "50%": { transform: "rotate(calc(var(--needle-rotation) + 2deg))" },
@@ -240,6 +253,10 @@ export default {
         "celebrate-pop": "celebrate-pop 0.5s ease-out forwards",
         "splash-particle": "splash-particle 3s ease-out infinite",
         "neon-pulse": "neon-pulse 2s ease-in-out infinite",
+        // Logo animations
+        "logo-pulse": "logo-pulse 2s ease-in-out infinite",
+        "spin-slow": "spin-slow 20s linear infinite",
+        "draw-stroke": "draw-stroke 1s ease-out forwards",
         // Premium transitions
         "splash-exit": "splash-exit 0.7s ease-out forwards",
         "dashboard-enter": "dashboard-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",
