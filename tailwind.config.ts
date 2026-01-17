@@ -166,6 +166,21 @@ export default {
           "50%": { transform: "scale(1.3)", opacity: "1" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "splash-particle": {
+          "0%": { opacity: "0", transform: "translateY(0) scale(0)" },
+          "20%": { opacity: "1", transform: "translateY(-10px) scale(1)" },
+          "100%": { opacity: "0", transform: "translateY(-50px) scale(0.5)" },
+        },
+        "neon-pulse": {
+          "0%, 100%": { 
+            filter: "brightness(1)",
+            textShadow: "0 0 10px currentColor"
+          },
+          "50%": { 
+            filter: "brightness(1.2)",
+            textShadow: "0 0 20px currentColor, 0 0 40px currentColor"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -188,6 +203,8 @@ export default {
         "confetti-fall": "confetti-fall 3s ease-out forwards",
         "confetti-spin": "confetti-spin 1s linear infinite",
         "celebrate-pop": "celebrate-pop 0.5s ease-out forwards",
+        "splash-particle": "splash-particle 3s ease-out infinite",
+        "neon-pulse": "neon-pulse 2s ease-in-out infinite",
       },
     },
   },
