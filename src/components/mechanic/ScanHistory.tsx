@@ -10,7 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { getRecentScans, getScanHistoryByVIN, compareScanResults, type ScanHistoryEntry } from '@/lib/scanHistory';
+import { ScanHistoryService, type ScanHistoryEntry } from '@/services/supabase/ScanHistoryService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -32,8 +32,8 @@ export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
       console.log('[ScanHistory] Carregando histórico...', { currentVIN });
       
       const scans = currentVIN 
-        ? await getScanHistoryByVIN(currentVIN)
-        : await getRecentScans(15);
+        ? await ScanHistoryService.getByVIN(currentVIN)
+        : await ScanHistoryService.getRecent(15);
       
       console.log('[ScanHistory] Scans carregados:', scans.length);
       setHistory(scans);
@@ -51,7 +51,7 @@ export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
 
   const getComparisonWithPrevious = (index: number) => {
     if (index >= history.length - 1) return null;
-    return compareScanResults(history[index + 1], history[index]);
+    return ScanHistoryService.compareScanResults(history[index + 1], history[index]);
   };
 
   if (isLoading) {
