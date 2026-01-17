@@ -54,6 +54,7 @@ import { BatteryHistory } from './BatteryHistory';
 import { ParasiticDrawTest } from './ParasiticDrawTest';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { hapticFeedback } from '@/lib/hapticFeedback';
 
 // ============= TYPES =============
 
@@ -176,8 +177,14 @@ export function BatteryHealthTest({
         },
         onPhaseChange: (newPhase) => {
           setPhase(newPhase);
-          // Reset progress when entering post_start
-          if (newPhase === 'post_start') {
+          
+          // Haptic feedback on phase changes
+          if (newPhase === 'capturing') {
+            // Cranking detected!
+            hapticFeedback('crankingDetected');
+          } else if (newPhase === 'post_start') {
+            // Engine started!
+            hapticFeedback('engineStart');
             setPostStartProgress(0);
             setPostStartSecondsLeft(10);
           }
@@ -197,6 +204,9 @@ export function BatteryHealthTest({
       
       setResult(testResult);
       setPhase('complete');
+      
+      // Haptic feedback for test complete
+      hapticFeedback('testComplete');
       
       addLog(`[BATTERY] Teste concluído: Bateria ${testResult.batteryHealthPercent}% - ${testResult.batteryStatus}`);
       
