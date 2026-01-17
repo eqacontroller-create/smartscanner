@@ -18,20 +18,11 @@ export const AudiRingsLogo = memo(function AudiRingsLogo({
       viewBox="0 0 200 50" 
       className={cn("w-48 h-12", className)}
       aria-label="Audi logo"
+      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
     >
-      <defs>
-        <filter id="audi-glow">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feFlood floodColor={glowColor} floodOpacity="0.6" />
-          <feComposite in2="blur" operator="in" />
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+      {/* OPTIMIZED: No SVG filters, CSS only */}
       
-      {/* 4 anéis interconectados */}
+      {/* 4 rings - CSS filter, GPU accelerated */}
       {[0, 1, 2, 3].map((i) => (
         <circle
           key={i}
@@ -43,15 +34,14 @@ export const AudiRingsLogo = memo(function AudiRingsLogo({
           strokeWidth={2.5}
           className={cn(
             'transition-all duration-700 ease-out',
-            isActive 
-              ? 'opacity-100' 
-              : 'opacity-0'
+            isActive ? 'opacity-100' : 'opacity-0'
           )}
           style={{
-            transitionDelay: `${i * 120}ms`,
-            filter: isReady ? 'url(#audi-glow)' : 'none',
-            transform: isActive ? 'scale(1)' : 'scale(0.8)',
+            transitionDelay: `${i * 100}ms`,
+            filter: isReady ? `drop-shadow(0 0 3px ${glowColor})` : 'none',
+            transform: isActive ? 'scale(1)' : 'scale(0.85)',
             transformOrigin: `${35 + i * 35}px 25px`,
+            willChange: 'transform, opacity',
           }}
         />
       ))}
