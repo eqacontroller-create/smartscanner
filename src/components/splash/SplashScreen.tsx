@@ -4,11 +4,13 @@ import { playIgnitionSound, cleanupAudio } from './IgnitionSound';
 import { BrandLogo } from './logos';
 import type { SplashPhase } from '@/hooks/useSplashScreen';
 import { DEFAULT_THEME, type SplashTheme } from '@/lib/splashThemes';
+import type { PerformanceConfig } from '@/hooks/usePerformanceMode';
 
 interface SplashScreenProps {
   phase: SplashPhase;
   onSkip?: () => void;
   theme?: SplashTheme;
+  performanceConfig?: PerformanceConfig;
 }
 
 // OPTIMIZED: Generate fewer aurora particles with simpler properties
@@ -17,25 +19,37 @@ function generateAuroraParticles(count: number, baseHue: number) {
     id: i,
     x: Math.random() * 100,
     y: Math.random() * 100,
-    size: Math.random() * 3 + 2, // Smaller: 2-5px
+    size: Math.random() * 3 + 2,
     hue: baseHue + Math.random() * 30 - 15,
     delay: Math.random() * 2,
-    duration: 5 + Math.random() * 3, // Slower, smoother
+    duration: 5 + Math.random() * 3,
   }));
 }
+
+const DEFAULT_PERFORMANCE: PerformanceConfig = {
+  level: 'high',
+  particleCount: 14,
+  enableGlow: true,
+  enableBlur: true,
+  enableParticles: true,
+  animationDuration: 1,
+  prefersReducedMotion: false,
+};
 
 export const SplashScreen = memo(function SplashScreen({ 
   phase, 
   onSkip,
-  theme = DEFAULT_THEME 
+  theme = DEFAULT_THEME,
+  performanceConfig = DEFAULT_PERFORMANCE,
 }: SplashScreenProps) {
   const hasPlayedSound = useRef(false);
   
-  // OPTIMIZED: Fewer particles (12-16 instead of 25-35)
+  // Use performance-adjusted particle count
   const particles = useMemo(() => {
-    const count = theme.premium ? 14 : 10;
+    if (!performanceConfig.enableParticles) return [];
+    const count = performanceConfig.particleCount;
     return generateAuroraParticles(count, theme.colors.particleHue);
-  }, [theme.colors.particleHue, theme.premium]);
+  }, [theme.colors.particleHue, performanceConfig.particleCount, performanceConfig.enableParticles]);
   
   // Tocar som premium quando entrar na fase boot
   useEffect(() => {
@@ -110,45 +124,50 @@ export const SplashScreen = memo(function SplashScreen({
         />
       )}
       
-      {/* OPTIMIZED Aurora particles - GPU accelerated, simpler styles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {!isIgnition && particles.map((p) => (
-          <div
-            key={p.id}
-            className="absolute rounded-full"
-            style={{
-              width: p.size,
-              height: p.size,
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              background: `hsl(${p.hue} 60% 50% / 0.5)`,
-              boxShadow: `0 0 ${p.size}px hsl(${p.hue} 60% 50% / 0.3)`,
-              animation: `aurora-optimized ${p.duration}s ease-in-out infinite`,
-              animationDelay: `${p.delay}s`,
-              willChange: 'transform, opacity',
-              transform: 'translateZ(0)',
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
+      {/* OPTIMIZED Aurora particles - conditionally rendered based on performance */}
+      {performanceConfig.enableParticles && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {!isIgnition && particles.map((p) => (
+            <div
+              key={p.id}
+              className="absolute rounded-full"
+              style={{
+                width: p.size,
+                height: p.size,
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                background: `hsl(${p.hue} 60% 50% / 0.5)`,
+                boxShadow: performanceConfig.enableGlow 
+                  ? `0 0 ${p.size}px hsl(${p.hue} 60% 50% / 0.3)`
+                  : 'none',
+                animation: `aurora-optimized ${p.duration * performanceConfig.animationDuration}s ease-in-out infinite`,
+                animationDelay: `${p.delay}s`,
+                willChange: 'transform, opacity',
+                transform: 'translateZ(0)',
+              } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      )}
       
-      {/* Glow principal atrás do gauge - cor da marca */}
-      <div 
-        className={`absolute w-[500px] h-[500px] rounded-full transition-all duration-1000 ${
-          isIgnition ? 'opacity-0 scale-75' : 'opacity-100 scale-100'
-        }`}
-        style={{
-          background: `
-            radial-gradient(circle, 
-              ${glowColor.replace(')', ` / ${isReady ? glowOpacityReady : glowOpacityNormal})`)} 0%, 
-              ${glowColor.replace(')', ` / ${isReady ? glowOpacityNormal : 0.04})`)} 30%,
-              transparent 70%
-            )
-          `,
-          filter: 'blur(40px)',
-        }}
-      />
-      
+      {/* Glow principal - conditionally rendered based on performance */}
+      {performanceConfig.enableGlow && (
+        <div 
+          className={`absolute w-[500px] h-[500px] rounded-full transition-all duration-1000 ${
+            isIgnition ? 'opacity-0 scale-75' : 'opacity-100 scale-100'
+          }`}
+          style={{
+            background: `
+              radial-gradient(circle, 
+                ${glowColor.replace(')', ` / ${isReady ? glowOpacityReady : glowOpacityNormal})`)} 0%, 
+                ${glowColor.replace(')', ` / ${isReady ? glowOpacityNormal : 0.04})`)} 30%,
+                transparent 70%
+              )
+            `,
+            filter: performanceConfig.enableBlur ? 'blur(40px)' : 'none',
+          }}
+        />
+      )}
       {/* REMOVED: Second glow for premium brands - causes performance issues */}
       
       {/* Logo animado da marca - esconde durante exiting (FlyingLogo assume) */}

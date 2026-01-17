@@ -3,11 +3,13 @@ import { cn } from '@/lib/utils';
 import { BrandLogo } from './logos';
 import type { SplashPhase } from '@/hooks/useSplashScreen';
 import type { SplashTheme } from '@/lib/splashThemes';
+import type { PerformanceConfig } from '@/hooks/usePerformanceMode';
 
 interface FlyingLogoProps {
   phase: SplashPhase;
   theme: SplashTheme;
   glowColor: string;
+  performanceConfig?: PerformanceConfig;
 }
 
 interface Particle {
@@ -21,27 +23,37 @@ interface Particle {
 
 /**
  * Logo que "voa" da splash screen para o header durante a transição
- * OTIMIZADO: Reduzido partículas, GPU acceleration, CSS simples
+ * OTIMIZADO: Partículas ajustadas por performance, GPU acceleration
  */
 export const FlyingLogo = memo(function FlyingLogo({ 
   phase, 
   theme,
-  glowColor 
+  glowColor,
+  performanceConfig,
 }: FlyingLogoProps) {
   const [hasFlown, setHasFlown] = useState(false);
   const isExiting = phase === 'exiting';
   
-  // Generate FEWER particles for trail effect (8 instead of 20)
+  // Particle count based on performance level
+  const particleCount = useMemo(() => {
+    if (!performanceConfig?.enableParticles) return 0;
+    if (performanceConfig.level === 'low') return 0;
+    if (performanceConfig.level === 'medium') return 4;
+    return 8;
+  }, [performanceConfig]);
+  
+  // Generate particles based on performance
   const particles = useMemo<Particle[]>(() => {
-    return Array.from({ length: 8 }, (_, i) => ({
+    if (particleCount === 0) return [];
+    return Array.from({ length: particleCount }, (_, i) => ({
       id: i,
       offsetX: (Math.random() - 0.5) * 60,
       offsetY: (Math.random() - 0.5) * 30,
-      size: Math.random() * 4 + 2, // 2-6px (smaller)
-      delay: i * 0.04, // Sequential delay
+      size: Math.random() * 4 + 2,
+      delay: i * 0.04,
       duration: 0.5 + Math.random() * 0.2,
     }));
-  }, []);
+  }, [particleCount]);
   
   // Mark as flown after animation completes
   useEffect(() => {
@@ -65,8 +77,8 @@ export const FlyingLogo = memo(function FlyingLogo({
   
   return (
     <>
-      {/* Optimized particle trail - GPU accelerated, fewer elements */}
-      {isExiting && (
+      {/* Optimized particle trail - only render if particles enabled */}
+      {isExiting && particles.length > 0 && (
         <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
           {particles.map((particle) => (
             <div
@@ -78,7 +90,9 @@ export const FlyingLogo = memo(function FlyingLogo({
                 width: particle.size,
                 height: particle.size,
                 backgroundColor: glowColor,
-                boxShadow: `0 0 ${particle.size}px ${glowColor}`,
+                boxShadow: performanceConfig?.enableGlow 
+                  ? `0 0 ${particle.size}px ${glowColor}` 
+                  : 'none',
                 opacity: 0,
                 willChange: 'transform, opacity',
                 transform: 'translateZ(0)',
@@ -112,8 +126,8 @@ export const FlyingLogo = memo(function FlyingLogo({
           transition: 'transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease-out',
         }}
       >
-        {/* Simple glow trail - CSS only, no heavy filters */}
-        {isExiting && (
+        {/* Simple glow trail - only if glow enabled */}
+        {isExiting && performanceConfig?.enableGlow !== false && (
           <div
             className="absolute inset-0 gpu-accelerated"
             style={{
