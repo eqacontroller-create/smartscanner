@@ -22,7 +22,17 @@ export interface VehicleInfo {
   vehicleNickname: string | null;
 }
 
+export interface UserProfileInfo {
+  displayName: string | null;
+  avatarUrl: string | null;
+  phone: string | null;
+  city: string | null;
+  driverType: string;
+  memberSince: Date | null;
+}
+
 export interface SyncedProfile {
+  user: UserProfileInfo;
   vehicle: VehicleInfo;
   jarvisSettings: JarvisSettings;
   tripSettings: TripSettings;
@@ -30,6 +40,7 @@ export interface SyncedProfile {
 
 interface UseSyncedProfileReturn {
   profile: SyncedProfile;
+  updateUser: (user: Partial<UserProfileInfo>) => Promise<void>;
   updateVehicle: (vehicle: Partial<VehicleInfo>) => Promise<void>;
   updateJarvisSettings: (settings: Partial<JarvisSettings>) => Promise<void>;
   updateTripSettings: (settings: Partial<TripSettings>) => Promise<void>;
@@ -37,6 +48,15 @@ interface UseSyncedProfileReturn {
   synced: boolean;
   lastSyncedAt: Date | null;
 }
+
+const defaultUser: UserProfileInfo = {
+  displayName: null,
+  avatarUrl: null,
+  phone: null,
+  city: null,
+  driverType: 'particular',
+  memberSince: null,
+};
 
 const defaultVehicle: VehicleInfo = {
   vin: null,
@@ -49,6 +69,7 @@ const defaultVehicle: VehicleInfo = {
 };
 
 const defaultProfile: SyncedProfile = {
+  user: defaultUser,
   vehicle: defaultVehicle,
   jarvisSettings: defaultJarvisSettings,
   tripSettings: defaultTripSettings,
@@ -57,6 +78,14 @@ const defaultProfile: SyncedProfile = {
 // Converte dados do banco para o formato do app
 function dbToProfile(dbData: ProfileData): SyncedProfile {
   return {
+    user: {
+      displayName: dbData.display_name ?? null,
+      avatarUrl: dbData.avatar_url ?? null,
+      phone: dbData.phone ?? null,
+      city: dbData.city ?? null,
+      driverType: dbData.driver_type ?? 'particular',
+      memberSince: dbData.member_since ? new Date(dbData.member_since) : dbData.created_at ? new Date(dbData.created_at) : null,
+    },
     vehicle: {
       vin: dbData.vin ?? null,
       vehicleBrand: dbData.vehicle_brand ?? null,
@@ -117,6 +146,13 @@ function dbToProfile(dbData: ProfileData): SyncedProfile {
 function profileToDb(profile: SyncedProfile, userId: string): ProfileData {
   return {
     id: userId,
+    // User profile
+    display_name: profile.user.displayName,
+    avatar_url: profile.user.avatarUrl,
+    phone: profile.user.phone,
+    city: profile.user.city,
+    driver_type: profile.user.driverType,
+    member_since: profile.user.memberSince?.toISOString(),
     // Vehicle
     vin: profile.vehicle.vin,
     vehicle_brand: profile.vehicle.vehicleBrand,
@@ -242,6 +278,7 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
           const localData = getLocalStorageData();
           
           const newProfile: SyncedProfile = {
+            user: defaultUser,
             vehicle: localData.vehicle || defaultVehicle,
             jarvisSettings: localData.jarvisSettings || defaultJarvisSettings,
             tripSettings: localData.tripSettings || defaultTripSettings,
@@ -298,6 +335,16 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
     }
   }, [user]);
 
+  // Atualiza informações do usuário
+  const updateUser = useCallback(async (userData: Partial<UserProfileInfo>) => {
+    const newProfile = {
+      ...profile,
+      user: { ...profile.user, ...userData },
+    };
+    setProfile(newProfile);
+    await saveToDb(newProfile);
+  }, [profile, saveToDb]);
+
   // Atualiza informações do veículo
   const updateVehicle = useCallback(async (vehicle: Partial<VehicleInfo>) => {
     const newProfile = {
@@ -336,6 +383,7 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
 
   return {
     profile,
+    updateUser,
     updateVehicle,
     updateJarvisSettings,
     updateTripSettings,

@@ -13,8 +13,15 @@ import { SyncStatus } from '@/components/dashboard/SyncStatus';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
 import { JarvisTestButton } from '@/components/dashboard/JarvisTestButton';
 import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
+import { ProfileAvatar } from '@/components/profile';
 import type { VehicleProfile, VehicleBrand, DetectedVehicle } from '@/lib/vehicleProfiles';
 import type { ConnectionStatus } from '@/contexts/OBDContext';
+
+interface UserProfileData {
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  email?: string;
+}
 
 interface AppHeaderProps {
   themeVehicle: DetectedVehicle | null;
@@ -29,9 +36,11 @@ interface AppHeaderProps {
   isAISupported: boolean;
   aiError: string | null;
   isWakeLockActive: boolean;
+  userProfile?: UserProfileData;
   onOpenSettings: () => void;
   onTestAudio: () => void;
   onToggleListening: () => void;
+  onOpenProfile?: () => void;
 }
 
 function AppHeaderComponent({
@@ -47,9 +56,11 @@ function AppHeaderComponent({
   isAISupported,
   aiError,
   isWakeLockActive,
+  userProfile,
   onOpenSettings,
   onTestAudio,
   onToggleListening,
+  onOpenProfile,
 }: AppHeaderProps) {
   // Check if logo has landed from splash transition
   const logoLanded = typeof document !== 'undefined' 
@@ -98,6 +109,18 @@ function AppHeaderComponent({
           </div>
           
           <div className="flex items-center gap-1 sm:gap-2">
+            {/* User Profile Avatar */}
+            {onOpenProfile && (
+              <ProfileAvatar
+                avatarUrl={userProfile?.avatarUrl}
+                displayName={userProfile?.displayName}
+                email={userProfile?.email}
+                size="sm"
+                onClick={onOpenProfile}
+                className="hidden xs:flex"
+              />
+            )}
+            
             <SyncStatus synced={syncStatus.synced} lastSyncedAt={syncStatus.loading ? null : new Date()} />
             
             <div className="hidden xs:flex items-center gap-1 sm:gap-2">

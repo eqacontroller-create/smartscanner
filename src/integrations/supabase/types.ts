@@ -172,9 +172,13 @@ export type Database = {
           auto_ride_enabled: boolean | null
           auto_start_delay: number | null
           auto_stop_delay: number | null
+          avatar_url: string | null
           average_consumption: number | null
+          city: string | null
           created_at: string | null
           current_mileage: number | null
+          display_name: string | null
+          driver_type: string | null
           fuel_price: number | null
           fuel_type: string | null
           high_rpm_alert_enabled: boolean | null
@@ -186,10 +190,12 @@ export type Database = {
           low_voltage_threshold: number | null
           lugging_alert_enabled: boolean | null
           maintenance_alert_enabled: boolean | null
+          member_since: string | null
           model_year: string | null
           openai_api_key: string | null
           openai_tts_enabled: boolean | null
           openai_voice: string | null
+          phone: string | null
           redline_rpm: number | null
           refuel_settings: Json | null
           selected_voice_uri: string | null
@@ -216,9 +222,13 @@ export type Database = {
           auto_ride_enabled?: boolean | null
           auto_start_delay?: number | null
           auto_stop_delay?: number | null
+          avatar_url?: string | null
           average_consumption?: number | null
+          city?: string | null
           created_at?: string | null
           current_mileage?: number | null
+          display_name?: string | null
+          driver_type?: string | null
           fuel_price?: number | null
           fuel_type?: string | null
           high_rpm_alert_enabled?: boolean | null
@@ -230,10 +240,12 @@ export type Database = {
           low_voltage_threshold?: number | null
           lugging_alert_enabled?: boolean | null
           maintenance_alert_enabled?: boolean | null
+          member_since?: string | null
           model_year?: string | null
           openai_api_key?: string | null
           openai_tts_enabled?: boolean | null
           openai_voice?: string | null
+          phone?: string | null
           redline_rpm?: number | null
           refuel_settings?: Json | null
           selected_voice_uri?: string | null
@@ -260,9 +272,13 @@ export type Database = {
           auto_ride_enabled?: boolean | null
           auto_start_delay?: number | null
           auto_stop_delay?: number | null
+          avatar_url?: string | null
           average_consumption?: number | null
+          city?: string | null
           created_at?: string | null
           current_mileage?: number | null
+          display_name?: string | null
+          driver_type?: string | null
           fuel_price?: number | null
           fuel_type?: string | null
           high_rpm_alert_enabled?: boolean | null
@@ -274,10 +290,12 @@ export type Database = {
           low_voltage_threshold?: number | null
           lugging_alert_enabled?: boolean | null
           maintenance_alert_enabled?: boolean | null
+          member_since?: string | null
           model_year?: string | null
           openai_api_key?: string | null
           openai_tts_enabled?: boolean | null
           openai_voice?: string | null
+          phone?: string | null
           redline_rpm?: number | null
           refuel_settings?: Json | null
           selected_voice_uri?: string | null
