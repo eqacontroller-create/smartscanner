@@ -4,6 +4,9 @@
 // OBD Services
 export * from './obd/OBDProtocol';
 export * from './obd/OBDParser';
+export { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from './obd/DTCParser';
+export { FREEZE_FRAME_PIDS, parseFreezeFrameResponse, formatFreezeFrameValue, getPIDName as getFreezeFramePIDName, type FreezeFrameData } from './obd/FreezeFrameParser';
+export { LIVE_DATA_PIDS, parseLiveDataResponse, getPIDInfo, type LivePID } from './obd/LiveDataParser';
 
 // Supabase Services
 export { ProfileService } from './supabase/ProfileService';
@@ -17,6 +20,7 @@ export { JarvisService } from './ai/JarvisService';
 export { TTSService } from './ai/TTSService';
 export { VisionService } from './ai/VisionService';
 export { DTCEstimateService, getDTCEstimate } from './ai/DTCEstimateService';
+export { analyzeDTC, type AIProvider } from './ai/DTCAnalyzerService';
 
 // Battery Services
 export * from './battery/BatteryForensicsService';

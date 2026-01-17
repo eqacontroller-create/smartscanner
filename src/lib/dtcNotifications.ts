@@ -1,4 +1,4 @@
-import type { ParsedDTC } from '@/lib/dtcParser';
+import type { ParsedDTC } from '@/services/obd/DTCParser';
 
 // Tipos de comparação de scans
 export interface DTCComparisonResult {

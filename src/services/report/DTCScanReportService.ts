@@ -4,7 +4,7 @@
  */
 
 import jsPDF from 'jspdf';
-import type { ParsedDTC } from '@/lib/dtcParser';
+import type { ParsedDTC } from '@/services/obd/DTCParser';
 import type { VINInfo } from '@/lib/vinDecoder';
 import { getDTCInfo, type DTCInfo } from '@/lib/dtcDatabase';
 

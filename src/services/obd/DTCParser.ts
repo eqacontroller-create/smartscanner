@@ -1,7 +1,7 @@
 // Parser para converter resposta hexadecimal OBD-II em códigos DTC legíveis
 // Suporta respostas com/sem headers CAN, protocolo UDS (serviço 19) e multi-frame
 
-import type { ECUModule } from './ecuModules';
+import type { ECUModule } from '@/lib/ecuModules';
 
 export interface ParsedDTC {
   code: string;

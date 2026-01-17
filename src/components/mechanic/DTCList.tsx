@@ -1,7 +1,7 @@
 import { AlertTriangle, ChevronRight, OctagonX, Info, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { ParsedDTC } from '@/lib/dtcParser';
+import type { ParsedDTC } from '@/services/obd/DTCParser';
 import { getDTCInfo, getDefaultDTCInfo } from '@/lib/dtcDatabase';
 import { getCategoryIcon } from '@/lib/ecuModules';
 import { cn } from '@/lib/utils';
