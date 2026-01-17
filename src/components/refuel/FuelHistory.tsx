@@ -26,6 +26,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { StationRanking } from './StationRanking';
 import { useToast } from '@/hooks/use-toast';
+import { OfflineSyncStatus } from './OfflineSyncStatus';
+import { useOfflineRefuel } from '@/hooks/useOfflineRefuel';
 
 interface RefuelHistoryEntry {
   id: string;
@@ -52,6 +54,18 @@ export function FuelHistory({ userId, isAuthenticated }: FuelHistoryProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Hook de sincronização offline
+  const {
+    pendingEntries,
+    pendingCount,
+    isOnline,
+    isSyncing,
+    syncProgress,
+    syncNow,
+    removeEntry,
+    clearSynced,
+  } = useOfflineRefuel();
 
   useEffect(() => {
     if (userId && isAuthenticated) {
@@ -385,6 +399,18 @@ export function FuelHistory({ userId, isAuthenticated }: FuelHistoryProps) {
 
   return (
     <div className="space-y-4">
+      {/* Status de Sincronização Offline */}
+      <OfflineSyncStatus
+        isOnline={isOnline}
+        isSyncing={isSyncing}
+        syncProgress={syncProgress}
+        pendingEntries={pendingEntries}
+        pendingCount={pendingCount}
+        onSyncNow={syncNow}
+        onRemoveEntry={removeEntry}
+        onClearSynced={clearSynced}
+      />
+      
       {/* Ranking de Postos */}
       <StationRanking refuelHistory={entries} />
       

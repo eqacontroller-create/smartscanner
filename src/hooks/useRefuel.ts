@@ -1,9 +1,10 @@
-// Hook composto que agrupa refuelMonitor + refuelSettings
+// Hook composto que agrupa refuelMonitor + refuelSettings + offlineSync
 // Simplifica a passagem de props relacionadas a abastecimento
-// V2: Expõe fuelContext e forensicResult da State Machine
+// V3: Inclui sincronização offline para quando não há conexão
 
 import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
 import { useRefuelSettings } from '@/hooks/useRefuelSettings';
+import { useOfflineRefuel, OfflineRefuelEntry } from '@/hooks/useOfflineRefuel';
 import type { RefuelContext } from '@/types/sessionContext';
 
 interface UseRefuelOptions {
@@ -19,6 +20,7 @@ interface UseRefuelOptions {
 
 export function useRefuel(options: UseRefuelOptions): RefuelContext {
   const refuelSettings = useRefuelSettings();
+  const offlineRefuel = useOfflineRefuel();
   
   const refuelMonitor = useRefuelMonitor({
     speed: options.speed,
@@ -30,6 +32,11 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     settings: refuelSettings.settings,
     reconnect: options.reconnect,
   });
+
+  // Função para salvar entrada offline
+  const saveOffline = (entry: Omit<OfflineRefuelEntry, 'localId' | 'createdAt' | 'synced'>) => {
+    offlineRefuel.saveOffline(entry);
+  };
 
   return {
     // Monitor
@@ -54,9 +61,19 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     forensicResult: refuelMonitor.forensicResult,
     monitoringData: refuelMonitor.monitoringData,
     
+    // O2 Sensor data
+    o2Readings: refuelMonitor.o2Readings,
+    o2FrozenDuration: refuelMonitor.o2FrozenDuration,
+    
     // Settings
     settings: refuelSettings.settings,
-    isSyncing: refuelSettings.isSyncing,
+    isSyncing: refuelSettings.isSyncing || offlineRefuel.isSyncing,
+    
+    // Offline
+    isOnline: offlineRefuel.isOnline,
+    pendingOfflineCount: offlineRefuel.pendingCount,
+    saveOffline,
+    syncOffline: offlineRefuel.syncNow,
     
     // Ações Monitor
     startRefuelMode: refuelMonitor.startRefuelMode,
