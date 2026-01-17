@@ -1,5 +1,6 @@
 // Hook composto que agrupa refuelMonitor + refuelSettings
 // Simplifica a passagem de props relacionadas a abastecimento
+// V2: Expõe fuelContext e forensicResult da State Machine
 
 import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
 import { useRefuelSettings } from '@/hooks/useRefuelSettings';
@@ -40,11 +41,18 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     stftSupported: refuelMonitor.stftSupported,
     currentSTFT: refuelMonitor.currentSTFT,
     currentLTFT: refuelMonitor.currentLTFT,
+    currentO2: refuelMonitor.currentO2,
     currentFuelLevel: refuelMonitor.currentFuelLevel,
     distanceMonitored: refuelMonitor.distanceMonitored,
     anomalyActive: refuelMonitor.anomalyActive,
     anomalyDuration: refuelMonitor.anomalyDuration,
     frozenSettings: refuelMonitor.frozenSettings,
+    
+    // State Machine (Forensic Analysis)
+    fuelContext: refuelMonitor.fuelContext,
+    setFuelContext: refuelMonitor.setFuelContext,
+    forensicResult: refuelMonitor.forensicResult,
+    monitoringData: refuelMonitor.monitoringData,
     
     // Settings
     settings: refuelSettings.settings,
