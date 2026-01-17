@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Wrench, AlertTriangle, Lightbulb, Loader2, Sparkles, Snowflake, Zap,
-  DollarSign, OctagonX, Clock, Package, Baby
+  DollarSign, OctagonX, Clock, Package, Baby, Share2, MessageCircle
 } from 'lucide-react';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 import type { ParsedDTC } from '@/lib/dtcParser';
 import { getDTCInfo, getDefaultDTCInfo, type DTCInfo } from '@/lib/dtcDatabase';
 import { analyzeDTC, type AIProvider } from '@/lib/dtcAnalyzer';
@@ -335,6 +336,14 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleCon
                     {estimate.disclaimer}
                   </AlertDescription>
                 </Alert>
+
+                {/* Share Button */}
+                <ShareWhatsAppButton 
+                  dtcCode={dtc.code}
+                  dtcName={info.name}
+                  estimate={estimate}
+                  vehicleContext={vehicleContext}
+                />
               </>
             )}
           </TabsContent>
@@ -399,5 +408,65 @@ function RiskActionBanner({
         </div>
       </div>
     </div>
+  );
+}
+
+// Share via WhatsApp Button
+function ShareWhatsAppButton({
+  dtcCode,
+  dtcName,
+  estimate,
+  vehicleContext,
+}: {
+  dtcCode: string;
+  dtcName: string;
+  estimate: DTCEstimate;
+  vehicleContext: string;
+}) {
+  const handleShare = () => {
+    const riskEmoji = estimate.riskLevel === 'critical' ? '🔴' : estimate.riskLevel === 'moderate' ? '🟡' : '🟢';
+    const driveStatus = estimate.canDrive ? '✅ Pode dirigir até oficina' : '⛔ NÃO DIRIJA!';
+    
+    const message = `🔧 *DIAGNÓSTICO VEICULAR*
+━━━━━━━━━━━━━━━━━━━━
+
+🚗 *Veículo:* ${vehicleContext}
+
+⚠️ *Código do Erro:* ${dtcCode}
+📋 *Problema:* ${dtcName}
+
+💡 *Explicação Simples:*
+${estimate.simpleExplanation}
+
+${riskEmoji} *Nível de Risco:* ${estimate.riskLevel === 'critical' ? 'CRÍTICO' : estimate.riskLevel === 'moderate' ? 'Moderado' : 'Baixo'}
+${driveStatus}
+
+🔧 *Peças Prováveis:*
+${estimate.estimatedParts.map(p => `• ${p}`).join('\n')}
+
+⏱️ *Mão de Obra:* ${estimate.estimatedLabor}
+
+💰 *Custo Estimado:*
+R$ ${estimate.estimatedCostRange.min.toLocaleString('pt-BR')} - R$ ${estimate.estimatedCostRange.max.toLocaleString('pt-BR')}
+
+━━━━━━━━━━━━━━━━━━━━
+_Estimativa gerada por SmartScanner_
+_Consulte sua oficina para orçamento real_`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success('Abrindo WhatsApp...');
+  };
+
+  return (
+    <Button
+      onClick={handleShare}
+      className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+    >
+      <MessageCircle className="h-4 w-4" />
+      Enviar para Mecânico via WhatsApp
+    </Button>
   );
 }
