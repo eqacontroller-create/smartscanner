@@ -237,7 +237,7 @@ export function useRefuelMonitor({
           return true;
         }
       } catch (error) {
-        console.error(`[Refuel] Reconnect attempt ${attempt} failed:`, error);
+        logger.error(`[Refuel] Reconnect attempt ${attempt} failed:`, error);
       }
       
       // Esperar antes da próxima tentativa
@@ -260,7 +260,7 @@ export function useRefuelMonitor({
       if (!disconnectionAnnouncedRef.current) {
         disconnectionAnnouncedRef.current = true;
         speakRef.current('Atenção. Conexão com o adaptador perdida. Tentando reconectar automaticamente.');
-        console.warn('[Refuel] Bluetooth disconnected during monitoring - attempting auto-reconnect');
+        logger.warn('[Refuel] Bluetooth disconnected during monitoring - attempting auto-reconnect');
         
         // Tentar reconectar automaticamente
         attemptAutoReconnect().then(success => {
@@ -270,7 +270,7 @@ export function useRefuelMonitor({
             logger.log('[Refuel] Auto-reconnect successful');
           } else {
             speakRef.current('Não foi possível reconectar. O monitoramento continua pausado. Verifique o adaptador.');
-            console.error('[Refuel] Auto-reconnect failed after all attempts');
+            logger.error('[Refuel] Auto-reconnect failed after all attempts');
           }
         });
       }
@@ -314,9 +314,9 @@ export function useRefuelMonitor({
                      !stftResponse.includes('UNABLE');
       setStftSupported(stftOk);
       
-      console.log('[Refuel] PID Support - Fuel Level:', fuelSupported, 'STFT:', stftOk);
+      logger.debug('[Refuel] PID Support - Fuel Level:', fuelSupported, 'STFT:', stftOk);
     } catch (error) {
-      console.error('[Refuel] Error checking PID support:', error);
+      logger.error('[Refuel] Error checking PID support:', error);
     }
   }, [isConnected, sendRawCommand]);
   
@@ -324,7 +324,7 @@ export function useRefuelMonitor({
   const readFuelLevel = useCallback(async (): Promise<number | null> => {
     if (!fuelLevelSupported) return null;
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readFuelLevel ignorado - outra leitura em andamento');
+      logger.debug('[Refuel] readFuelLevel ignorado - outra leitura em andamento');
       return null;
     }
     
@@ -337,7 +337,7 @@ export function useRefuelMonitor({
         return Math.round(a * 100 / 255);
       }
     } catch (error) {
-      console.error('[Refuel] Error reading fuel level:', error);
+      logger.error('[Refuel] Error reading fuel level:', error);
     } finally {
       isReadingOBDRef.current = false;
     }
@@ -348,14 +348,14 @@ export function useRefuelMonitor({
   // Polling do dashboard é pausado durante monitoramento, então mutex é menos crítico
   const readSTFT = useCallback(async (): Promise<number | null> => {
     if (stftSupported === false) {
-      console.log('[Refuel] readSTFT bloqueado - PID não suportado');
+      logger.debug('[Refuel] readSTFT bloqueado - PID não suportado');
       return null;
     }
     
     // Permitir leitura mesmo com mutex ocupado (polling pausado)
     // Apenas log de warning
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readSTFT - aguardando mutex...');
+      logger.debug('[Refuel] readSTFT - aguardando mutex...');
       await new Promise(r => setTimeout(r, 100));
     }
     
@@ -365,7 +365,7 @@ export function useRefuelMonitor({
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await sendRawCommand('0106', 2500); // Timeout maior
-        console.log(`[Refuel] STFT attempt ${attempt} raw:`, JSON.stringify(response));
+        logger.debug(`[Refuel] STFT attempt ${attempt} raw:`, JSON.stringify(response));
         
         // Limpar resposta - remover espaços extras, newlines, headers
         const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -377,14 +377,14 @@ export function useRefuelMonitor({
         if (match) {
           const a = parseInt(match[1], 16);
           const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
-          console.log('[Refuel] STFT parsed:', value);
+          logger.debug('[Refuel] STFT parsed:', value);
           isReadingOBDRef.current = false;
           return value;
         } else if (!cleanResponse.includes('NODATA') && !cleanResponse.includes('ERROR')) {
-          console.warn(`[Refuel] STFT attempt ${attempt} - unexpected format:`, cleanResponse);
+          logger.warn(`[Refuel] STFT attempt ${attempt} - unexpected format:`, cleanResponse);
         }
       } catch (error) {
-        console.error(`[Refuel] STFT attempt ${attempt} error:`, error);
+        logger.error(`[Refuel] STFT attempt ${attempt} error:`, error);
       }
       
       // Pequeno delay antes de retry
@@ -401,7 +401,7 @@ export function useRefuelMonitor({
   const readLTFT = useCallback(async (): Promise<number | null> => {
     // Aguardar se mutex ocupado
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readLTFT - aguardando mutex...');
+      logger.debug('[Refuel] readLTFT - aguardando mutex...');
       await new Promise(r => setTimeout(r, 100));
     }
     
@@ -411,7 +411,7 @@ export function useRefuelMonitor({
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await sendRawCommand('0107', 2500);
-        console.log(`[Refuel] LTFT attempt ${attempt} raw:`, JSON.stringify(response));
+        logger.debug(`[Refuel] LTFT attempt ${attempt} raw:`, JSON.stringify(response));
         
         const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
         
@@ -421,14 +421,14 @@ export function useRefuelMonitor({
         if (match) {
           const a = parseInt(match[1], 16);
           const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
-          console.log('[Refuel] LTFT parsed:', value);
+          logger.debug('[Refuel] LTFT parsed:', value);
           isReadingOBDRef.current = false;
           return value;
         } else if (!cleanResponse.includes('NODATA') && !cleanResponse.includes('ERROR')) {
-          console.warn(`[Refuel] LTFT attempt ${attempt} - unexpected format:`, cleanResponse);
+          logger.warn(`[Refuel] LTFT attempt ${attempt} - unexpected format:`, cleanResponse);
         }
       } catch (error) {
-        console.error(`[Refuel] LTFT attempt ${attempt} error:`, error);
+        logger.error(`[Refuel] LTFT attempt ${attempt} error:`, error);
       }
       
       if (attempt < 2) {
@@ -443,7 +443,7 @@ export function useRefuelMonitor({
   // CORREÇÃO: Ler velocidade diretamente do OBD (quando polling do dashboard está pausado)
   const readSpeed = useCallback(async (): Promise<number | null> => {
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readSpeed - aguardando mutex...');
+      logger.debug('[Refuel] readSpeed - aguardando mutex...');
       await new Promise(r => setTimeout(r, 50));
     }
     
@@ -466,12 +466,12 @@ export function useRefuelMonitor({
       const match = cleanResponse.match(/41\s*0D\s*([0-9A-F]{2})/i);
       if (match) {
         const speed = parseInt(match[1], 16); // km/h diretamente
-        console.log('[Refuel] Speed parsed from OBD:', speed);
+        logger.debug('[Refuel] Speed parsed from OBD:', speed);
         isReadingOBDRef.current = false;
         return speed;
       }
     } catch (error) {
-      console.error('[Refuel] Error reading speed:', error);
+      logger.error('[Refuel] Error reading speed:', error);
     }
     
     isReadingOBDRef.current = false;
@@ -481,7 +481,7 @@ export function useRefuelMonitor({
   // Ler O2 Sensor (Sonda Lambda) - PID 0114 Bank 1 Sensor 1
   const readO2Sensor = useCallback(async (): Promise<number | null> => {
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readO2Sensor - aguardando mutex...');
+      logger.debug('[Refuel] readO2Sensor - aguardando mutex...');
       await new Promise(r => setTimeout(r, 50));
     }
     
@@ -503,12 +503,12 @@ export function useRefuelMonitor({
       if (match) {
         const a = parseInt(match[1], 16);
         const voltage = a / 200; // 0-1.275V
-        console.log('[Refuel] O2 Sensor parsed:', voltage.toFixed(3), 'V');
+        logger.debug('[Refuel] O2 Sensor parsed:', voltage.toFixed(3), 'V');
         isReadingOBDRef.current = false;
         return voltage;
       }
     } catch (error) {
-      console.error('[Refuel] Error reading O2 sensor:', error);
+      logger.error('[Refuel] Error reading O2 sensor:', error);
     }
     
     isReadingOBDRef.current = false;
@@ -518,7 +518,7 @@ export function useRefuelMonitor({
   // Ler Fuel System Status (PID 03) - Detecta Open/Closed Loop
   const readFuelSystemStatus = useCallback(async (): Promise<number | null> => {
     if (isReadingOBDRef.current) {
-      console.log('[Refuel] readFuelSystemStatus - aguardando mutex...');
+      logger.debug('[Refuel] readFuelSystemStatus - aguardando mutex...');
       await new Promise(r => setTimeout(r, 50));
     }
     
@@ -539,12 +539,12 @@ export function useRefuelMonitor({
       const match = cleanResponse.match(/41\s*03\s*([0-9A-F]{2})/i);
       if (match) {
         const statusValue = parseInt(match[1], 16);
-        console.log('[Refuel] Fuel System Status raw:', statusValue);
+        logger.debug('[Refuel] Fuel System Status raw:', statusValue);
         isReadingOBDRef.current = false;
         return statusValue;
       }
     } catch (error) {
-      console.error('[Refuel] Error reading Fuel System Status:', error);
+      logger.error('[Refuel] Error reading Fuel System Status:', error);
     }
     
     isReadingOBDRef.current = false;
@@ -565,7 +565,7 @@ export function useRefuelMonitor({
   const startRefuelMode = useCallback(async () => {
     const levelBefore = await readFuelLevel();
     
-    console.log('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
+    logger.debug('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
     
     // Definir fluxo como abastecimento
     setFlowType('refuel');
@@ -609,8 +609,8 @@ export function useRefuelMonitor({
   
   // Iniciar teste rápido de combustível (sem salvar dados)
   const startQuickTest = useCallback(async () => {
-    console.log('[Refuel] startQuickTest - Iniciando teste rápido');
-    console.log('[Refuel] Função speak recebida:', typeof speak);
+    logger.debug('[Refuel] startQuickTest - Iniciando teste rápido');
+    logger.debug('[Refuel] Função speak recebida:', typeof speak);
     
     // Verificar se STFT é suportado (bloqueia apenas se explicitamente false)
     if (stftSupported === false) {
@@ -661,7 +661,7 @@ export function useRefuelMonitor({
     readFailureCountRef.current = 0;
     
     // Usar speak diretamente (não speakRef) para garantir versão mais recente
-    console.log('[Refuel] Anunciando início do teste rápido com voz configurada');
+    logger.debug('[Refuel] Anunciando início do teste rápido com voz configurada');
     await speak('Teste de combustível ativado. Comece a dirigir para iniciar a análise.');
   }, [stftSupported, speak, readLTFT]);
   
@@ -701,7 +701,7 @@ export function useRefuelMonitor({
             anomaly_detected: false,
           });
         } catch (error) {
-          console.error('[Refuel] Error saving to database:', error);
+          logger.error('[Refuel] Error saving to database:', error);
         }
       }
       
@@ -717,7 +717,7 @@ export function useRefuelMonitor({
     const fuelLevelAfterRefuel = await readFuelLevel();
     const savedLevelBefore = currentRefuel?.fuelLevelBefore ?? null;
     
-    console.log('[Refuel] confirmRefuel - Níveis:', {
+    logger.debug('[Refuel] confirmRefuel - Níveis:', {
       antes: savedLevelBefore,
       depois: fuelLevelAfterRefuel,
       litrosInformados: litersAdded,
@@ -757,7 +757,7 @@ export function useRefuelMonitor({
   
   // Cancelar modo abastecimento
   const cancelRefuel = useCallback(() => {
-    console.log('[Refuel] cancelRefuel - Limpando estado');
+    logger.debug('[Refuel] cancelRefuel - Limpando estado');
     
     // BUG FIX 1: Capturar flowType ANTES de limpar para mensagem correta
     const wasQuickTest = flowTypeRef.current === 'quick-test';
@@ -812,7 +812,7 @@ export function useRefuelMonitor({
     const exceedPercentWarning = (exceededWarning / samples.length) * 100;
     const exceedPercentCritical = (exceededCritical / samples.length) * 100;
     
-    console.log('[Refuel] analyzeQuality:', {
+    logger.debug('[Refuel] analyzeQuality:', {
       avgSTFT,
       samples: samples.length,
       exceededWarning,
@@ -849,7 +849,7 @@ export function useRefuelMonitor({
   
   // Finalizar análise usando Fuel State Machine
   const finalizeAnalysis = useCallback(async () => {
-    console.log('[Refuel] finalizeAnalysis - Iniciando conclusão com State Machine');
+    logger.debug('[Refuel] finalizeAnalysis - Iniciando conclusão com State Machine');
     
     // Parar monitoramento imediatamente
     if (monitoringIntervalRef.current) {
@@ -896,7 +896,7 @@ export function useRefuelMonitor({
     
     // === USAR A STATE MACHINE ===
     const forensicDiagnosis = evaluateFuelState(finalData, fuelContextRef.current);
-    console.log('[Refuel] Forensic Diagnosis:', forensicDiagnosis);
+    logger.debug('[Refuel] Forensic Diagnosis:', forensicDiagnosis);
     
     // Mapear estado para qualidade legada (para compatibilidade)
     const qualityMap: Record<string, FuelQuality> = {
@@ -971,16 +971,16 @@ export function useRefuelMonitor({
         };
         
         await supabase.from('refuel_entries').insert(insertData);
-        console.log('[Refuel] Dados forenses salvos no Supabase');
+        logger.debug('[Refuel] Dados forenses salvos no Supabase');
       } catch (error) {
-        console.error('[Refuel] Error saving to database:', error);
+        logger.error('[Refuel] Error saving to database:', error);
       }
     } else if (!isRefuelFlow) {
-      console.log('[Refuel] Teste rápido - dados não salvos no banco');
+      logger.debug('[Refuel] Teste rápido - dados não salvos no banco');
     }
     
     // Anunciar resultado com mensagem baseada no estado forense
-    console.log('[Refuel] Anunciando resultado forense');
+    logger.debug('[Refuel] Anunciando resultado forense');
     const announcement = getForensicAnnouncement(forensicDiagnosis, distanceRef.current);
     await speakRef.current(announcement);
     
@@ -1049,17 +1049,17 @@ export function useRefuelMonitor({
     const isWaiting = mode === 'waiting' || mode === 'waiting-quick';
     if (!isWaiting || !isConnected) return;
     
-    console.log('[Refuel] Iniciando loop de pré-leitura (velocidade + Fuel Trim)');
+    logger.debug('[Refuel] Iniciando loop de pré-leitura (velocidade + Fuel Trim)');
     
     // Resetar velocidade interna ao entrar no modo waiting
     internalSpeedRef.current = 0;
     setInternalSpeed(0);
     
     const preReadInterval = setInterval(async () => {
-      console.log('[Refuel] Pre-read tick - isConnected:', isConnectedRef.current);
+      logger.debug('[Refuel] Pre-read tick - isConnected:', isConnectedRef.current);
       
       if (!isConnectedRef.current) {
-        console.log('[Refuel] Pre-read - desconectado, pulando');
+        logger.debug('[Refuel] Pre-read - desconectado, pulando');
         return;
       }
       
@@ -1068,7 +1068,7 @@ export function useRefuelMonitor({
       if (obdSpeed !== null) {
         internalSpeedRef.current = obdSpeed;
         setInternalSpeed(obdSpeed);
-        console.log('[Refuel] Pre-read - velocidade OBD:', obdSpeed);
+        logger.debug('[Refuel] Pre-read - velocidade OBD:', obdSpeed);
       }
       
       // 2. Ler Fuel Trim (para mostrar valores antes de andar)
@@ -1077,16 +1077,16 @@ export function useRefuelMonitor({
       
       if (stft !== null) {
         setCurrentSTFT(stft);
-        console.log('[Refuel] Pre-read - STFT:', stft);
+        logger.debug('[Refuel] Pre-read - STFT:', stft);
       }
       if (ltft !== null) {
         setCurrentLTFT(ltft);
-        console.log('[Refuel] Pre-read - LTFT:', ltft);
+        logger.debug('[Refuel] Pre-read - LTFT:', ltft);
       }
     }, 2000); // A cada 2 segundos
     
     return () => {
-      console.log('[Refuel] Cleanup loop de pré-leitura');
+      logger.debug('[Refuel] Cleanup loop de pré-leitura');
       clearInterval(preReadInterval);
     };
   }, [mode, isConnected]);
@@ -1109,7 +1109,7 @@ export function useRefuelMonitor({
       const frozen = { ...settings };
       frozenSettingsRef.current = frozen;
       setFrozenSettings(frozen);
-      console.log('[Refuel] Settings congelados para monitoramento:', frozen.monitoringDistance, 'km', '| FlowType:', flowTypeRef.current, '| Context:', fuelContextRef.current);
+      logger.debug('[Refuel] Settings congelados para monitoramento:', frozen.monitoringDistance, 'km', '| FlowType:', flowTypeRef.current, '| Context:', fuelContextRef.current);
       
       // Inicializar dados de monitoramento para State Machine
       const initialData = createInitialMonitoringData();
@@ -1149,7 +1149,7 @@ export function useRefuelMonitor({
       monitoringIntervalRef.current = null;
     }
     
-    console.log('[Refuel] Iniciando loop unificado de monitoramento (500ms)');
+    logger.debug('[Refuel] Iniciando loop unificado de monitoramento (500ms)');
     
     // Inicializar timestamps
     lastUpdateTimestampRef.current = Date.now();
@@ -1163,12 +1163,12 @@ export function useRefuelMonitor({
       // CORREÇÃO v2: Usar settings congelados (imutáveis durante sessão)
       const currentSettings = frozenSettingsRef.current;
       if (!currentSettings) {
-        console.warn('[Refuel] Settings congelados não disponíveis');
+        logger.warn('[Refuel] Settings congelados não disponíveis');
         return;
       }
       
       // DEBUG: Log de estado a cada tick
-      console.log('[Refuel] Loop tick:', {
+      logger.debug('[Refuel] Loop tick:', {
         isConnected: isConnectedRef.current,
         speed: speedRef.current,
         stftSupported,
@@ -1178,7 +1178,7 @@ export function useRefuelMonitor({
       
       // BUG FIX 3: Verificar conexão antes de tentar leituras OBD
       if (!isConnectedRef.current) {
-        console.log('[Refuel] Pulando leitura OBD - desconectado');
+        logger.debug('[Refuel] Pulando leitura OBD - desconectado');
         // Apenas atualizar UI, não tenta ler OBD
         if (now - lastUIUpdateRef.current >= UI_UPDATE_THROTTLE) {
           setDistanceMonitored(distanceRef.current);
@@ -1219,7 +1219,7 @@ export function useRefuelMonitor({
         
         // Log para debug
         const progressPercent = (newDistance / currentSettings.monitoringDistance) * 100;
-        console.log(`[Refuel] Distance: ${newDistance.toFixed(3)} km / ${currentSettings.monitoringDistance} km (${progressPercent.toFixed(1)}%) @ ${currentSpeed} km/h`);
+        logger.debug(`[Refuel] Distance: ${newDistance.toFixed(3)} km / ${currentSettings.monitoringDistance} km (${progressPercent.toFixed(1)}%) @ ${currentSpeed} km/h`);
       }
       
       // ========== 2.5 VERIFICAR CLOSED LOOP ANTES DE FUEL TRIM ==========
@@ -1409,7 +1409,7 @@ export function useRefuelMonitor({
       
       // ========== 6. VERIFICAR CONCLUSÃO ==========
       if (distanceRef.current >= currentSettings.monitoringDistance) {
-        console.log(`[Refuel] Distância alcançada: ${distanceRef.current.toFixed(3)} km >= ${currentSettings.monitoringDistance} km`);
+        logger.debug(`[Refuel] Distância alcançada: ${distanceRef.current.toFixed(3)} km >= ${currentSettings.monitoringDistance} km`);
         finalizeAnalysis();
       }
       
@@ -1417,7 +1417,7 @@ export function useRefuelMonitor({
     
     // Cleanup adequado
     return () => {
-      console.log('[Refuel] Cleanup do loop de monitoramento');
+      logger.debug('[Refuel] Cleanup do loop de monitoramento');
       if (monitoringIntervalRef.current) {
         clearInterval(monitoringIntervalRef.current);
         monitoringIntervalRef.current = null;
