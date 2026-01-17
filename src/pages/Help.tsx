@@ -453,7 +453,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/dtc-code-format.png" 
+                src="/help/dtc-code-format.png" 
                 alt="Diagrama explicando o formato de códigos DTC"
                 className="w-full rounded-lg"
               />
@@ -495,7 +495,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/dtc-scanner-results.png" 
+                src="/help/dtc-scanner-results.png" 
                 alt="Tela mostrando lista de códigos DTC encontrados"
                 className="w-full rounded-lg"
               />
@@ -566,7 +566,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/battery-ecg-graph.png" 
+                src="/help/battery-ecg-graph.png" 
                 alt="Gráfico ECG de bateria mostrando tensão durante partida do motor"
                 className="w-full rounded-lg"
               />
@@ -599,7 +599,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/battery-status-cards.png" 
+                src="/help/battery-status-cards.png" 
                 alt="Cards de status da bateria mostrando diferentes estados de saúde"
                 className="w-full rounded-lg"
               />
@@ -827,7 +827,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/visual-mechanic-flow.png" 
+                src="/help/visual-mechanic-flow.png" 
                 alt="Fluxo: fotos → IA analisando → resultado com nível de risco"
                 className="w-full rounded-lg"
               />
@@ -872,7 +872,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/visual-mechanic-result.png" 
+                src="/help/visual-mechanic-result.png" 
                 alt="Card de resultado mostrando diagnóstico com nível de risco"
                 className="w-full rounded-lg"
               />
@@ -1181,7 +1181,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/fuel-trim-chart.png" 
+                src="/help/fuel-trim-chart.png" 
                 alt="Gráfico de Fuel Trim mostrando variação e zonas de qualidade"
                 className="w-full rounded-lg"
               />
@@ -1201,7 +1201,7 @@ export default function Help() {
             </div>
             <div className="p-2">
               <img 
-                src="/src/assets/help/fuel-diagnosis-states.png" 
+                src="/help/fuel-diagnosis-states.png" 
                 alt="5 estados do diagnóstico: Estável, Adaptando, Suspeito, Contaminado, Mecânico"
                 className="w-full rounded-lg"
               />
