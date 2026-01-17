@@ -39,34 +39,56 @@ interface UseVehicleHealthReturn {
 }
 
 const CACHE_KEY_PREFIX = 'vehicle_health_';
+const CACHE_KEY_LAST = 'vehicle_health_last'; // Cache fixo para acesso rápido
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de cache
 
 function getCacheKey(userId: string): string {
   return `${CACHE_KEY_PREFIX}${userId}`;
 }
 
-function loadFromCache(userId: string): VehicleHealthSnapshot | null {
+function parseCachedSnapshot(cached: string): VehicleHealthSnapshot | null {
   try {
-    const cached = localStorage.getItem(getCacheKey(userId));
-    if (!cached) return null;
-    
     const parsed = JSON.parse(cached);
     // Converter strings de data de volta para Date
     if (parsed.lastUpdated) parsed.lastUpdated = new Date(parsed.lastUpdated);
     if (parsed.battery?.lastTestDate) parsed.battery.lastTestDate = new Date(parsed.battery.lastTestDate);
     if (parsed.fuel?.lastRefuelDate) parsed.fuel.lastRefuelDate = new Date(parsed.fuel.lastRefuelDate);
     if (parsed.dtc?.lastScanDate) parsed.dtc.lastScanDate = new Date(parsed.dtc.lastScanDate);
-    
     return parsed as VehicleHealthSnapshot;
+  } catch (err) {
+    console.error('[useVehicleHealth] Error parsing cache:', err);
+    return null;
+  }
+}
+
+function loadFromCache(userId: string): VehicleHealthSnapshot | null {
+  try {
+    const cached = localStorage.getItem(getCacheKey(userId));
+    if (!cached) return null;
+    return parseCachedSnapshot(cached);
   } catch (err) {
     console.error('[useVehicleHealth] Error loading cache:', err);
     return null;
   }
 }
 
+function loadLastCache(): VehicleHealthSnapshot | null {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY_LAST);
+    if (!cached) return null;
+    return parseCachedSnapshot(cached);
+  } catch (err) {
+    console.error('[useVehicleHealth] Error loading last cache:', err);
+    return null;
+  }
+}
+
 function saveToCache(userId: string, snapshot: VehicleHealthSnapshot): void {
   try {
-    localStorage.setItem(getCacheKey(userId), JSON.stringify(snapshot));
+    const jsonStr = JSON.stringify(snapshot);
+    localStorage.setItem(getCacheKey(userId), jsonStr);
+    // Também salvar na chave fixa para acesso rápido na abertura do app
+    localStorage.setItem(CACHE_KEY_LAST, jsonStr);
   } catch (err) {
     console.error('[useVehicleHealth] Error saving cache:', err);
   }
@@ -75,6 +97,7 @@ function saveToCache(userId: string, snapshot: VehicleHealthSnapshot): void {
 function clearCache(userId: string): void {
   try {
     localStorage.removeItem(getCacheKey(userId));
+    // Não limpar CACHE_KEY_LAST para manter alerta mesmo após logout
   } catch (err) {
     console.error('[useVehicleHealth] Error clearing cache:', err);
   }
@@ -84,7 +107,11 @@ export function useVehicleHealth({
   userId,
   vin,
 }: UseVehicleHealthOptions): UseVehicleHealthReturn {
-  const [health, setHealth] = useState<VehicleHealthSnapshot | null>(null);
+  // Carregar cache fixo imediatamente na montagem (antes do auth)
+  const [health, setHealth] = useState<VehicleHealthSnapshot | null>(() => {
+    // Tenta carregar o último cache salvo para exibir alertas imediatamente
+    return loadLastCache();
+  });
   const [loading, setLoading] = useState(false);
   const lastFetchRef = useRef<number>(0);
   const initialLoadDoneRef = useRef(false);
@@ -115,15 +142,15 @@ export function useVehicleHealth({
     }
   }, [userId, vin]);
 
-  // Carregar cache imediatamente, depois buscar do servidor
+  // Carregar cache do usuário e depois buscar do servidor
   useEffect(() => {
     if (!userId) {
-      setHealth(null);
+      // Manter cache fixo mesmo sem userId para mostrar alertas
       initialLoadDoneRef.current = false;
       return;
     }
     
-    // Carregar do cache primeiro (instantâneo)
+    // Carregar do cache do usuário (pode ter dados mais recentes)
     if (!initialLoadDoneRef.current) {
       const cached = loadFromCache(userId);
       if (cached) {
@@ -135,6 +162,17 @@ export function useVehicleHealth({
     // Buscar do servidor em background
     fetchHealth();
   }, [userId, vin, fetchHealth]);
+
+  // Escutar evento de atualização de saúde (disparado pelo useBatteryHistory)
+  useEffect(() => {
+    const handleHealthUpdate = () => {
+      console.log('[useVehicleHealth] Health update event received, refreshing...');
+      fetchHealth(true);
+    };
+    
+    window.addEventListener('vehicle-health-updated', handleHealthUpdate);
+    return () => window.removeEventListener('vehicle-health-updated', handleHealthUpdate);
+  }, [fetchHealth]);
 
   // Refresh manual
   const refresh = useCallback(async () => {

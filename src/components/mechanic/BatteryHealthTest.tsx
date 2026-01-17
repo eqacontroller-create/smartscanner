@@ -140,6 +140,46 @@ export function BatteryHealthTest({
     }
   }, [phase]);
   
+  // Save test to history (defined early for auto-save useEffect)
+  const handleSaveTest = useCallback(async () => {
+    if (!result) return;
+    
+    // Calculate cranking duration from timestamps
+    const crankingDuration = (result.crankingStartMs && result.engineStartMs)
+      ? result.engineStartMs - result.crankingStartMs
+      : result.recoveryTimeMs;
+    
+    const saved = await saveTest({
+      vin: vehicleInfo?.vin,
+      vehicle_brand: vehicleInfo?.brand,
+      vehicle_model: vehicleInfo?.model,
+      resting_voltage: result.preStartVoltage,
+      min_cranking_voltage: result.minVoltage,
+      cranking_duration_ms: crankingDuration,
+      voltage_recovery_ms: result.recoveryTimeMs,
+      post_start_voltage: result.postStartVoltage,
+      alternator_voltage: result.alternatorVoltage ?? undefined,
+      battery_status: result.batteryStatus,
+      battery_message: result.batteryMessage,
+      alternator_status: result.alternatorStatus === 'ok' ? 'excellent' : 
+                         result.alternatorStatus === 'weak' ? 'weak' : 
+                         result.alternatorStatus === 'fail' ? 'not_charging' : undefined,
+      alternator_message: result.alternatorMessage,
+      voltage_samples: voltageData.map(p => ({ timestamp: p.timestamp, voltage: p.voltage })),
+    });
+
+    if (saved) {
+      setIsSaved(true);
+    }
+  }, [result, voltageData, saveTest, vehicleInfo]);
+  
+  // Auto-save when test completes successfully
+  useEffect(() => {
+    if (phase === 'complete' && result && !isSaved && !saving) {
+      handleSaveTest();
+    }
+  }, [phase, result, isSaved, saving, handleSaveTest]);
+  
   // Start test handler
   const handleStartTest = useCallback(async () => {
     if (!isConnected) {
@@ -241,39 +281,6 @@ export function BatteryHealthTest({
     setStatusMessage(PHASE_INSTRUCTIONS.idle);
     setIsSaved(false);
   }, []);
-
-  // Save test to history
-  const handleSaveTest = useCallback(async () => {
-    if (!result) return;
-    
-    // Calculate cranking duration from timestamps
-    const crankingDuration = (result.crankingStartMs && result.engineStartMs)
-      ? result.engineStartMs - result.crankingStartMs
-      : result.recoveryTimeMs;
-    
-    const saved = await saveTest({
-      vin: vehicleInfo?.vin,
-      vehicle_brand: vehicleInfo?.brand,
-      vehicle_model: vehicleInfo?.model,
-      resting_voltage: result.preStartVoltage,
-      min_cranking_voltage: result.minVoltage,
-      cranking_duration_ms: crankingDuration,
-      voltage_recovery_ms: result.recoveryTimeMs,
-      post_start_voltage: result.postStartVoltage,
-      alternator_voltage: result.alternatorVoltage ?? undefined,
-      battery_status: result.batteryStatus,
-      battery_message: result.batteryMessage,
-      alternator_status: result.alternatorStatus === 'ok' ? 'excellent' : 
-                         result.alternatorStatus === 'weak' ? 'weak' : 
-                         result.alternatorStatus === 'fail' ? 'not_charging' : undefined,
-      alternator_message: result.alternatorMessage,
-      voltage_samples: voltageData.map(p => ({ timestamp: p.timestamp, voltage: p.voltage })),
-    });
-
-    if (saved) {
-      setIsSaved(true);
-    }
-  }, [result, voltageData, saveTest, vehicleInfo]);
   
   // Speak result again
   const handleSpeakResult = useCallback(() => {
@@ -621,22 +628,20 @@ export function BatteryHealthTest({
                     </Button>
                   )}
                   
-                  <Button 
-                    onClick={handleSaveTest} 
-                    variant="default"
-                    size="lg"
-                    className="gap-2"
-                    disabled={saving || isSaved}
-                  >
+                  {/* Auto-save status indicator */}
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 text-sm">
                     {saving ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-muted-foreground">Salvando...</span>
+                      </>
                     ) : isSaved ? (
-                      <CheckCircle2 className="h-5 w-5" />
-                    ) : (
-                      <Save className="h-5 w-5" />
-                    )}
-                    {isSaved ? 'Salvo' : 'Salvar'}
-                  </Button>
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-chart-2" />
+                        <span className="text-chart-2">Salvo automaticamente</span>
+                      </>
+                    ) : null}
+                  </div>
                 </>
               )}
             </>
