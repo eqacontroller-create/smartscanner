@@ -24,7 +24,7 @@ import { DTCAlertBanner } from './DTCAlertBanner';
 import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/services/obd/DTCParser';
 import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
 import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
-import { saveScanResult, getRecentScans, compareScanResults } from '@/lib/scanHistory';
+import { ScanHistoryService } from '@/services/supabase/ScanHistoryService';
 import { generateVoiceAlert, getDTCSeverity } from '@/lib/dtcNotifications';
 import { generateDTCReportPDF, downloadPDF, type ScanAuditData } from '@/services/report/DTCScanReportService';
 import { useToast } from '@/hooks/use-toast';
@@ -773,18 +773,18 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       
       // Salvar resultado no histórico
       try {
-        await saveScanResult(uniqueDTCs, detectedVIN, modulesCount, scanDuration);
+        await ScanHistoryService.saveScanResult(uniqueDTCs, detectedVIN, modulesCount, scanDuration);
         addLog('💾 Scan salvo no histórico');
         setHistoryKey(prev => prev + 1); // Atualizar histórico
         
         // === NOVO: Comparar com scan anterior e notificar ===
-        const previousScans = await getRecentScans(2);
+        const previousScans = await ScanHistoryService.getRecent(2);
         
         if (previousScans.length >= 2) {
           const currentScan = previousScans[0];
           const previousScan = previousScans[1];
           
-          const comparison = compareScanResults(previousScan, currentScan);
+          const comparison = ScanHistoryService.compareScanResults(previousScan, currentScan);
           setScanComparison(comparison);
           
           // Notificar sobre novos erros
