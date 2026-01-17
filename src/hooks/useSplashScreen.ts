@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export type SplashPhase = 'ignition' | 'boot' | 'ready' | 'hidden';
+export type SplashPhase = 'ignition' | 'boot' | 'ready' | 'exiting' | 'hidden';
 
 interface UseSplashScreenOptions {
   minDuration?: number;
@@ -8,12 +8,12 @@ interface UseSplashScreenOptions {
 }
 
 export function useSplashScreen(options: UseSplashScreenOptions = {}) {
-  const { minDuration = 5000, enabled = true } = options; // Duração maior para experiência de luxo
+  const { minDuration = 5000, enabled = true } = options;
   
   const [isVisible, setIsVisible] = useState(enabled);
   const [phase, setPhase] = useState<SplashPhase>('ignition');
+  const [isExiting, setIsExiting] = useState(false);
   
-  // Verificar se deve mostrar splash (apenas primeira vez na sessão)
   useEffect(() => {
     if (!enabled) {
       setIsVisible(false);
@@ -21,7 +21,7 @@ export function useSplashScreen(options: UseSplashScreenOptions = {}) {
       return;
     }
     
-    // Verificar prefers-reduced-motion
+    // Check prefers-reduced-motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
       setIsVisible(false);
@@ -29,7 +29,7 @@ export function useSplashScreen(options: UseSplashScreenOptions = {}) {
       return;
     }
     
-    // Verificar se já mostrou nesta sessão
+    // Check if already shown this session
     const hasShownSplash = sessionStorage.getItem('splash_shown');
     if (hasShownSplash) {
       setIsVisible(false);
@@ -37,31 +37,39 @@ export function useSplashScreen(options: UseSplashScreenOptions = {}) {
       return;
     }
     
-    // Marcar como mostrado
+    // Mark as shown
     sessionStorage.setItem('splash_shown', 'true');
     
-    // Sequência de fases sincronizada com áudio premium (mais devagar, com presença)
+    // Premium phase sequence - slower and more majestic
     const timers = [
-      // Ignição → Boot (momento de expectativa)
+      // Ignition → Boot (moment of anticipation)
       setTimeout(() => setPhase('boot'), 600),
-      // Boot → Ready (sincronizado com som ~3.5s)
+      // Boot → Ready (synced with premium sound ~3.8s)
       setTimeout(() => setPhase('ready'), 3800),
-      // Ready → Hidden (pausa para apreciar + fade elegante)
+      // Ready → Exiting (start elegant exit animation)
+      setTimeout(() => {
+        setPhase('exiting');
+        setIsExiting(true);
+      }, minDuration - 800),
+      // Exiting → Hidden (complete transition)
       setTimeout(() => {
         setPhase('hidden');
-        // Fade out suave
-        setTimeout(() => setIsVisible(false), 700);
+        setTimeout(() => setIsVisible(false), 100);
       }, minDuration),
     ];
     
     return () => timers.forEach(clearTimeout);
   }, [enabled, minDuration]);
   
-  // Função para pular splash
+  // Skip splash function
   const skipSplash = useCallback(() => {
-    setPhase('hidden');
-    setTimeout(() => setIsVisible(false), 150);
+    setIsExiting(true);
+    setPhase('exiting');
+    setTimeout(() => {
+      setPhase('hidden');
+      setIsVisible(false);
+    }, 300);
   }, []);
   
-  return { isVisible, phase, skipSplash };
+  return { isVisible, phase, isExiting, skipSplash };
 }
