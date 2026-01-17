@@ -10,6 +10,7 @@ import type { RefuelSettings, RefuelMode, RefuelFlowType, FuelTrimSample, Refuel
 import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
 import type { UseMaintenanceScheduleReturn } from '@/hooks/useMaintenanceSchedule';
 import type { VehicleContextForVision } from '@/types/visionTypes';
+import type { O2SensorReading } from '@/types/fuelForensics';
 
 // Lazy load tab components for better initial load performance
 const DashboardTab = lazy(() => import('@/components/tabs/DashboardTab').then(m => ({ default: m.DashboardTab })));
@@ -76,6 +77,9 @@ interface MainTabsProps {
   distanceMonitored: number;
   currentSTFT: number | null;
   currentLTFT: number | null;
+  currentO2: number | null;
+  o2Readings: O2SensorReading[];
+  o2FrozenDuration?: number;
   anomalyActive: boolean;
   anomalyDuration: number;
   fuelTrimHistory: FuelTrimSample[];
@@ -153,7 +157,7 @@ export function MainTabs(props: MainTabsProps) {
 
       <TabsContent value="financas" className="mt-4 sm:mt-6">
         <Suspense fallback={<TabSkeleton />}>
-          <FinancialTab tripData={props.tripData} tripSettings={props.tripSettings} tripHistory={props.tripHistory} onStartTrip={props.onStartTrip} onPauseTrip={props.onPauseTrip} onResumeTrip={props.onResumeTrip} onResetTrip={props.onResetTrip} onSaveTrip={props.onSaveTrip} onClearHistory={props.onClearTripHistory} onUpdateSettings={props.onUpdateTripSettings} onVoiceReport={props.onVoiceReport} currentSpeed={speed} isSpeaking={props.isSpeaking} autoRideEnabled={props.tripSettings.autoRideEnabled} rideStatus={props.rideStatus} dailySummary={props.dailySummary} onClearTodayRides={props.onClearTodayRides} onDailyReport={props.onDailyReport} refuelMode={props.refuelMode} refuelFlowType={props.refuelFlowType} distanceMonitored={props.distanceMonitored} currentSTFT={props.currentSTFT} currentLTFT={props.currentLTFT} anomalyActive={props.anomalyActive} anomalyDuration={props.anomalyDuration} fuelTrimHistory={props.fuelTrimHistory} refuelSettings={props.refuelSettings} frozenSettings={props.frozenSettings} currentRefuel={props.currentRefuel} isSyncing={props.isSyncing} stftSupported={props.stftSupported} isConnected={isConnected} isAuthenticated={props.isAuthenticated} onStartRefuelMode={props.onStartRefuelMode} onStartQuickTest={props.onStartQuickTest} onCancelRefuel={props.onCancelRefuel} onOpenRefuelModal={props.onOpenRefuelModal} onUpdateRefuelSettings={props.onUpdateRefuelSettings} onResetRefuelSettings={props.onResetRefuelSettings} />
+          <FinancialTab tripData={props.tripData} tripSettings={props.tripSettings} tripHistory={props.tripHistory} onStartTrip={props.onStartTrip} onPauseTrip={props.onPauseTrip} onResumeTrip={props.onResumeTrip} onResetTrip={props.onResetTrip} onSaveTrip={props.onSaveTrip} onClearHistory={props.onClearTripHistory} onUpdateSettings={props.onUpdateTripSettings} onVoiceReport={props.onVoiceReport} currentSpeed={speed} isSpeaking={props.isSpeaking} autoRideEnabled={props.tripSettings.autoRideEnabled} rideStatus={props.rideStatus} dailySummary={props.dailySummary} onClearTodayRides={props.onClearTodayRides} onDailyReport={props.onDailyReport} refuelMode={props.refuelMode} refuelFlowType={props.refuelFlowType} distanceMonitored={props.distanceMonitored} currentSTFT={props.currentSTFT} currentLTFT={props.currentLTFT} currentO2={props.currentO2} o2Readings={props.o2Readings} o2FrozenDuration={props.o2FrozenDuration} anomalyActive={props.anomalyActive} anomalyDuration={props.anomalyDuration} fuelTrimHistory={props.fuelTrimHistory} refuelSettings={props.refuelSettings} frozenSettings={props.frozenSettings} currentRefuel={props.currentRefuel} isSyncing={props.isSyncing} stftSupported={props.stftSupported} isConnected={isConnected} isAuthenticated={props.isAuthenticated} onStartRefuelMode={props.onStartRefuelMode} onStartQuickTest={props.onStartQuickTest} onCancelRefuel={props.onCancelRefuel} onOpenRefuelModal={props.onOpenRefuelModal} onUpdateRefuelSettings={props.onUpdateRefuelSettings} onResetRefuelSettings={props.onResetRefuelSettings} />
         </Suspense>
       </TabsContent>
 

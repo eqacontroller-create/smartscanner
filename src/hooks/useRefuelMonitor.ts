@@ -68,6 +68,9 @@ interface UseRefuelMonitorReturn {
   setFuelContext: (ctx: FuelChangeContext) => void;
   forensicResult: FuelDiagnosticResult | null;
   monitoringData: FuelMonitoringData | null;
+  // O2 Sensor data for real-time monitor
+  o2Readings: O2SensorReading[];
+  o2FrozenDuration: number;
   // Ações
   startRefuelMode: () => void;
   startQuickTest: () => void;
@@ -125,6 +128,11 @@ export function useRefuelMonitor({
   const [forensicResult, setForensicResult] = useState<FuelDiagnosticResult | null>(null);
   const [monitoringData, setMonitoringData] = useState<FuelMonitoringData | null>(null);
   const monitoringDataRef = useRef<FuelMonitoringData | null>(null);
+  
+  // O2 Sensor data for real-time monitor
+  const [o2Readings, setO2Readings] = useState<O2SensorReading[]>([]);
+  const [o2FrozenDuration, setO2FrozenDuration] = useState(0);
+  const o2FrozenStartRef = useRef<number | null>(null);
   
   // Refs para monitoramento (evitar re-renders e memory leaks)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -1357,6 +1365,9 @@ export function useRefuelMonitor({
     setFuelContext: handleSetFuelContext,
     forensicResult,
     monitoringData,
+    // O2 Sensor data
+    o2Readings,
+    o2FrozenDuration,
     // Ações
     startRefuelMode,
     startQuickTest,
