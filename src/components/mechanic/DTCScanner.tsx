@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw, Car, Trash2, BatteryWarning } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Car, Trash2, BatteryWarning, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,6 +26,7 @@ import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_M
 import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
 import { saveScanResult, getRecentScans, compareScanResults } from '@/lib/scanHistory';
 import { generateVoiceAlert, getDTCSeverity } from '@/lib/dtcNotifications';
+import { generateDTCReportPDF, downloadPDF, type ScanAuditData } from '@/services/report/DTCScanReportService';
 import { useToast } from '@/hooks/use-toast';
 
 type ScanState = 'idle' | 'scanning' | 'clearing' | 'clear' | 'errors';
@@ -74,6 +75,11 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   // NOVO: Estados para Low Voltage Warning
   const [lowVoltageWarning, setLowVoltageWarning] = useState(false);
   const [detectedVoltage, setDetectedVoltage] = useState<number | null>(null);
+  // NOVO: Estados para auditoria/PDF
+  const [discardedDTCs, setDiscardedDTCs] = useState<ParsedDTC[]>([]);
+  const [initialDTCs, setInitialDTCs] = useState<ParsedDTC[]>([]);
+  const [scanLogs, setScanLogs] = useState<string[]>([]);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -316,14 +322,15 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   };
 
   // ===== NOVO: Double Check - Re-verificar DTCs encontrados =====
-  const verifyDTCs = async (initialDTCs: ParsedDTC[]): Promise<ParsedDTC[]> => {
-    if (initialDTCs.length === 0) return [];
+  // Retorna { confirmed, discarded } para auditoria PDF
+  const verifyDTCs = async (inputDTCs: ParsedDTC[]): Promise<{ confirmed: ParsedDTC[]; discarded: ParsedDTC[] }> => {
+    if (inputDTCs.length === 0) return { confirmed: [], discarded: [] };
     
-    addLog('🔄 Iniciando Double Check (re-verificação de erros)...');
+    addLogWithCapture('🔄 Iniciando Double Check (re-verificação de erros)...');
     
     // Agrupar DTCs por módulo
     const dtcsByModule = new Map<string, ParsedDTC[]>();
-    for (const dtc of initialDTCs) {
+    for (const dtc of inputDTCs) {
       const moduleId = dtc.module?.id || 'unknown';
       if (!dtcsByModule.has(moduleId)) {
         dtcsByModule.set(moduleId, []);
@@ -331,18 +338,19 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       dtcsByModule.get(moduleId)!.push(dtc);
     }
     
-    const confirmedDTCs: ParsedDTC[] = [];
+    const confirmed: ParsedDTC[] = [];
+    const discarded: ParsedDTC[] = [];
     
     // Re-escanear APENAS os módulos que reportaram erros
     for (const [moduleId, moduleDTCs] of dtcsByModule) {
       const module = moduleDTCs[0].module;
       if (!module) {
         // DTCs sem módulo: confirmar diretamente (veio do broadcast)
-        confirmedDTCs.push(...moduleDTCs);
+        confirmed.push(...moduleDTCs);
         continue;
       }
       
-      addLog(`🔍 Re-verificando ${module.shortName}...`);
+      addLogWithCapture(`🔍 Re-verificando ${module.shortName}...`);
       setCurrentModule(`Verificando ${module.shortName}...`);
       
       try {
@@ -358,23 +366,30 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         // Confirmar apenas os que aparecem nas DUAS leituras
         for (const original of moduleDTCs) {
           if (verifiedDTCs.some(v => v.code === original.code)) {
-            confirmedDTCs.push(original);
-            addLog(`✅ Confirmado: ${original.code}`);
+            confirmed.push(original);
+            addLogWithCapture(`✅ Confirmado: ${original.code}`);
           } else {
-            addLog(`🗑️ Descartado (ruído): ${original.code}`);
+            discarded.push(original);
+            addLogWithCapture(`🗑️ Descartado (ruído): ${original.code}`);
           }
         }
       } catch (e) {
         // Em caso de erro, manter os DTCs originais
-        addLog(`⚠️ Erro na verificação de ${module.shortName}, mantendo DTCs originais`);
-        confirmedDTCs.push(...moduleDTCs);
+        addLogWithCapture(`⚠️ Erro na verificação de ${module.shortName}, mantendo DTCs originais`);
+        confirmed.push(...moduleDTCs);
       }
       
       await delay(200);
     }
     
-    addLog(`📊 Double Check: ${confirmedDTCs.length}/${initialDTCs.length} confirmados`);
-    return confirmedDTCs;
+    addLogWithCapture(`📊 Double Check: ${confirmed.length}/${inputDTCs.length} confirmados, ${discarded.length} descartados`);
+    return { confirmed, discarded };
+  };
+  
+  // Wrapper para capturar logs durante o scan
+  const addLogWithCapture = (message: string) => {
+    addLog(message);
+    setScanLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
   };
 
   // Escanear módulo com protocolo avançado
@@ -498,8 +513,12 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     setScanState('scanning');
     setDtcs([]);
     setCurrentModule('');
-    setLowVoltageWarning(false); // NOVO: Reset warning
-    setDetectedVoltage(null);    // NOVO: Reset voltage
+    setLowVoltageWarning(false); // Reset warning
+    setDetectedVoltage(null);    // Reset voltage
+    // Reset estados de auditoria
+    setDiscardedDTCs([]);
+    setInitialDTCs([]);
+    setScanLogs([]);
     
     let manufacturerGroup: ManufacturerGroup = detectedVIN?.manufacturerGroup || 'Other';
     setScanStartTime(Date.now());
@@ -699,25 +718,31 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       }
       
       // Double Check - Re-verificar erros encontrados
+      // Salvar DTCs iniciais para auditoria
+      setInitialDTCs([...uniqueDTCs]);
+      
       if (uniqueDTCs.length > 0) {
         updateStep('verify', 'running');
         setCurrentModule('Re-verificando erros...');
-        addLog(`🔄 Iniciando Double Check para ${uniqueDTCs.length} código(s)...`);
+        addLogWithCapture(`🔄 Iniciando Double Check para ${uniqueDTCs.length} código(s)...`);
         
-        const confirmedDTCs = await verifyDTCs(uniqueDTCs);
+        const verifyResult = await verifyDTCs(uniqueDTCs);
         
-        if (confirmedDTCs.length < uniqueDTCs.length) {
-          const discarded = uniqueDTCs.length - confirmedDTCs.length;
-          addLog(`🗑️ ${discarded} código(s) de ruído eliminado(s)`);
+        // Salvar descartados para auditoria
+        setDiscardedDTCs(verifyResult.discarded);
+        
+        if (verifyResult.confirmed.length < uniqueDTCs.length) {
+          const discardedCount = verifyResult.discarded.length;
+          addLogWithCapture(`🗑️ ${discardedCount} código(s) de ruído eliminado(s)`);
           
           toast({
             title: "🔍 Double Check Concluído",
-            description: `${confirmedDTCs.length} erro(s) confirmado(s), ${discarded} ruído(s) eliminado(s)`,
+            description: `${verifyResult.confirmed.length} erro(s) confirmado(s), ${discardedCount} ruído(s) eliminado(s)`,
             duration: 5000,
           });
         }
         
-        uniqueDTCs = confirmedDTCs;
+        uniqueDTCs = verifyResult.confirmed;
         updateStep('verify', 'done');
       } else {
         updateStep('verify', 'done');
@@ -844,8 +869,59 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     setScanState('idle');
     setDtcs([]);
     setScanComparison(null);
-    setLowVoltageWarning(false); // Reset warning on new scan
+    setLowVoltageWarning(false);
     setDetectedVoltage(null);
+    // Reset auditoria
+    setDiscardedDTCs([]);
+    setInitialDTCs([]);
+    setScanLogs([]);
+  };
+
+  // Exportar relatório PDF para auditoria mecânica
+  const handleExportPDF = async () => {
+    if (isExportingPDF) return;
+    
+    setIsExportingPDF(true);
+    
+    try {
+      const auditData: ScanAuditData = {
+        vin: detectedVIN,
+        confirmedDTCs: dtcs,
+        discardedDTCs: discardedDTCs,
+        initialDTCs: initialDTCs,
+        scanDate: new Date(scanStartTime),
+        scanDurationMs: elapsedTime,
+        modulesScanned: KNOWN_ECU_MODULES.length,
+        protocolUsed: 'OBD-II + UDS',
+        batteryVoltage: detectedVoltage,
+        lowVoltageWarning: lowVoltageWarning,
+        scanLogs: scanLogs,
+      };
+      
+      const pdfBlob = await generateDTCReportPDF(auditData);
+      
+      // Gerar nome do arquivo
+      const dateStr = new Date().toISOString().split('T')[0];
+      const vinStr = detectedVIN?.vin?.slice(-6) || 'unknown';
+      const filename = `relatorio-dtc-${vinStr}-${dateStr}.pdf`;
+      
+      downloadPDF(pdfBlob, filename);
+      
+      toast({
+        title: "📄 Relatório Exportado",
+        description: `${filename} salvo com sucesso!`,
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível gerar o relatório PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPDF(false);
+    }
   };
 
   return (
@@ -946,10 +1022,32 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
             )}
 
             {(scanState === 'clear' || scanState === 'errors') && (
-              <Button variant="outline" onClick={handleReset} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Novo Scan
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleReset} className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Novo Scan
+                </Button>
+                
+                {/* Botão de Exportar PDF */}
+                <Button 
+                  variant="secondary" 
+                  onClick={handleExportPDF} 
+                  disabled={isExportingPDF}
+                  className="gap-2"
+                >
+                  {isExportingPDF ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      Exportar PDF
+                    </>
+                  )}
+                </Button>
+              </>
             )}
           </div>
 
