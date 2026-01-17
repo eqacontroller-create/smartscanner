@@ -38,12 +38,70 @@ const CAN_HEADERS = new Set([
   '7F8', '7F9', '7FA', '7FB', '7FC', '7FD', '7FE', '7FF',
 ]);
 
+// ===== NOISE FILTER: Valida dados brutos antes de parsear =====
+function isValidDTCData(data: string): boolean {
+  // Mínimo 4 caracteres hex para 1 DTC
+  if (data.length < 4) return false;
+  
+  // Deve conter apenas hex válido
+  if (!/^[0-9A-Fa-f]+$/.test(data)) return false;
+  
+  // Não pode ser só caracteres repetidos (buffer lixo)
+  if (/^(.)\1+$/.test(data)) return false;
+  
+  // Padrões de lixo conhecidos
+  const junkPatterns = [
+    /^FF+$/i,      // Buffer cheio de FFs
+    /^00+$/,       // Buffer zerado
+    /^55+$/,       // Sync pattern
+    /^AA+$/i,      // Outro sync
+    /^(.{2})\1+$/, // Bytes repetidos (ex: "ABABABAB")
+  ];
+  
+  for (const pattern of junkPatterns) {
+    if (pattern.test(data)) {
+      console.log(`[DTC Parser] Dados descartados: buffer inválido (${data.substring(0, 20)})`);
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+// ===== NOISE FILTER: Valida formato de código DTC (mais rigoroso) =====
+function isPlausibleDTC(code: string): boolean {
+  // Formato: P/C/B/U + dígito (0-3) + 3 hex
+  if (!/^[PCBU][0-3][0-9A-F]{3}$/i.test(code)) return false;
+  
+  // Filtrar códigos estatisticamente improváveis (nunca existem em veículos reais)
+  const impossiblePatterns = [
+    /^[PCBU]0000$/i,     // Código zerado
+    /^[PCBU][0-3]FFF$/i, // Buffer overflow
+    /^[PCBU]7E[0-9A-F]{2}$/i, // Parece header 7Exx
+    /^[PCBU]7F[0-9A-F]{2}$/i, // Parece header 7Fxx
+    /^[PCBU]0F{3}$/i,    // Padding comum
+    /^[PCBU][0-3](.)\1{2}$/i, // Padrão repetido (ex: P0111, P0AAA)
+  ];
+  
+  for (const pattern of impossiblePatterns) {
+    if (pattern.test(code)) {
+      console.log(`[DTC Parser] Código improvável descartado: ${code}`);
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 // Valida se um código DTC é válido (não é header CAN ou código inválido)
 function isValidDTCCode(code: string): boolean {
   if (!code || code.length < 5) return false;
   
   // Verificar formato: Letra (P/C/B/U) + dígito (0-3) + 3 hex
   if (!/^[PCBU][0-3][0-9A-F]{3}$/i.test(code)) return false;
+  
+  // NOVO: Usar filtro de plausibilidade
+  if (!isPlausibleDTC(code)) return false;
   
   // Extrair a parte numérica do código
   const numericPart = code.substring(1);
@@ -324,6 +382,11 @@ export function parseDTCResponse(response: string): ParsedDTC[] {
   
   // Se for vazio ou só zeros
   if (!rawDTCs || rawDTCs === '00' || rawDTCs === '0000' || /^0+$/.test(rawDTCs)) {
+    return [];
+  }
+  
+  // NOVO: Validar dados brutos antes de parsear (Noise Filter)
+  if (!isValidDTCData(rawDTCs)) {
     return [];
   }
 

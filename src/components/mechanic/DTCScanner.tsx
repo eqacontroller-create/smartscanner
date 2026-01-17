@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw, Car, Trash2, Save } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Car, Trash2, BatteryWarning } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,8 +42,9 @@ interface DTCScannerProps {
 const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
   { id: 'bluetooth', label: 'Verificando conexão Bluetooth', status: 'pending' },
   { id: 'pause', label: 'Pausando leitura de dados', status: 'pending' },
+  { id: 'voltage', label: '🔋 Verificando voltagem da bateria', status: 'pending' }, // NOVO
   ...(hasVIN ? [] : [{ id: 'vin', label: 'Detectando fabricante pelo VIN', status: 'pending' as const }]),
-  { id: 'config', label: 'Configurando ELM327', status: 'pending' },
+  { id: 'config', label: 'Configurando ELM327 (timeout máximo)', status: 'pending' },
   { id: 'protocol', label: 'Verificando protocolo CAN', status: 'pending' },
   ...KNOWN_ECU_MODULES.map(m => ({
     id: m.id,
@@ -50,6 +52,7 @@ const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
     status: 'pending' as const,
   })),
   { id: 'alternative', label: 'Escaneando endereços específicos do fabricante', status: 'pending' },
+  { id: 'verify', label: '🔄 Re-verificando erros encontrados (Double Check)', status: 'pending' }, // NOVO
   { id: 'reset', label: 'Resetando comunicação', status: 'pending' },
   { id: 'process', label: 'Processando resultados', status: 'pending' },
 ];
@@ -68,6 +71,9 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const [scanStartTime, setScanStartTime] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
   const [scanComparison, setScanComparison] = useState<{ new: string[]; resolved: string[]; persistent: string[] } | null>(null);
+  // NOVO: Estados para Low Voltage Warning
+  const [lowVoltageWarning, setLowVoltageWarning] = useState(false);
+  const [detectedVoltage, setDetectedVoltage] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -280,6 +286,97 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     }
   };
 
+  // ===== NOVO: Parsear resposta de voltagem (PID 01 42) =====
+  const parseVoltageResponse = (response: string): number | null => {
+    try {
+      const clean = response.replace(/[\s\r\n>]/g, '').toUpperCase();
+      
+      // Formato: 4142XXYY onde XX e YY são os bytes de dados
+      // Fórmula: ((A * 256) + B) / 1000
+      const match = clean.match(/4142([0-9A-F]{2})([0-9A-F]{2})/);
+      if (match) {
+        const a = parseInt(match[1], 16);
+        const b = parseInt(match[2], 16);
+        return ((a * 256) + b) / 1000;
+      }
+      
+      // Fallback: tentar parsear dados diretos
+      const directMatch = clean.match(/([0-9A-F]{2})([0-9A-F]{2})$/);
+      if (directMatch && clean.length >= 4) {
+        const a = parseInt(directMatch[1], 16);
+        const b = parseInt(directMatch[2], 16);
+        const voltage = ((a * 256) + b) / 1000;
+        if (voltage > 8 && voltage < 20) return voltage; // Sanity check
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // ===== NOVO: Double Check - Re-verificar DTCs encontrados =====
+  const verifyDTCs = async (initialDTCs: ParsedDTC[]): Promise<ParsedDTC[]> => {
+    if (initialDTCs.length === 0) return [];
+    
+    addLog('🔄 Iniciando Double Check (re-verificação de erros)...');
+    
+    // Agrupar DTCs por módulo
+    const dtcsByModule = new Map<string, ParsedDTC[]>();
+    for (const dtc of initialDTCs) {
+      const moduleId = dtc.module?.id || 'unknown';
+      if (!dtcsByModule.has(moduleId)) {
+        dtcsByModule.set(moduleId, []);
+      }
+      dtcsByModule.get(moduleId)!.push(dtc);
+    }
+    
+    const confirmedDTCs: ParsedDTC[] = [];
+    
+    // Re-escanear APENAS os módulos que reportaram erros
+    for (const [moduleId, moduleDTCs] of dtcsByModule) {
+      const module = moduleDTCs[0].module;
+      if (!module) {
+        // DTCs sem módulo: confirmar diretamente (veio do broadcast)
+        confirmedDTCs.push(...moduleDTCs);
+        continue;
+      }
+      
+      addLog(`🔍 Re-verificando ${module.shortName}...`);
+      setCurrentModule(`Verificando ${module.shortName}...`);
+      
+      try {
+        // Re-configurar para este módulo
+        await sendCommand(`AT SH ${module.txHeader}`, 2000);
+        await sendCommand(`AT CRA ${module.rxFilter}`, 2000);
+        await delay(300);
+        
+        // Ler DTCs novamente com timeout maior
+        const verifyResponse = await sendCommand('03', 10000);
+        const verifiedDTCs = parseDTCResponse(verifyResponse);
+        
+        // Confirmar apenas os que aparecem nas DUAS leituras
+        for (const original of moduleDTCs) {
+          if (verifiedDTCs.some(v => v.code === original.code)) {
+            confirmedDTCs.push(original);
+            addLog(`✅ Confirmado: ${original.code}`);
+          } else {
+            addLog(`🗑️ Descartado (ruído): ${original.code}`);
+          }
+        }
+      } catch (e) {
+        // Em caso de erro, manter os DTCs originais
+        addLog(`⚠️ Erro na verificação de ${module.shortName}, mantendo DTCs originais`);
+        confirmedDTCs.push(...moduleDTCs);
+      }
+      
+      await delay(200);
+    }
+    
+    addLog(`📊 Double Check: ${confirmedDTCs.length}/${initialDTCs.length} confirmados`);
+    return confirmedDTCs;
+  };
+
   // Escanear módulo com protocolo avançado
   const scanModuleAdvanced = async (module: ECUModule): Promise<ParsedDTC[]> => {
     const allDTCs: ParsedDTC[] = [];
@@ -296,8 +393,9 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       await delay(200);
 
       // === PROTOCOLO 1: OBD-II Modo 03 (DTCs de emissão) ===
+      // NOVO: Timeout aumentado para 12s (módulos lentos)
       addLog(`📤 [OBD-II] Enviando 03 para ${module.shortName}...`);
-      const obd2Response = await sendCommand('03', 8000);
+      const obd2Response = await sendCommand('03', 12000);
       addLog(`📥 [OBD-II] RAW: "${obd2Response.substring(0, 100)}"`);
 
       if (isValidResponse(obd2Response) && 
@@ -324,9 +422,10 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       await delay(200);
 
       // Tentar múltiplos status masks em ordem de prioridade
+      // NOVO: Timeout aumentado para 15s (módulos lentos como ABS/Airbag)
       for (const statusInfo of UDS_STATUS_MASKS) {
         addLog(`📤 [UDS] 19 02 ${statusInfo.mask} (${statusInfo.description})...`);
-        const udsResponse = await sendCommand(`19 02 ${statusInfo.mask}`, 10000);
+        const udsResponse = await sendCommand(`19 02 ${statusInfo.mask}`, 15000);
         
         // Log apenas primeiros 100 chars para não poluir
         const logResponse = udsResponse.length > 100 ? udsResponse.substring(0, 100) + '...' : udsResponse;
@@ -399,6 +498,8 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     setScanState('scanning');
     setDtcs([]);
     setCurrentModule('');
+    setLowVoltageWarning(false); // NOVO: Reset warning
+    setDetectedVoltage(null);    // NOVO: Reset voltage
     
     let manufacturerGroup: ManufacturerGroup = detectedVIN?.manufacturerGroup || 'Other';
     setScanStartTime(Date.now());
@@ -427,7 +528,41 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       }
       updateStep('pause', 'done');
 
-      // Step 2.5: Detectar VIN se ainda não temos
+      // ===== NOVO: Step 2.5 - Verificar voltagem (Pré-Scan) =====
+      updateStep('voltage', 'running');
+      setCurrentModule('Verificando bateria...');
+      addLog('🔋 Verificando voltagem da bateria...');
+      
+      try {
+        const voltageResponse = await sendCommand('01 42', 5000);
+        const voltage = parseVoltageResponse(voltageResponse);
+        
+        if (voltage !== null) {
+          setDetectedVoltage(voltage);
+          addLog(`🔋 Voltagem: ${voltage.toFixed(1)}V`);
+          
+          if (voltage < 12.0) {
+            setLowVoltageWarning(true);
+            addLog('⚠️ ATENÇÃO: Bateria fraca pode gerar erros falsos!');
+            
+            toast({
+              title: "⚠️ Bateria Fraca Detectada",
+              description: `Voltagem: ${voltage.toFixed(1)}V. Isso pode gerar códigos de erro falsos em múltiplos módulos.`,
+              variant: "destructive",
+              duration: 10000,
+            });
+          } else {
+            addLog(`✅ Voltagem OK: ${voltage.toFixed(1)}V`);
+          }
+        } else {
+          addLog('⚠️ Não foi possível ler voltagem (PID 42 não suportado)');
+        }
+      } catch (e) {
+        addLog('⚠️ Leitura de voltagem falhou, continuando...');
+      }
+      updateStep('voltage', 'done');
+
+      // Step 3: Detectar VIN se ainda não temos
       if (!detectedVIN) {
         updateStep('vin', 'running');
         setCurrentModule('Lendo VIN...');
@@ -437,26 +572,30 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         addLog(`🏭 Usando fabricante detectado: ${detectedVIN.manufacturer} (${manufacturerGroup})`);
       }
 
-      // Step 3: Configurar ELM327 para scan avançado
+      // Step 4: Configurar ELM327 para scan avançado (Timeout Dinâmico)
       updateStep('config', 'running');
-      addLog('🔧 Configurando ELM327...');
+      addLog('🔧 Configurando ELM327 para scan profundo...');
       
       try {
-        // Timeout máximo do ELM327 (~1020ms)
+        // *** TIMEOUT MÁXIMO - Crítico para módulos lentos (ABS, Airbag) ***
         await sendCommand('AT ST FF', 2000);
-        addLog('✅ AT ST FF - Timeout máximo configurado');
+        addLog('✅ AT ST FF - Timeout MÁXIMO (1s por resposta)');
         
-        // Desabilitar adaptive timing para respostas consistentes
+        // Desabilitar adaptive timing para consistência
         await sendCommand('AT AT 0', 2000);
-        addLog('✅ AT AT 0 - Adaptive timing desabilitado');
+        addLog('✅ AT AT 0 - Adaptive timing OFF');
         
-        // Ativar headers CAN
+        // Headers CAN ativados
         await sendCommand('AT H1', 2000);
         addLog('✅ AT H1 - Headers CAN ativados');
         
-        // Permitir respostas longas (multi-frame)
+        // Respostas longas permitidas
         await sendCommand('AT AL', 2000);
-        addLog('✅ AT AL - Respostas longas permitidas');
+        addLog('✅ AT AL - Respostas longas OK');
+        
+        // *** NOVO: Desabilitar DLC display para respostas mais limpas ***
+        await sendCommand('AT D0', 2000);
+        addLog('✅ AT D0 - DLC display OFF');
         
       } catch (e) {
         addLog(`⚠️ Configuração parcial: ${e}`);
@@ -543,7 +682,48 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       }
       updateStep('alternative', 'done');
 
-      // Step 7: Resetar comunicação
+      // ===== NOVO: Step 7 - Double Check (Validação) =====
+      // Deduplicar primeiro
+      let uniqueDTCs: ParsedDTC[] = [];
+      const seenCodes = new Set<string>();
+      
+      for (const dtc of allDTCs) {
+        if (!seenCodes.has(dtc.code)) {
+          seenCodes.add(dtc.code);
+          uniqueDTCs.push(dtc);
+        }
+      }
+      
+      if (uniqueDTCs.length !== allDTCs.length) {
+        addLog(`🔄 Removidas ${allDTCs.length - uniqueDTCs.length} duplicata(s)`);
+      }
+      
+      // Double Check - Re-verificar erros encontrados
+      if (uniqueDTCs.length > 0) {
+        updateStep('verify', 'running');
+        setCurrentModule('Re-verificando erros...');
+        addLog(`🔄 Iniciando Double Check para ${uniqueDTCs.length} código(s)...`);
+        
+        const confirmedDTCs = await verifyDTCs(uniqueDTCs);
+        
+        if (confirmedDTCs.length < uniqueDTCs.length) {
+          const discarded = uniqueDTCs.length - confirmedDTCs.length;
+          addLog(`🗑️ ${discarded} código(s) de ruído eliminado(s)`);
+          
+          toast({
+            title: "🔍 Double Check Concluído",
+            description: `${confirmedDTCs.length} erro(s) confirmado(s), ${discarded} ruído(s) eliminado(s)`,
+            duration: 5000,
+          });
+        }
+        
+        uniqueDTCs = confirmedDTCs;
+        updateStep('verify', 'done');
+      } else {
+        updateStep('verify', 'done');
+      }
+
+      // Step 8: Resetar comunicação
       updateStep('reset', 'running');
       addLog('🔄 Resetando para modo broadcast...');
       
@@ -558,24 +738,9 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       }
       updateStep('reset', 'done');
 
-      // Step 8: Processar resultados
+      // Step 9: Processar resultados
       updateStep('process', 'running');
       setCurrentModule('');
-      
-      // NOVO: Deduplicação global final - garantir códigos únicos
-      const uniqueDTCs: ParsedDTC[] = [];
-      const seenCodes = new Set<string>();
-      
-      for (const dtc of allDTCs) {
-        if (!seenCodes.has(dtc.code)) {
-          seenCodes.add(dtc.code);
-          uniqueDTCs.push(dtc);
-        }
-      }
-      
-      if (uniqueDTCs.length !== allDTCs.length) {
-        addLog(`🔄 Removidas ${allDTCs.length - uniqueDTCs.length} duplicata(s)`);
-      }
       
       // Calcular duração do scan
       const scanDuration = Date.now() - scanStartTime;
@@ -679,6 +844,8 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
     setScanState('idle');
     setDtcs([]);
     setScanComparison(null);
+    setLowVoltageWarning(false); // Reset warning on new scan
+    setDetectedVoltage(null);
   };
 
   return (
@@ -796,6 +963,21 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
 
       {scanState === 'scanning' && (
         <ScanProgress steps={scanSteps} elapsedTime={elapsedTime} />
+      )}
+
+      {/* ===== NOVO: Banner de aviso de bateria fraca ===== */}
+      {lowVoltageWarning && (scanState === 'clear' || scanState === 'errors') && (
+        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+          <BatteryWarning className="h-5 w-5 text-yellow-500" />
+          <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+            <span className="font-semibold">⚠️ Bateria fraca detectada: {detectedVoltage?.toFixed(1)}V</span>
+            <br />
+            <span className="text-sm">
+              Resultados podem incluir códigos falsos devido à queda de tensão. 
+              Recomendamos recarregar a bateria e repetir o scan.
+            </span>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Banner de comparação com scan anterior */}
