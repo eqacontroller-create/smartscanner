@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      battery_tests: {
+        Row: {
+          alternator_message: string | null
+          alternator_status: string | null
+          alternator_voltage: number | null
+          ambient_temp_celsius: number | null
+          battery_message: string | null
+          battery_status: string
+          cranking_duration_ms: number
+          created_at: string
+          id: string
+          min_cranking_voltage: number
+          notes: string | null
+          post_start_voltage: number | null
+          resting_voltage: number
+          user_id: string
+          vehicle_brand: string | null
+          vehicle_model: string | null
+          vin: string | null
+          voltage_recovery_ms: number | null
+          voltage_samples: Json | null
+        }
+        Insert: {
+          alternator_message?: string | null
+          alternator_status?: string | null
+          alternator_voltage?: number | null
+          ambient_temp_celsius?: number | null
+          battery_message?: string | null
+          battery_status: string
+          cranking_duration_ms: number
+          created_at?: string
+          id?: string
+          min_cranking_voltage: number
+          notes?: string | null
+          post_start_voltage?: number | null
+          resting_voltage: number
+          user_id: string
+          vehicle_brand?: string | null
+          vehicle_model?: string | null
+          vin?: string | null
+          voltage_recovery_ms?: number | null
+          voltage_samples?: Json | null
+        }
+        Update: {
+          alternator_message?: string | null
+          alternator_status?: string | null
+          alternator_voltage?: number | null
+          ambient_temp_celsius?: number | null
+          battery_message?: string | null
+          battery_status?: string
+          cranking_duration_ms?: number
+          created_at?: string
+          id?: string
+          min_cranking_voltage?: number
+          notes?: string | null
+          post_start_voltage?: number | null
+          resting_voltage?: number
+          user_id?: string
+          vehicle_brand?: string | null
+          vehicle_model?: string | null
+          vin?: string | null
+          voltage_recovery_ms?: number | null
+          voltage_samples?: Json | null
+        }
+        Relationships: []
+      }
       dtc_findings: {
         Row: {
           created_at: string

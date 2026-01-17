@@ -19,6 +19,8 @@ export { DTCEstimateService, getDTCEstimate } from './ai/DTCEstimateService';
 
 // Battery Services
 export * from './battery/BatteryForensicsService';
+export { BatteryTestService } from './supabase/BatteryTestService';
+export type { BatteryTestRecord, CreateBatteryTest, BatteryTrend } from './supabase/BatteryTestService';
 
 // Report Services
 export { generateDTCReportPDF, downloadPDF } from './report/DTCScanReportService';

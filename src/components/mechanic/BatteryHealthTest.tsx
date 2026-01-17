@@ -28,6 +28,8 @@ import {
   XCircle,
   Activity,
   Info,
+  Save,
+  History,
 } from 'lucide-react';
 import {
   LineChart,
@@ -46,6 +48,10 @@ import {
   type VoltagePoint,
   type CrankingTestResult,
 } from '@/services/battery/BatteryForensicsService';
+import { useBatteryHistory } from '@/hooks/useBatteryHistory';
+import { BatteryHistory } from './BatteryHistory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 
 // ============= TYPES =============
 
@@ -65,6 +71,11 @@ interface BatteryHealthTestProps {
   stopPolling: () => void;
   addLog: (msg: string) => void;
   onSpeak?: (text: string) => void;
+  vehicleInfo?: {
+    vin?: string;
+    brand?: string;
+    model?: string;
+  };
 }
 
 // ============= CONSTANTS =============
@@ -88,16 +99,22 @@ export function BatteryHealthTest({
   stopPolling,
   addLog,
   onSpeak,
+  vehicleInfo,
 }: BatteryHealthTestProps) {
   // Test state
   const [phase, setPhase] = useState<TestPhase>('idle');
   const [statusMessage, setStatusMessage] = useState(PHASE_INSTRUCTIONS.idle);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'test' | 'history'>('test');
+  const [isSaved, setIsSaved] = useState(false);
   
   // Captured data
   const [voltageData, setVoltageData] = useState<VoltagePoint[]>([]);
   const [result, setResult] = useState<CrankingTestResult | null>(null);
   const [currentVoltage, setCurrentVoltage] = useState<number | null>(null);
+  
+  // Battery history hook
+  const { saveTest, saving } = useBatteryHistory();
   
   // Abort controller for cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -193,7 +210,41 @@ export function BatteryHealthTest({
     setResult(null);
     setCurrentVoltage(null);
     setStatusMessage(PHASE_INSTRUCTIONS.idle);
+    setIsSaved(false);
   }, []);
+
+  // Save test to history
+  const handleSaveTest = useCallback(async () => {
+    if (!result) return;
+    
+    // Calculate cranking duration from timestamps
+    const crankingDuration = (result.crankingStartMs && result.engineStartMs)
+      ? result.engineStartMs - result.crankingStartMs
+      : result.recoveryTimeMs;
+    
+    const saved = await saveTest({
+      vin: vehicleInfo?.vin,
+      vehicle_brand: vehicleInfo?.brand,
+      vehicle_model: vehicleInfo?.model,
+      resting_voltage: result.preStartVoltage,
+      min_cranking_voltage: result.minVoltage,
+      cranking_duration_ms: crankingDuration,
+      voltage_recovery_ms: result.recoveryTimeMs,
+      post_start_voltage: result.postStartVoltage,
+      alternator_voltage: result.alternatorVoltage ?? undefined,
+      battery_status: result.batteryStatus,
+      battery_message: result.batteryMessage,
+      alternator_status: result.alternatorStatus === 'ok' ? 'excellent' : 
+                         result.alternatorStatus === 'weak' ? 'weak' : 
+                         result.alternatorStatus === 'fail' ? 'not_charging' : undefined,
+      alternator_message: result.alternatorMessage,
+      voltage_samples: voltageData.map(p => ({ timestamp: p.timestamp, voltage: p.voltage })),
+    });
+
+    if (saved) {
+      setIsSaved(true);
+    }
+  }, [result, voltageData, saveTest, vehicleInfo]);
   
   // Speak result again
   const handleSpeakResult = useCallback(() => {
@@ -233,7 +284,7 @@ export function BatteryHealthTest({
 
   return (
     <Card className="glass border-border/50">
-      <CardHeader className="text-center">
+      <CardHeader className="text-center pb-2">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Activity className="h-6 w-6 text-primary" />
           <CardTitle className="text-xl">Teste de Saúde da Bateria</CardTitle>
@@ -243,7 +294,25 @@ export function BatteryHealthTest({
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
+        {/* Tabs for Test vs History */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'test' | 'history')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="test" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Teste
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <History className="h-4 w-4" />
+              Histórico
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="history" className="mt-4">
+            <BatteryHistory />
+          </TabsContent>
+
+          <TabsContent value="test" className="mt-4 space-y-6">
         {/* Status Message */}
         <Alert className={phase === 'error' ? 'border-destructive' : 'border-primary/50'}>
           <AlertDescription className="flex items-center gap-2">
@@ -474,16 +543,37 @@ export function BatteryHealthTest({
                 Novo Teste
               </Button>
               
-              {phase === 'complete' && onSpeak && (
-                <Button 
-                  onClick={handleSpeakResult} 
-                  variant="secondary"
-                  size="lg"
-                  className="gap-2"
-                >
-                  <Volume2 className="h-5 w-5" />
-                  Ouvir Diagnóstico
-                </Button>
+              {phase === 'complete' && (
+                <>
+                  {onSpeak && (
+                    <Button 
+                      onClick={handleSpeakResult} 
+                      variant="secondary"
+                      size="lg"
+                      className="gap-2"
+                    >
+                      <Volume2 className="h-5 w-5" />
+                      Ouvir
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    onClick={handleSaveTest} 
+                    variant="default"
+                    size="lg"
+                    className="gap-2"
+                    disabled={saving || isSaved}
+                  >
+                    {saving ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : isSaved ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : (
+                      <Save className="h-5 w-5" />
+                    )}
+                    {isSaved ? 'Salvo' : 'Salvar'}
+                  </Button>
+                </>
               )}
             </>
           )}
@@ -504,6 +594,8 @@ export function BatteryHealthTest({
             </ol>
           </div>
         )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
