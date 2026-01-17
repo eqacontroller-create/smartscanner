@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Car, Download, HelpCircle, MoreVertical, Volume2, Moon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ interface AppHeaderProps {
   onToggleListening: () => void;
 }
 
-export function AppHeader({
+function AppHeaderComponent({
   themeVehicle,
   currentProfile,
   syncStatus,
@@ -154,3 +155,30 @@ export function AppHeader({
     </header>
   );
 }
+
+// Custom comparator to prevent re-renders during OBD polling
+function arePropsEqual(prevProps: AppHeaderProps, nextProps: AppHeaderProps): boolean {
+  return (
+    // Connection status
+    prevProps.status === nextProps.status &&
+    
+    // Vehicle (compare by VIN to avoid object comparison)
+    prevProps.themeVehicle?.vin === nextProps.themeVehicle?.vin &&
+    
+    // Sync status
+    prevProps.syncStatus.synced === nextProps.syncStatus.synced &&
+    prevProps.syncStatus.loading === nextProps.syncStatus.loading &&
+    
+    // Jarvis states (change during voice interaction)
+    prevProps.jarvisEnabled === nextProps.jarvisEnabled &&
+    prevProps.isSpeaking === nextProps.isSpeaking &&
+    prevProps.isListening === nextProps.isListening &&
+    prevProps.isProcessing === nextProps.isProcessing &&
+    prevProps.aiError === nextProps.aiError &&
+    
+    // Wake lock
+    prevProps.isWakeLockActive === nextProps.isWakeLockActive
+  );
+}
+
+export const AppHeader = memo(AppHeaderComponent, arePropsEqual);
