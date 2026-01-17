@@ -5,10 +5,12 @@ import "./index.css";
 import { SplashScreen, FlyingLogo } from "./components/splash";
 import { useSplashScreen } from "./hooks/useSplashScreen";
 import { useSplashTheme } from "./hooks/useSplashTheme";
+import { usePerformanceMode } from "./hooks/usePerformanceMode";
 
 function Root() {
   const { isVisible, phase, isExiting, skipSplash } = useSplashScreen({ minDuration: 5000 });
   const splashTheme = useSplashTheme();
+  const performanceConfig = usePerformanceMode();
   const [logoLanded, setLogoLanded] = useState(false);
   
   // Determine if dashboard should be visible and interactive
@@ -38,15 +40,18 @@ function Root() {
           phase={phase} 
           onSkip={skipSplash}
           theme={splashTheme}
+          performanceConfig={performanceConfig}
         />
       )}
       
       {/* Flying Logo - animates from splash center to header position */}
-      {isVisible && phase === 'exiting' && (
+      {/* Skip particles entirely on low performance devices */}
+      {isVisible && phase === 'exiting' && performanceConfig.level !== 'low' && (
         <FlyingLogo 
           phase={phase}
           theme={splashTheme}
           glowColor={glowColor}
+          performanceConfig={performanceConfig}
         />
       )}
       
