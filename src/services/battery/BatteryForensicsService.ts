@@ -82,7 +82,7 @@ const ALTERNATOR_THRESHOLDS = {
 // Capture settings
 const CAPTURE_INTERVAL_MS = 50;     // Read voltage every 50ms
 const RPM_CHECK_INTERVAL = 5;       // Check RPM every N voltage readings
-const POST_START_DURATION_MS = 5000; // Monitor for 5s after engine starts
+const POST_START_DURATION_MS = 10000; // Monitor for 10s after engine starts (alternators with soft-start)
 const MAX_TEST_DURATION_MS = 60000; // Maximum test duration (60s timeout)
 const ENGINE_START_RPM = 400;       // RPM threshold to detect engine running
 
