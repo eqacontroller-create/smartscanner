@@ -60,11 +60,14 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
   const isIgnition = phase === 'ignition';
   const isReady = phase === 'ready';
   const isBoot = phase === 'boot';
+  const isExiting = phase === 'exiting';
   
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-all duration-500 ${
-        isReady ? 'opacity-100' : 'opacity-100'
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 ease-out ${
+        isExiting 
+          ? 'opacity-0 scale-105 blur-lg' 
+          : 'opacity-100 scale-100 blur-0'
       }`}
       style={{
         background: `
@@ -162,7 +165,7 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
       <div className={`transition-all duration-700 ${
         isIgnition ? 'opacity-0 scale-90' : 'opacity-100 scale-100'
       }`}>
-        <AnimatedGauge phase={phase} />
+        <AnimatedGauge phase={isExiting ? 'ready' : phase} />
       </div>
       
       {/* Barra de progresso com glow pulsante */}

@@ -181,6 +181,41 @@ export default {
             textShadow: "0 0 20px currentColor, 0 0 40px currentColor"
           },
         },
+        // Premium splash-to-dashboard transitions
+        "splash-exit": {
+          "0%": { 
+            opacity: "1", 
+            transform: "scale(1)", 
+            filter: "blur(0)" 
+          },
+          "100%": { 
+            opacity: "0", 
+            transform: "scale(1.05)", 
+            filter: "blur(12px)" 
+          },
+        },
+        "dashboard-enter": {
+          "0%": { 
+            opacity: "0", 
+            transform: "scale(0.96)", 
+            filter: "blur(10px)" 
+          },
+          "100%": { 
+            opacity: "1", 
+            transform: "scale(1)", 
+            filter: "blur(0)" 
+          },
+        },
+        "stagger-fade-in": {
+          "0%": { 
+            opacity: "0", 
+            transform: "translateY(12px)" 
+          },
+          "100%": { 
+            opacity: "1", 
+            transform: "translateY(0)" 
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -205,6 +240,10 @@ export default {
         "celebrate-pop": "celebrate-pop 0.5s ease-out forwards",
         "splash-particle": "splash-particle 3s ease-out infinite",
         "neon-pulse": "neon-pulse 2s ease-in-out infinite",
+        // Premium transitions
+        "splash-exit": "splash-exit 0.7s ease-out forwards",
+        "dashboard-enter": "dashboard-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "stagger-fade-in": "stagger-fade-in 0.5s ease-out forwards",
       },
     },
   },
