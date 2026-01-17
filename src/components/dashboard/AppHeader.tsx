@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Car, Download, HelpCircle, MoreVertical, Volume2, Moon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -181,4 +181,4 @@ function arePropsEqual(prevProps: AppHeaderProps, nextProps: AppHeaderProps): bo
   );
 }
 
-export const AppHeader = memo(AppHeaderComponent, arePropsEqual);
+export const AppHeader = React.memo(AppHeaderComponent, arePropsEqual);
