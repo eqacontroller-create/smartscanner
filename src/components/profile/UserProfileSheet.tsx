@@ -100,6 +100,7 @@ export const UserProfileSheet: React.FC<UserProfileSheetProps> = ({
   const handleEditSave = useCallback(async (data: ProfileFormData) => {
     await onUpdateProfile({
       displayName: data.displayName,
+      avatarUrl: data.avatarUrl,
       phone: data.phone,
       city: data.city,
       driverType: data.driverType,
@@ -109,6 +110,7 @@ export const UserProfileSheet: React.FC<UserProfileSheetProps> = ({
 
   const editInitialData: ProfileFormData = {
     displayName: profileData.displayName || null,
+    avatarUrl: profileData.avatarUrl || null,
     phone: profileData.phone || null,
     city: profileData.city || null,
     driverType: profileData.driverType || 'particular',
@@ -265,6 +267,8 @@ export const UserProfileSheet: React.FC<UserProfileSheetProps> = ({
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         initialData={editInitialData}
+        email={userEmail}
+        userId={userId}
         onSave={handleEditSave}
       />
     </>
