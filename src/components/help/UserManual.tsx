@@ -18,6 +18,9 @@ import {
   DollarSign,
   Images,
   RefreshCw,
+  Brain,
+  CircleDot,
+  CloudOff,
 } from "lucide-react";
 
 interface ManualSectionProps {
@@ -381,18 +384,85 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
         <div className="flex items-start gap-3 mb-3">
           <Droplets className="h-5 w-5 text-primary mt-0.5" />
           <div>
-            <h4 className="font-semibold">Verificação de Qualidade</h4>
+            <h4 className="font-semibold">Verificação de Qualidade com Análise Forense</h4>
             <p className="text-sm text-muted-foreground">
-              Analisa o Fuel Trim após abastecer para detectar combustível adulterado 
-              e verificar a precisão da bomba do posto.
+              Sistema inteligente que analisa o Fuel Trim após abastecer, diferencia 
+              troca de combustível Flex de adulteração, e monitora o sensor O2 em tempo real.
             </p>
           </div>
         </div>
         
         <ManualCard
           title="Como usar"
-          description="Abasteça → Clique no botão verde 'Abastecer' → Informe litros e preço → Inicie monitoramento → Dirija 5km → Veja o resultado."
+          description="Abasteça → Selecione contexto (mesmo combustível, gas→etanol ou etanol→gas) → Informe litros/preço → Inicie monitoramento → Dirija 5km → Veja diagnóstico forense."
         />
+
+        {/* Análise Forense */}
+        <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/30 mt-4">
+          <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Análise Forense Inteligente (Fuel State Machine)
+          </h4>
+          <p className="text-sm text-muted-foreground mb-2">
+            Antes de iniciar o monitoramento, selecione o contexto do abastecimento:
+          </p>
+          <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+            <li><strong>Mesmo combustível:</strong> Você abasteceu o mesmo tipo (comparação direta)</li>
+            <li><strong>Gasolina → Etanol:</strong> Trocou para etanol (STFT sobe, normal)</li>
+            <li><strong>Etanol → Gasolina:</strong> Trocou para gasolina (STFT desce, normal)</li>
+          </ul>
+        </div>
+
+        {/* Estados do Diagnóstico */}
+        <div className="p-3 bg-muted/20 rounded-lg mt-3">
+          <h4 className="font-semibold mb-2">Estados do Diagnóstico Forense:</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500" />
+              <span><strong>Estável:</strong> Combustível aprovado</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-blue-500" />
+              <span><strong>Adaptando:</strong> ECU aprendendo (normal em Flex)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-yellow-500" />
+              <span><strong>Suspeito:</strong> Valores fora do normal</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500" />
+              <span><strong>Contaminado:</strong> Adulteração detectada</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-gray-500" />
+              <span><strong>Mecânico:</strong> Problema no veículo</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Monitor O2 */}
+        <div className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg mt-3">
+          <CircleDot className="h-5 w-5 text-cyan-500 mt-0.5" />
+          <div>
+            <h4 className="font-semibold">Monitor de Sensor O2 (Sonda Lambda)</h4>
+            <p className="text-sm text-muted-foreground">
+              Gráfico em tempo real mostra a sonda oscilando. Valores &lt;0.45V = mistura pobre, 
+              &gt;0.45V = rica. Se ficar travada, indica problema mecânico.
+            </p>
+          </div>
+        </div>
+
+        {/* Modo Offline */}
+        <div className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg mt-3">
+          <CloudOff className="h-5 w-5 text-orange-500 mt-0.5" />
+          <div>
+            <h4 className="font-semibold">Modo Offline</h4>
+            <p className="text-sm text-muted-foreground">
+              Sem internet, diagnósticos são salvos localmente. Ao reconectar, 
+              sincronizam automaticamente. Um indicador mostra itens pendentes.
+            </p>
+          </div>
+        </div>
         
         <div className="p-3 bg-muted/20 rounded-lg mt-3">
           <h4 className="font-semibold mb-2">Interpretação do Fuel Trim (STFT):</h4>
@@ -474,6 +544,14 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
             title="A análise de foto funciona offline?"
             description="Sim! Tire a foto offline e ela será analisada quando a conexão retornar. O histórico é salvo localmente."
           />
+          <ManualCard
+            title="O que significa 'ECU Adaptando'?"
+            description="Em veículos Flex, ao trocar combustível, a ECU precisa aprender nova proporção. STFT alto é normal. O sistema mostra progresso da adaptação."
+          />
+          <ManualCard
+            title="Por que 'Problema Mecânico'?"
+            description="Se sensor O2 ficar travado ou LTFT não adaptar após km, indica problema mecânico (sonda defeituosa, vazamento). Procure um mecânico."
+          />
         </div>
       </ManualSection>
 
@@ -519,6 +597,22 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <div className="p-2 bg-muted/20 rounded">
             <span className="font-mono font-bold text-primary">LTFT</span>
             <p className="text-muted-foreground">Correção de longo prazo</p>
+          </div>
+          <div className="p-2 bg-muted/20 rounded">
+            <span className="font-mono font-bold text-primary">Sensor O2</span>
+            <p className="text-muted-foreground">Sonda lambda no escapamento</p>
+          </div>
+          <div className="p-2 bg-muted/20 rounded">
+            <span className="font-mono font-bold text-primary">Flex</span>
+            <p className="text-muted-foreground">Veículo bicombustível</p>
+          </div>
+          <div className="p-2 bg-muted/20 rounded">
+            <span className="font-mono font-bold text-primary">Forense</span>
+            <p className="text-muted-foreground">Análise inteligente de padrões</p>
+          </div>
+          <div className="p-2 bg-muted/20 rounded">
+            <span className="font-mono font-bold text-primary">Adaptação</span>
+            <p className="text-muted-foreground">ECU aprendendo novo combustível</p>
           </div>
         </div>
       </ManualSection>
