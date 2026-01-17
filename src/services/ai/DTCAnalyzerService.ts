@@ -1,5 +1,6 @@
 import { getDTCInfo, getDefaultDTCInfo, type DTCInfo } from '@/lib/dtcDatabase';
 import { decryptApiKey } from '@/lib/encryption';
+import logger from '@/lib/logger';
 
 export type AIProvider = 'basic' | 'openai';
 
@@ -109,7 +110,7 @@ Forneça:
       source: 'openai',
     };
   } catch (error) {
-    console.error('Erro ao analisar DTC com OpenAI:', error);
+    logger.error('Erro ao analisar DTC com OpenAI:', error);
     
     // Fallback para banco local em caso de erro
     return {

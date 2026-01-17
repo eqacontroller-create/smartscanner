@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import logger from '@/lib/logger';
 
 export interface VisualDiagnosis {
   id: string;
@@ -50,7 +51,7 @@ export const VisualDiagnosisService = {
       .limit(limit);
 
     if (error) {
-      console.error('Erro ao buscar diagnósticos:', error);
+      logger.error('Erro ao buscar diagnósticos:', error);
       throw error;
     }
 
@@ -73,7 +74,7 @@ export const VisualDiagnosisService = {
       .maybeSingle();
 
     if (error) {
-      console.error('Erro ao buscar diagnóstico:', error);
+      logger.error('Erro ao buscar diagnóstico:', error);
       throw error;
     }
 
@@ -112,7 +113,7 @@ export const VisualDiagnosisService = {
       .single();
 
     if (error) {
-      console.error('Erro ao criar diagnóstico:', error);
+      logger.error('Erro ao criar diagnóstico:', error);
       throw error;
     }
 
@@ -134,7 +135,7 @@ export const VisualDiagnosisService = {
       .eq('id', id);
 
     if (error) {
-      console.error('Erro ao atualizar nota:', error);
+      logger.error('Erro ao atualizar nota:', error);
       throw error;
     }
   },
@@ -149,7 +150,7 @@ export const VisualDiagnosisService = {
       .eq('id', id);
 
     if (error) {
-      console.error('Erro ao remover diagnóstico:', error);
+      logger.error('Erro ao remover diagnóstico:', error);
       throw error;
     }
   },
@@ -172,7 +173,7 @@ export const VisualDiagnosisService = {
       .limit(20);
 
     if (error) {
-      console.error('Erro ao buscar diagnósticos por veículo:', error);
+      logger.error('Erro ao buscar diagnósticos por veículo:', error);
       throw error;
     }
 

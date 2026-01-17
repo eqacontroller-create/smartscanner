@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import logger from '@/lib/logger';
 
 export interface EngineOption {
   name: string;
@@ -42,7 +43,7 @@ export const VehicleModelsService = {
       .order('model_name');
     
     if (error) {
-      console.error('[VehicleModelsService] Error fetching all models:', error);
+      logger.error('[VehicleModelsService] Error fetching all models:', error);
       throw error;
     }
     
@@ -59,7 +60,7 @@ export const VehicleModelsService = {
       .order('brand');
     
     if (error) {
-      console.error('[VehicleModelsService] Error fetching brands:', error);
+      logger.error('[VehicleModelsService] Error fetching brands:', error);
       throw error;
     }
     
@@ -79,7 +80,7 @@ export const VehicleModelsService = {
       .order('model_name');
     
     if (error) {
-      console.error('[VehicleModelsService] Error fetching models:', error);
+      logger.error('[VehicleModelsService] Error fetching models:', error);
       throw error;
     }
     
@@ -98,7 +99,7 @@ export const VehicleModelsService = {
       .maybeSingle();
     
     if (error) {
-      console.error('[VehicleModelsService] Error fetching model:', error);
+      logger.error('[VehicleModelsService] Error fetching model:', error);
       throw error;
     }
     
@@ -116,7 +117,7 @@ export const VehicleModelsService = {
       .maybeSingle();
     
     if (error) {
-      console.error('[VehicleModelsService] Error fetching model by ID:', error);
+      logger.error('[VehicleModelsService] Error fetching model by ID:', error);
       throw error;
     }
     

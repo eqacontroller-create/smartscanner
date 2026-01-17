@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import logger from '@/lib/logger';
 
 interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
@@ -214,7 +215,7 @@ export function useVoiceRecognition(options: UseVoiceRecognitionOptions = {}): U
       recognitionRef.current.start();
     } catch (err) {
       isStartingRef.current = false;
-      console.error('Erro ao iniciar reconhecimento:', err);
+      logger.error('Erro ao iniciar reconhecimento:', err);
       setError('Erro ao iniciar reconhecimento de voz');
     }
   }, [isSupported, isListening]);

@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { VisualDiagnosisService, VisualDiagnosis, CreateVisualDiagnosis } from '@/services/supabase/VisualDiagnosisService';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 
 interface UseDiagnosisHistoryReturn {
   diagnoses: VisualDiagnosis[];
@@ -32,7 +33,7 @@ export function useDiagnosisHistory(): UseDiagnosisHistoryReturn {
       const data = await VisualDiagnosisService.getAll(50);
       setDiagnoses(data);
     } catch (error) {
-      console.error('Erro ao carregar histórico:', error);
+      logger.error('Erro ao carregar histórico:', error);
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,7 @@ export function useDiagnosisHistory(): UseDiagnosisHistoryReturn {
       toast.success('Diagnóstico salvo no histórico');
       return saved;
     } catch (error) {
-      console.error('Erro ao salvar diagnóstico:', error);
+      logger.error('Erro ao salvar diagnóstico:', error);
       toast.error('Erro ao salvar diagnóstico');
       return null;
     } finally {
@@ -71,7 +72,7 @@ export function useDiagnosisHistory(): UseDiagnosisHistoryReturn {
       setDiagnoses(prev => prev.filter(d => d.id !== id));
       toast.success('Diagnóstico removido');
     } catch (error) {
-      console.error('Erro ao remover diagnóstico:', error);
+      logger.error('Erro ao remover diagnóstico:', error);
       toast.error('Erro ao remover diagnóstico');
     }
   }, []);
@@ -85,7 +86,7 @@ export function useDiagnosisHistory(): UseDiagnosisHistoryReturn {
       ));
       toast.success('Nota adicionada');
     } catch (error) {
-      console.error('Erro ao adicionar nota:', error);
+      logger.error('Erro ao adicionar nota:', error);
       toast.error('Erro ao adicionar nota');
     }
   }, []);

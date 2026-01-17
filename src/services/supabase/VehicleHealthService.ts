@@ -2,6 +2,7 @@
 // Busca dados de battery_tests, refuel_entries e dtc_scans
 
 import { supabase } from '@/integrations/supabase/client';
+import logger from '@/lib/logger';
 import type {
   VehicleHealthSnapshot,
   BatteryHealthStatus,
@@ -110,7 +111,7 @@ export const VehicleHealthService = {
         needsRetest,
       };
     } catch (err) {
-      console.error('[VehicleHealthService] Error fetching battery health:', err);
+      logger.error('[VehicleHealthService] Error fetching battery health:', err);
       return defaultBatteryHealth;
     }
   },
@@ -159,7 +160,7 @@ export const VehicleHealthService = {
         stftAverage: data.stft_average,
       };
     } catch (err) {
-      console.error('[VehicleHealthService] Error fetching fuel health:', err);
+      logger.error('[VehicleHealthService] Error fetching fuel health:', err);
       return defaultFuelHealth;
     }
   },
@@ -224,7 +225,7 @@ export const VehicleHealthService = {
         codes,
       };
     } catch (err) {
-      console.error('[VehicleHealthService] Error fetching DTC health:', err);
+      logger.error('[VehicleHealthService] Error fetching DTC health:', err);
       return defaultDTCHealth;
     }
   },
@@ -252,7 +253,7 @@ export const VehicleHealthService = {
         vin: vin || null,
       };
     } catch (err) {
-      console.error('[VehicleHealthService] Error fetching health snapshot:', err);
+      logger.error('[VehicleHealthService] Error fetching health snapshot:', err);
       return {
         battery: defaultBatteryHealth,
         fuel: defaultFuelHealth,

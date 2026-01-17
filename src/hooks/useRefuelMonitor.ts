@@ -1261,7 +1261,7 @@ export function useRefuelMonitor({
           
           // CORREÇÃO: Flag para pular Fuel Trim, NÃO return prematuro
           if (!inClosedLoop) {
-            console.log('[Refuel] Open Loop detectado:', status, '- pulando leitura de Fuel Trim');
+            logger.debug('[Refuel] Open Loop detectado:', status, '- pulando leitura de Fuel Trim');
             skipFuelTrimRead = true;
           }
         }
