@@ -4,20 +4,23 @@ import App from "./App.tsx";
 import "./index.css";
 import { SplashScreen } from "./components/splash";
 import { useSplashScreen } from "./hooks/useSplashScreen";
+import { useSplashTheme } from "./hooks/useSplashTheme";
 
 function Root() {
   const { isVisible, phase, isExiting, skipSplash } = useSplashScreen({ minDuration: 5000 });
+  const splashTheme = useSplashTheme();
   
   // Determine if dashboard should be visible and interactive
   const showDashboard = phase === 'exiting' || phase === 'hidden';
   
   return (
     <div className="relative">
-      {/* Splash Screen Layer */}
+      {/* Splash Screen Layer - tema dinâmico por marca */}
       {isVisible && (
         <SplashScreen 
           phase={phase} 
-          onSkip={skipSplash} 
+          onSkip={skipSplash}
+          theme={splashTheme}
         />
       )}
       
