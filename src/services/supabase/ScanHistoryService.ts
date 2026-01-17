@@ -3,7 +3,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { VehicleService } from './VehicleService';
-import type { ParsedDTC } from '@/lib/dtcParser';
+import type { ParsedDTC } from '@/services/obd/DTCParser';
 
 export interface ScanHistoryEntry {
   id: string;

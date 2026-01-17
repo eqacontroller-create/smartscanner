@@ -14,7 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { LIVE_DATA_PIDS, DEFAULT_MONITORING_PIDS, parseLiveDataResponse, getPIDInfo, type LivePID } from '@/lib/liveDataParser';
+import { LIVE_DATA_PIDS, DEFAULT_MONITORING_PIDS, parseLiveDataResponse, getPIDInfo, type LivePID } from '@/services/obd/LiveDataParser';
 
 interface LiveDataMonitorProps {
   sendCommand: (command: string, timeout?: number) => Promise<string>;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Snowflake, Loader2, Gauge, Thermometer, Activity, Wind, Fuel, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FREEZE_FRAME_PIDS, parseFreezeFrameResponse, formatFreezeFrameValue, getPIDName } from '@/lib/freezeFrameParser';
+import { FREEZE_FRAME_PIDS, parseFreezeFrameResponse, formatFreezeFrameValue, getPIDName } from '@/services/obd/FreezeFrameParser';
 
 interface FreezeFrameDataProps {
   dtcCode: string;

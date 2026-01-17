@@ -2,7 +2,7 @@
 // This file can be deprecated in favor of direct service imports
 
 import { ScanHistoryService, type ScanHistoryEntry } from '@/services/supabase/ScanHistoryService';
-import type { ParsedDTC } from '@/lib/dtcParser';
+import type { ParsedDTC } from '@/services/obd/DTCParser';
 import type { VINInfo } from '@/lib/vinDecoder';
 
 // Re-export types

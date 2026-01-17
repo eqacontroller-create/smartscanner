@@ -21,7 +21,7 @@ import { OBDLimitations } from './OBDLimitations';
 import { ScanProgress, type ScanStep } from './ScanProgress';
 import { ScanHistory } from './ScanHistory';
 import { DTCAlertBanner } from './DTCAlertBanner';
-import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/lib/dtcParser';
+import { parseDTCResponse, parseUDSResponse, isNoErrorsResponse, isNegativeResponse, getNegativeResponseCode, type ParsedDTC } from '@/services/obd/DTCParser';
 import { KNOWN_ECU_MODULES, getAlternativeAddressesForManufacturer, UDS_STATUS_MASKS, type ECUModule } from '@/lib/ecuModules';
 import { parseVINResponse, decodeVIN, type VINInfo, type ManufacturerGroup } from '@/lib/vinDecoder';
 import { saveScanResult, getRecentScans, compareScanResults } from '@/lib/scanHistory';
