@@ -65,3 +65,26 @@ export function VisualMechanicSkeleton() {
     </Card>
   );
 }
+
+export function BatteryTestSkeleton() {
+  return (
+    <Card className="glass border-border/50">
+      <CardHeader className="text-center space-y-2">
+        <Skeleton className="h-6 w-6 rounded mx-auto" />
+        <Skeleton className="h-6 w-64 mx-auto" />
+        <Skeleton className="h-4 w-80 mx-auto" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-[200px] w-full rounded-lg" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-32 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
+        <div className="flex justify-center">
+          <Skeleton className="h-10 w-40 rounded-lg" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

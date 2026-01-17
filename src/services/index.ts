@@ -17,6 +17,9 @@ export { TTSService } from './ai/TTSService';
 export { VisionService } from './ai/VisionService';
 export { DTCEstimateService, getDTCEstimate } from './ai/DTCEstimateService';
 
+// Battery Services
+export * from './battery/BatteryForensicsService';
+
 // Report Services
 export { generateDTCReportPDF, downloadPDF } from './report/DTCScanReportService';
 
