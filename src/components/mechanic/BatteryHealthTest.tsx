@@ -29,6 +29,7 @@ import {
   Activity,
   Info,
   Save,
+  Power,
   History,
 } from 'lucide-react';
 import {
@@ -50,6 +51,7 @@ import {
 } from '@/services/battery/BatteryForensicsService';
 import { useBatteryHistory } from '@/hooks/useBatteryHistory';
 import { BatteryHistory } from './BatteryHistory';
+import { ParasiticDrawTest } from './ParasiticDrawTest';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
@@ -105,7 +107,7 @@ export function BatteryHealthTest({
   const [phase, setPhase] = useState<TestPhase>('idle');
   const [statusMessage, setStatusMessage] = useState(PHASE_INSTRUCTIONS.idle);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'test' | 'history'>('test');
+  const [activeTab, setActiveTab] = useState<'test' | 'parasitic' | 'history'>('test');
   const [isSaved, setIsSaved] = useState(false);
   
   // Captured data
@@ -295,21 +297,37 @@ export function BatteryHealthTest({
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Tabs for Test vs History */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'test' | 'history')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="test" className="gap-2">
+        {/* Tabs for Test vs Parasitic vs History */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'test' | 'parasitic' | 'history')}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="test" className="gap-1.5 text-xs sm:text-sm">
               <Activity className="h-4 w-4" />
-              Teste
+              <span className="hidden sm:inline">Partida</span>
+              <span className="sm:hidden">Partida</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
+            <TabsTrigger value="parasitic" className="gap-1.5 text-xs sm:text-sm">
+              <Power className="h-4 w-4" />
+              <span className="hidden sm:inline">Parasita</span>
+              <span className="sm:hidden">Parasita</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm">
               <History className="h-4 w-4" />
-              Histórico
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden">Hist.</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="history" className="mt-4">
             <BatteryHistory />
+          </TabsContent>
+
+          <TabsContent value="parasitic" className="mt-4">
+            <ParasiticDrawTest
+              sendCommand={sendCommand}
+              isConnected={isConnected}
+              addLog={addLog}
+              onSpeak={onSpeak}
+            />
           </TabsContent>
 
           <TabsContent value="test" className="mt-4 space-y-6">

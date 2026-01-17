@@ -438,3 +438,236 @@ export function getBatteryIcon(status: BatteryDiagnosis['status']): string {
     default: return 'Battery';
   }
 }
+
+// ============= PARASITIC DRAW TEST =============
+
+export interface ParasiticDrawDiagnosis {
+  drawLevel: 'normal' | 'moderate' | 'excessive' | 'critical';
+  estimatedDrawMilliamps: number;
+  message: string;
+  recommendation: string;
+  color: string;
+}
+
+export interface ParasiticDrawResult {
+  // Raw capture data
+  voltageData: VoltagePoint[];
+  testDurationMs: number;
+  testDurationMinutes: number;
+  
+  // Calculated metrics
+  startVoltage: number;
+  endVoltage: number;
+  totalDropMv: number;
+  dropPerHourMv: number;
+  
+  // Diagnosis
+  drawLevel: ParasiticDrawDiagnosis['drawLevel'];
+  estimatedDrawMilliamps: number;
+  message: string;
+  recommendation: string;
+  color: string;
+}
+
+export interface ParasiticDrawOptions {
+  sendCommand: (cmd: string, timeout?: number) => Promise<string>;
+  onVoltageReading: (point: VoltagePoint) => void;
+  onProgress: (percent: number, remainingMinutes: number) => void;
+  onStatusMessage: (message: string) => void;
+  testDurationMinutes?: number;
+  samplingIntervalSeconds?: number;
+  abortSignal?: AbortSignal;
+}
+
+/**
+ * Analyze parasitic draw based on voltage drop rate
+ * 
+ * | Drop/Hour | Diagnosis | Estimated Draw |
+ * |-----------|-----------|----------------|
+ * | < 10mV/h  | Normal    | < 50mA         |
+ * | 10-30mV/h | Moderate  | 50-150mA       |
+ * | 30-100mV/h| Excessive | 150-500mA      |
+ * | > 100mV/h | Critical  | > 500mA        |
+ */
+export function analyzeParasiticDraw(
+  startVoltage: number,
+  endVoltage: number,
+  durationMs: number
+): ParasiticDrawDiagnosis {
+  const totalDropMv = (startVoltage - endVoltage) * 1000;
+  const durationHours = durationMs / (1000 * 60 * 60);
+  const dropPerHour = durationHours > 0 ? totalDropMv / durationHours : 0;
+  
+  // Estimate current draw: ~10mV/h drop ≈ 50mA for typical 60Ah battery
+  const estimatedMilliamps = Math.round((dropPerHour / 10) * 50);
+  
+  if (dropPerHour < 10) {
+    return {
+      drawLevel: 'normal',
+      estimatedDrawMilliamps: Math.max(0, estimatedMilliamps),
+      message: 'Consumo de repouso normal. Nenhum dreno parasita detectado.',
+      recommendation: 'Bateria está descarregando na taxa esperada.',
+      color: 'hsl(var(--chart-2))'
+    };
+  } else if (dropPerHour < 30) {
+    return {
+      drawLevel: 'moderate',
+      estimatedDrawMilliamps: estimatedMilliamps,
+      message: 'Consumo levemente elevado. Possível módulo ativo.',
+      recommendation: 'Verifique se há algum acessório ligado (luz de porta, alarme, etc).',
+      color: 'hsl(var(--chart-3))'
+    };
+  } else if (dropPerHour < 100) {
+    return {
+      drawLevel: 'excessive',
+      estimatedDrawMilliamps: estimatedMilliamps,
+      message: 'CONSUMO PARASITA DETECTADO! Algo está drenando a bateria.',
+      recommendation: 'Verifique: alarme aftermarket, módulos de conforto, som automotivo, luzes internas.',
+      color: 'hsl(var(--chart-4))'
+    };
+  } else {
+    return {
+      drawLevel: 'critical',
+      estimatedDrawMilliamps: estimatedMilliamps,
+      message: 'DRENO SEVERO! Bateria será completamente descarregada em poucas horas.',
+      recommendation: 'Desconecte o negativo da bateria quando não usar. Procure um eletricista automotivo.',
+      color: 'hsl(var(--destructive))'
+    };
+  }
+}
+
+/**
+ * Start parasitic draw test - monitors voltage over extended period with engine off
+ */
+export async function startParasiticDrawTest(
+  options: ParasiticDrawOptions
+): Promise<ParasiticDrawResult> {
+  const {
+    sendCommand,
+    onVoltageReading,
+    onProgress,
+    onStatusMessage,
+    testDurationMinutes = 30,
+    samplingIntervalSeconds = 10,
+    abortSignal,
+  } = options;
+  
+  const testDurationMs = testDurationMinutes * 60 * 1000;
+  const samplingIntervalMs = samplingIntervalSeconds * 1000;
+  const data: VoltagePoint[] = [];
+  const startTime = Date.now();
+  
+  // Check if engine is off
+  onStatusMessage('Verificando se o motor está desligado...');
+  try {
+    const rpmResponse = await sendCommand('01 0C', 2000);
+    const rpm = parseRPMResponse(rpmResponse);
+    if (rpm !== null && rpm > 50) {
+      throw new Error('Motor está ligado. Desligue o motor e aguarde 5 minutos antes de iniciar.');
+    }
+  } catch (e) {
+    // If we can't read RPM, continue anyway - might be key off
+    if (e instanceof Error && e.message.includes('Motor está ligado')) {
+      throw e;
+    }
+  }
+  
+  // Capture initial voltage
+  onStatusMessage('Medindo voltagem de referência...');
+  const initialVoltageResponse = await sendCommand('AT RV', 1000);
+  const startVoltage = parseATRVResponse(initialVoltageResponse);
+  
+  if (startVoltage === null) {
+    throw new Error('Não foi possível ler a voltagem da bateria.');
+  }
+  
+  data.push({ timestamp: 0, voltage: startVoltage });
+  onVoltageReading({ timestamp: 0, voltage: startVoltage });
+  
+  onStatusMessage(`Iniciando monitoramento de ${testDurationMinutes} minutos...`);
+  
+  // Monitoring loop
+  while (!abortSignal?.aborted) {
+    const elapsed = Date.now() - startTime;
+    
+    if (elapsed >= testDurationMs) {
+      onStatusMessage('✅ Teste concluído!');
+      break;
+    }
+    
+    // Update progress
+    const percent = Math.round((elapsed / testDurationMs) * 100);
+    const remainingMs = testDurationMs - elapsed;
+    const remainingMinutes = Math.ceil(remainingMs / 60000);
+    onProgress(percent, remainingMinutes);
+    
+    // Wait for next sample
+    await delay(samplingIntervalMs);
+    
+    // Check abort again after delay
+    if (abortSignal?.aborted) break;
+    
+    // Read voltage
+    try {
+      const response = await sendCommand('AT RV', 1000);
+      const voltage = parseATRVResponse(response);
+      
+      if (voltage !== null) {
+        const newElapsed = Date.now() - startTime;
+        const point = { timestamp: newElapsed, voltage };
+        data.push(point);
+        onVoltageReading(point);
+      }
+    } catch {
+      // Continue monitoring even with read errors
+    }
+  }
+  
+  // Process result
+  if (data.length < 3) {
+    throw new Error('Dados insuficientes para análise. Teste precisa de pelo menos 3 leituras.');
+  }
+  
+  const endVoltage = data[data.length - 1].voltage;
+  const actualDurationMs = data[data.length - 1].timestamp;
+  
+  const diagnosis = analyzeParasiticDraw(startVoltage, endVoltage, actualDurationMs);
+  
+  const totalDropMv = Math.round((startVoltage - endVoltage) * 1000);
+  const durationHours = actualDurationMs / (1000 * 60 * 60);
+  const dropPerHourMv = durationHours > 0 ? Math.round(totalDropMv / durationHours) : 0;
+  
+  return {
+    voltageData: data,
+    testDurationMs: actualDurationMs,
+    testDurationMinutes: Math.round(actualDurationMs / 60000),
+    startVoltage,
+    endVoltage,
+    totalDropMv,
+    dropPerHourMv,
+    drawLevel: diagnosis.drawLevel,
+    estimatedDrawMilliamps: diagnosis.estimatedDrawMilliamps,
+    message: diagnosis.message,
+    recommendation: diagnosis.recommendation,
+    color: diagnosis.color,
+  };
+}
+
+/**
+ * Generate Jarvis voice message for parasitic draw test result
+ */
+export function generateParasiticDrawMessage(result: ParasiticDrawResult): string {
+  const dropMv = result.totalDropMv;
+  const duration = result.testDurationMinutes;
+  
+  switch (result.drawLevel) {
+    case 'normal':
+      return `Teste de consumo parasita concluído. Em ${duration} minutos, a voltagem caiu apenas ${dropMv} milivolts. Consumo normal, nenhum dreno detectado.`;
+    case 'moderate':
+      return `Teste concluído. Queda de ${dropMv} milivolts em ${duration} minutos. Consumo levemente elevado, estimado em ${result.estimatedDrawMilliamps} miliamperes. Verifique acessórios.`;
+    case 'excessive':
+      return `ATENÇÃO! Consumo parasita detectado! Queda de ${dropMv} milivolts em ${duration} minutos. Algo está drenando sua bateria mesmo com o carro desligado.`;
+    case 'critical':
+      return `ALERTA CRÍTICO! Dreno severo de bateria detectado! Consumo estimado de ${result.estimatedDrawMilliamps} miliamperes. Sua bateria será descarregada em poucas horas se permanecer parada.`;
+  }
+}
