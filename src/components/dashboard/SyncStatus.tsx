@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import React from 'react';
 import { Cloud, CloudOff, User, RefreshCw, WifiOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -132,4 +132,4 @@ function arePropsEqual(prevProps: SyncStatusProps, nextProps: SyncStatusProps): 
   );
 }
 
-export const SyncStatus = memo(SyncStatusComponent, arePropsEqual);
+export const SyncStatus = React.memo(SyncStatusComponent, arePropsEqual);
