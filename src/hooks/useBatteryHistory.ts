@@ -69,7 +69,13 @@ export function useBatteryHistory(): UseBatteryHistoryReturn {
       const calculatedTrend = BatteryTestService.calculateTrend(updatedTests);
       setTrend(calculatedTrend);
       
-      toast.success('Teste de bateria salvo no histórico');
+      // Disparar evento para atualizar VehicleHealth
+      window.dispatchEvent(new CustomEvent('vehicle-health-updated'));
+      
+      toast.success('Diagnóstico salvo', {
+        description: 'Resultados disponíveis no Dashboard e Histórico.',
+        duration: 3000,
+      });
       return saved;
     } catch (error) {
       console.error('Erro ao salvar teste:', error);
