@@ -1223,6 +1223,9 @@ export function useRefuelMonitor({
       
       // ========== 2.5 VERIFICAR CLOSED LOOP ANTES DE FUEL TRIM ==========
       // PID 03 indica se a ECU está usando feedback do O2 (dados confiáveis)
+      // CORREÇÃO: Usar flag em vez de return prematuro para permitir seções 4-6
+      let skipFuelTrimRead = false;
+      
       if (now - lastFuelSystemCheckRef.current >= FUEL_SYSTEM_CHECK_THROTTLE) {
         lastFuelSystemCheckRef.current = now;
         
@@ -1255,17 +1258,20 @@ export function useRefuelMonitor({
             isClosedLoopRef.current = inClosedLoop;
           }
           
-          // Se não está em Closed Loop, pular leitura de Fuel Trim neste ciclo
+          // CORREÇÃO: Flag para pular Fuel Trim, NÃO return prematuro
           if (!inClosedLoop) {
             console.log('[Refuel] Open Loop detectado:', status, '- pulando leitura de Fuel Trim');
-            // Continuar atualizando UI e distância, mas não coletar Fuel Trim
-            return;
+            skipFuelTrimRead = true;
           }
         }
+      } else {
+        // Se não verificou PID 03 neste ciclo, usar estado anterior do ref
+        skipFuelTrimRead = !isClosedLoopRef.current;
       }
       
       // ========== 3. LER FUEL TRIM (THROTTLED 2s) - SÓ SE CLOSED LOOP ==========
-      if (now - lastFuelTrimReadRef.current >= FUEL_TRIM_THROTTLE) {
+      // CORREÇÃO: Usa flag skipFuelTrimRead para pausar apenas esta seção
+      if (!skipFuelTrimRead && now - lastFuelTrimReadRef.current >= FUEL_TRIM_THROTTLE) {
         lastFuelTrimReadRef.current = now;
         
         const stft = await readSTFTRef.current();
