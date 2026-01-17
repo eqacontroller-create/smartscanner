@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 
 const QUEUE_STORAGE_KEY = 'sync-queue';
 
@@ -41,7 +42,7 @@ function saveQueue(queue: SyncQueueItem[]) {
   try {
     localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
   } catch (error) {
-    console.error('Erro ao salvar fila de sync:', error);
+    logger.error('[SyncQueue] Erro ao salvar fila:', error);
   }
 }
 
@@ -60,12 +61,12 @@ export function useSyncQueue(): UseSyncQueueReturn {
   // Monitora status online/offline
   useEffect(() => {
     const handleOnline = () => {
-      console.log('📶 Conexão restaurada');
+      logger.info('[SyncQueue] Conexão restaurada');
       setIsOnline(true);
     };
     
     const handleOffline = () => {
-      console.log('📴 Sem conexão');
+      logger.info('[SyncQueue] Sem conexão');
       setIsOnline(false);
     };
     
@@ -96,7 +97,7 @@ export function useSyncQueue(): UseSyncQueueReturn {
     setQueue(prev => {
       const updated = [...prev, newItem];
       saveQueue(updated);
-      console.log(`📥 Item adicionado à fila: ${item.operation} em ${item.table}`);
+      logger.debug(`[SyncQueue] Item adicionado: ${item.operation} em ${item.table}`);
       return updated;
     });
   }, []);
@@ -109,7 +110,7 @@ export function useSyncQueue(): UseSyncQueueReturn {
     
     processingRef.current = true;
     setIsSyncing(true);
-    console.log(`🔄 Processando fila de sync: ${queue.length} item(s)`);
+    logger.info(`[SyncQueue] Processando ${queue.length} item(s)`);
     
     const successIds: string[] = [];
     
@@ -148,13 +149,13 @@ export function useSyncQueue(): UseSyncQueueReturn {
         }
         
         if (error) {
-          console.error(`❌ Erro ao processar item ${item.id}:`, error);
+          logger.error(`[SyncQueue] Erro ao processar item ${item.id}:`, error);
         } else {
-          console.log(`✅ Item ${item.id} sincronizado`);
+          logger.debug(`[SyncQueue] Item ${item.id} sincronizado`);
           successIds.push(item.id);
         }
       } catch (err) {
-        console.error(`❌ Erro inesperado ao processar item ${item.id}:`, err);
+        logger.error(`[SyncQueue] Erro inesperado ao processar item ${item.id}:`, err);
       }
     }
     

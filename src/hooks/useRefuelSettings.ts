@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefuelSettings, defaultRefuelSettings } from '@/types/refuelTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import logger from '@/lib/logger';
 
 const STORAGE_KEY = 'refuel-settings';
 
@@ -33,7 +34,7 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
         return { ...defaultRefuelSettings, ...parsed };
       }
     } catch (error) {
-      console.error('[RefuelSettings] Error loading from localStorage:', error);
+      logger.error('[RefuelSettings] Erro ao carregar localStorage:', error);
     }
     return defaultRefuelSettings;
   });
@@ -45,7 +46,7 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
     const loadFromCloud = async () => {
       try {
         setIsSyncing(true);
-        console.log('[RefuelSettings] Loading from cloud for user:', user.id);
+        logger.debug('[RefuelSettings] Carregando do cloud...');
         
         const { data, error } = await supabase
           .from('profiles')
@@ -54,13 +55,13 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
           .single();
         
         if (error) {
-          console.warn('[RefuelSettings] Error loading from cloud:', error.message);
+          logger.warn('[RefuelSettings] Erro ao carregar:', error.message);
           return;
         }
         
         if (data?.refuel_settings && typeof data.refuel_settings === 'object') {
           const cloudSettings = data.refuel_settings as unknown as Partial<RefuelSettings>;
-          console.log('[RefuelSettings] Loaded from cloud:', cloudSettings);
+          logger.debug('[RefuelSettings] Carregado do cloud');
           
           // Mesclar com defaults e atualizar estado
           const merged = { ...defaultRefuelSettings, ...cloudSettings };
@@ -73,7 +74,7 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
         
         initialLoadDoneRef.current = true;
       } catch (error) {
-        console.error('[RefuelSettings] Error in loadFromCloud:', error);
+        logger.error('[RefuelSettings] Erro em loadFromCloud:', error);
       } finally {
         setIsSyncing(false);
       }
@@ -86,9 +87,8 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      console.log('[RefuelSettings] Settings saved to localStorage:', settings);
     } catch (error) {
-      console.error('[RefuelSettings] Error saving to localStorage:', error);
+      logger.error('[RefuelSettings] Erro ao salvar localStorage:', error);
     }
   }, [settings]);
 
@@ -98,7 +98,7 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
     
     try {
       setIsSyncing(true);
-      console.log('[RefuelSettings] Syncing to cloud:', newSettings);
+      logger.debug('[RefuelSettings] Sincronizando com cloud...');
       
       const { error } = await supabase
         .from('profiles')
@@ -106,13 +106,13 @@ export function useRefuelSettings(): UseRefuelSettingsReturn {
         .eq('id', user.id);
       
       if (error) {
-        console.error('[RefuelSettings] Error syncing to cloud:', error);
+        logger.error('[RefuelSettings] Erro ao sincronizar:', error);
       } else {
         setLastSyncTime(Date.now());
-        console.log('[RefuelSettings] Successfully synced to cloud');
+        logger.debug('[RefuelSettings] Sincronizado com cloud');
       }
     } catch (error) {
-      console.error('[RefuelSettings] Error in syncToCloud:', error);
+      logger.error('[RefuelSettings] Erro em syncToCloud:', error);
     } finally {
       setIsSyncing(false);
     }

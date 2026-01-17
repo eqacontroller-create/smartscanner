@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useSyncExternalStore, useRef } from '
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
 import { useSyncedProfile } from '@/hooks/useSyncedProfile';
 import { useAuth } from '@/hooks/useAuth';
+import logger from '@/lib/logger';
 
 const STORAGE_KEY = 'jarvis-settings';
 
@@ -28,7 +29,7 @@ function initializeGlobalSettings() {
       globalSettings = { ...defaultJarvisSettings, ...parsed };
     }
   } catch (error) {
-    console.error('Erro ao carregar configurações do Jarvis:', error);
+    logger.error('[JarvisSettings] Erro ao carregar:', error);
   }
 }
 
@@ -100,7 +101,7 @@ export function useJarvisSettings() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudSettings));
       } catch (error) {
-        console.error('Erro ao atualizar cache local:', error);
+        logger.error('[JarvisSettings] Erro ao atualizar cache local:', error);
       }
     }
   }, [isAuthenticated, syncedProfile.loading, syncedProfile.synced, syncedProfile.profile.jarvisSettings]);
@@ -146,7 +147,7 @@ export function useJarvisSettings() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Erro ao salvar configurações locais:', error);
+      logger.error('[JarvisSettings] Erro ao salvar localmente:', error);
     }
     
     // 3. If authenticated, sync to cloud

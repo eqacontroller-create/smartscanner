@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { RideEntry, DailySummary } from '@/types/tripSettings';
 import { RidesService } from '@/services/supabase/RidesService';
+import logger from '@/lib/logger';
 
 const LOCAL_STORAGE_KEY = 'smartscanner-today-rides';
 
@@ -66,7 +67,7 @@ export function useSyncedRides(): UseSyncedRidesReturn {
           }));
           setSynced(true);
         } catch (err) {
-          console.error('Error loading rides from cloud:', err);
+          logger.error('[SyncedRides] Erro ao carregar do cloud:', err);
         }
       }
 
@@ -141,7 +142,7 @@ export function useSyncedRides(): UseSyncedRidesReturn {
         await RidesService.save(ride, user.id);
         setSynced(true);
       } catch (err) {
-        console.error('Error saving ride to cloud:', err);
+        logger.error('[SyncedRides] Erro ao salvar no cloud:', err);
         setSynced(false);
       }
     }
@@ -166,7 +167,7 @@ export function useSyncedRides(): UseSyncedRidesReturn {
         await RidesService.update(id, updates);
         setSynced(true);
       } catch (err) {
-        console.error('Error updating ride in cloud:', err);
+        logger.error('[SyncedRides] Erro ao atualizar no cloud:', err);
         setSynced(false);
       }
     }
@@ -188,7 +189,7 @@ export function useSyncedRides(): UseSyncedRidesReturn {
         await RidesService.deleteTodayRides(user.id);
         setSynced(true);
       } catch (err) {
-        console.error('Error clearing rides from cloud:', err);
+        logger.error('[SyncedRides] Erro ao limpar no cloud:', err);
         setSynced(false);
       }
     }
