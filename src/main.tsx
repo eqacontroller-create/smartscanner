@@ -1,17 +1,34 @@
 import { createRoot } from "react-dom/client";
-import { StrictMode } from "react";
+import { StrictMode, useState, useEffect } from "react";
 import App from "./App.tsx";
 import "./index.css";
-import { SplashScreen } from "./components/splash";
+import { SplashScreen, FlyingLogo } from "./components/splash";
 import { useSplashScreen } from "./hooks/useSplashScreen";
 import { useSplashTheme } from "./hooks/useSplashTheme";
 
 function Root() {
   const { isVisible, phase, isExiting, skipSplash } = useSplashScreen({ minDuration: 5000 });
   const splashTheme = useSplashTheme();
+  const [logoLanded, setLogoLanded] = useState(false);
   
   // Determine if dashboard should be visible and interactive
   const showDashboard = phase === 'exiting' || phase === 'hidden';
+  
+  // Calculate glow color from theme
+  const glowColor = `hsl(${splashTheme.colors.glow})`;
+  
+  // Mark logo as landed after transition
+  useEffect(() => {
+    if (phase === 'exiting') {
+      const timer = setTimeout(() => {
+        setLogoLanded(true);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+    if (phase === 'hidden') {
+      setLogoLanded(true);
+    }
+  }, [phase]);
   
   return (
     <div className="relative">
@@ -21,6 +38,15 @@ function Root() {
           phase={phase} 
           onSkip={skipSplash}
           theme={splashTheme}
+        />
+      )}
+      
+      {/* Flying Logo - animates from splash center to header position */}
+      {isVisible && phase === 'exiting' && (
+        <FlyingLogo 
+          phase={phase}
+          theme={splashTheme}
+          glowColor={glowColor}
         />
       )}
       
@@ -37,7 +63,10 @@ function Root() {
         `}
         style={{
           visibility: showDashboard ? 'visible' : 'hidden',
-        }}
+          // Pass logo landed state to CSS variable for header animation
+          '--logo-landed': logoLanded ? '1' : '0',
+        } as React.CSSProperties}
+        data-logo-landed={logoLanded}
       >
         <App />
       </div>

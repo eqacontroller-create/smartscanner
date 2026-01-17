@@ -167,12 +167,14 @@ export const SplashScreen = memo(function SplashScreen({
         />
       )}
       
-      {/* Logo animado da marca */}
+      {/* Logo animado da marca - esconde durante exiting (FlyingLogo assume) */}
       <div 
-        className={`mb-6 transition-all duration-700 ease-out ${
+        className={`mb-6 transition-all duration-500 ease-out ${
           isIgnition 
             ? 'opacity-0 scale-75' 
-            : 'opacity-100 scale-100'
+            : isExiting
+              ? 'opacity-0 scale-50 -translate-y-8' // Fade out as FlyingLogo takes over
+              : 'opacity-100 scale-100'
         }`}
       >
         <BrandLogo 
