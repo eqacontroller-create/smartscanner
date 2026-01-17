@@ -443,6 +443,26 @@ export default function Help() {
             variant="info"
           />
 
+          {/* Ilustração: Formato do Código DTC */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                Como Entender um Código DTC
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/dtc-code-format.png" 
+                alt="Diagrama explicando o formato de códigos DTC"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Cada código segue o padrão: Letra (sistema) + Dígito (origem) + 3 dígitos (falha específica).</p>
+            </div>
+          </div>
+
           <div className="p-4 bg-muted/30 rounded-lg border border-border">
             <h4 className="font-medium text-foreground mb-3">Tipos de Códigos:</h4>
             <div className="grid gap-2 text-sm">
@@ -462,6 +482,26 @@ export default function Help() {
                 <span className="font-mono font-bold text-purple-500">U0XXX</span>
                 <span className="text-muted-foreground">Network - Problemas de comunicação entre módulos</span>
               </div>
+            </div>
+          </div>
+
+          {/* Ilustração: Resultados do Scanner */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Search className="h-4 w-4 text-primary" />
+                Exemplo de Resultado do Scanner
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/dtc-scanner-results.png" 
+                alt="Tela mostrando lista de códigos DTC encontrados"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Os erros são mostrados com badges coloridas de severidade e o módulo de origem (ECM, ABS, etc).</p>
             </div>
           </div>
 
@@ -777,6 +817,26 @@ export default function Help() {
             </div>
           </div>
 
+          {/* Ilustração: Fluxo do Mecânico Visual */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Camera className="h-4 w-4 text-primary" />
+                Como Funciona o Diagnóstico Visual
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/visual-mechanic-flow.png" 
+                alt="Fluxo: fotos → IA analisando → resultado com nível de risco"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Tire até 4 fotos da peça → A IA processa as imagens → Receba o diagnóstico com nível de risco.</p>
+            </div>
+          </div>
+
           <StepByStep
             steps={[
               {
@@ -801,6 +861,26 @@ export default function Help() {
               },
             ]}
           />
+
+          {/* Ilustração: Resultado do Diagnóstico Visual */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" />
+                Exemplo de Diagnóstico Visual
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/visual-mechanic-result.png" 
+                alt="Card de resultado mostrando diagnóstico com nível de risco"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>O resultado inclui: título do problema, barra de risco colorida, descrição detalhada e recomendações.</p>
+            </div>
+          </div>
 
           <HelpCard
             title="Funciona Offline"
@@ -1090,6 +1170,46 @@ export default function Help() {
               </div>
             </div>
           </HelpCard>
+
+          {/* Ilustração: Gráfico Fuel Trim */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Gráfico de Fuel Trim (STFT/LTFT)
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/fuel-trim-chart.png" 
+                alt="Gráfico de Fuel Trim mostrando variação e zonas de qualidade"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>O gráfico mostra STFT (verde) e LTFT (vermelho). Zonas verdes indicam combustível bom, amarelas suspeito, vermelhas contaminado.</p>
+            </div>
+          </div>
+
+          {/* Ilustração: Estados do Diagnóstico Forense */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Droplets className="h-4 w-4 text-primary" />
+                Estados do Diagnóstico de Combustível
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/fuel-diagnosis-states.png" 
+                alt="5 estados do diagnóstico: Estável, Adaptando, Suspeito, Contaminado, Mecânico"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Cada estado indica a qualidade do combustível: verde (OK), amarelo (adaptando), laranja (suspeito), vermelho (contaminado), roxo (problema mecânico).</p>
+            </div>
+          </div>
 
           <HelpCard
             title="Verificação de Precisão da Bomba"
