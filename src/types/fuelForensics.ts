@@ -17,6 +17,76 @@ export type FuelState =
   | 'mechanical';   // Problema mecânico detectado
 
 /**
+ * Status do Sistema de Combustível (PID 03)
+ * Indica se a ECU está em Open Loop ou Closed Loop
+ */
+export type FuelSystemStatus = 
+  | 'motor_off'        // 0 - Motor desligado
+  | 'open_loop_cold'   // 1 - Open Loop (motor frio, aquecendo)
+  | 'closed_loop'      // 2 - Closed Loop (usando O2 para feedback) ✅
+  | 'open_loop_load'   // 4 - Open Loop (carga alta/desaceleração)
+  | 'open_loop_fail'   // 8 - Open Loop (falha no sistema)
+  | 'closed_loop_fault'; // 16 - Closed Loop com falha no sistema
+
+/**
+ * Decodifica o valor bruto do PID 03 para FuelSystemStatus
+ */
+export function decodeFuelSystemStatus(value: number): FuelSystemStatus {
+  switch (value) {
+    case 0: return 'motor_off';
+    case 1: return 'open_loop_cold';
+    case 2: return 'closed_loop';
+    case 4: return 'open_loop_load';
+    case 8: return 'open_loop_fail';
+    case 16: return 'closed_loop_fault';
+    default: 
+      // Se valor desconhecido, assume Open Loop por segurança
+      console.warn('[FuelForensics] Unknown fuel system status:', value);
+      return 'open_loop_cold';
+  }
+}
+
+/**
+ * Verifica se o sistema está em Closed Loop (dados de Fuel Trim são confiáveis)
+ */
+export function isClosedLoop(status: FuelSystemStatus): boolean {
+  return status === 'closed_loop' || status === 'closed_loop_fault';
+}
+
+/**
+ * Labels para exibição do status do sistema de combustível
+ */
+export const FUEL_SYSTEM_LABELS: Record<FuelSystemStatus, string> = {
+  motor_off: 'Motor Desligado',
+  open_loop_cold: 'Aguardando Aquecimento',
+  closed_loop: 'Closed Loop (Normal)',
+  open_loop_load: 'Aceleração/Corte',
+  open_loop_fail: 'Falha no Sistema',
+  closed_loop_fault: 'Closed Loop (c/ Falha)',
+};
+
+/**
+ * Cores para o status do sistema de combustível
+ */
+export const FUEL_SYSTEM_COLORS: Record<FuelSystemStatus, string> = {
+  motor_off: 'text-gray-500',
+  open_loop_cold: 'text-orange-500',
+  closed_loop: 'text-green-500',
+  open_loop_load: 'text-blue-500',
+  open_loop_fail: 'text-red-500',
+  closed_loop_fault: 'text-yellow-500',
+};
+
+export const FUEL_SYSTEM_BG_COLORS: Record<FuelSystemStatus, string> = {
+  motor_off: 'bg-gray-500/10',
+  open_loop_cold: 'bg-orange-500/10',
+  closed_loop: 'bg-green-500/10',
+  open_loop_load: 'bg-blue-500/10',
+  open_loop_fail: 'bg-red-500/10',
+  closed_loop_fault: 'bg-yellow-500/10',
+};
+
+/**
  * Contexto informado pelo usuário sobre o abastecimento
  * - same_fuel: Manteve o mesmo tipo de combustível
  * - gas_to_ethanol: Trocou de Gasolina para Etanol

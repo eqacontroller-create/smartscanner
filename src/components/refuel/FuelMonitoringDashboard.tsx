@@ -16,6 +16,8 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Thermometer,
+  Gauge,
 } from 'lucide-react';
 import { RefuelMode, RefuelFlowType, RefuelSettings, FuelTrimSample } from '@/types/refuelTypes';
 import { FuelTrimChart } from './FuelTrimChart';
@@ -34,7 +36,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useState } from 'react';
-import type { O2SensorReading } from '@/types/fuelForensics';
+import type { O2SensorReading, FuelSystemStatus } from '@/types/fuelForensics';
+import { FUEL_SYSTEM_LABELS } from '@/types/fuelForensics';
 
 interface FuelMonitoringDashboardProps {
   mode: RefuelMode;
@@ -51,6 +54,8 @@ interface FuelMonitoringDashboardProps {
   settings: RefuelSettings;
   frozenSettings: RefuelSettings | null;
   isSyncing?: boolean;
+  fuelSystemStatus?: FuelSystemStatus;
+  isClosedLoopActive?: boolean;
   onCancel: () => void;
 }
 
@@ -69,6 +74,8 @@ export function FuelMonitoringDashboard({
   settings,
   frozenSettings,
   isSyncing,
+  fuelSystemStatus = 'closed_loop',
+  isClosedLoopActive = true,
   onCancel,
 }: FuelMonitoringDashboardProps) {
   const [showO2Monitor, setShowO2Monitor] = useState(true);
@@ -180,6 +187,43 @@ export function FuelMonitoringDashboard({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Aviso de Open Loop (motor frio ou aceleração) */}
+        {!isClosedLoopActive && (
+          <div className={cn(
+            "p-3 rounded-lg border flex items-start gap-3",
+            fuelSystemStatus === 'open_loop_cold' 
+              ? "bg-orange-500/10 border-orange-500/50" 
+              : fuelSystemStatus === 'open_loop_load'
+                ? "bg-blue-500/10 border-blue-500/50"
+                : "bg-red-500/10 border-red-500/50"
+          )}>
+            {fuelSystemStatus === 'open_loop_cold' ? (
+              <Thermometer className="h-5 w-5 text-orange-500 shrink-0 mt-0.5 animate-pulse" />
+            ) : fuelSystemStatus === 'open_loop_load' ? (
+              <Gauge className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <div className={cn(
+                "text-sm font-medium",
+                fuelSystemStatus === 'open_loop_cold' ? "text-orange-600 dark:text-orange-400" :
+                fuelSystemStatus === 'open_loop_load' ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400"
+              )}>
+                {FUEL_SYSTEM_LABELS[fuelSystemStatus]}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {fuelSystemStatus === 'open_loop_cold' 
+                  ? 'Motor frio. Análise pausada até atingir temperatura de operação.'
+                  : fuelSystemStatus === 'open_loop_load'
+                    ? 'Aceleração forte detectada. Análise retoma ao estabilizar.'
+                    : 'Problema detectado no sistema de combustível. Verifique DTCs.'
+                }
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Indicador de configurações congeladas */}
         {settingsChanged && (
           <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center gap-2 text-xs">
