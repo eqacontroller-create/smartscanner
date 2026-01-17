@@ -37,6 +37,7 @@ import {
   Key,
   Droplets,
   Cloud,
+  CloudOff,
   TrendingUp,
   Scale,
   Sparkles,
@@ -56,6 +57,7 @@ import {
   History,
   Settings,
   FileText,
+  CircleDot,
 } from "lucide-react";
 
 export default function Help() {
@@ -768,6 +770,11 @@ export default function Help() {
                 icon: Fuel,
               },
               {
+                title: "Selecione o contexto",
+                description: "Escolha o tipo de troca: mesmo combustível, gasolina→etanol ou etanol→gasolina. Isso é crucial para análise correta em veículos Flex!",
+                icon: RefreshCw,
+              },
+              {
                 title: "Clique em 'Abastecer'",
                 description: "Com o OBD conectado, um botão verde 'Abastecer' aparece no canto inferior da tela. Clique nele.",
                 icon: Droplets,
@@ -784,16 +791,100 @@ export default function Help() {
               },
               {
                 title: "Dirija normalmente",
-                description: "Dirija por 5 km (configurável). O sistema monitora os sensores Fuel Trim em tempo real durante o trajeto.",
+                description: "Dirija por 5 km (configurável). O sistema monitora os sensores Fuel Trim e O2 em tempo real durante o trajeto.",
                 icon: Car,
               },
               {
-                title: "Veja o resultado",
-                description: "Após a distância, o sistema mostra a qualidade do combustível (verde/amarelo/vermelho) e a precisão da bomba.",
+                title: "Veja o resultado forense",
+                description: "Após a distância, o sistema mostra o diagnóstico forense com estado, confiança, evidências técnicas e recomendação.",
                 icon: CheckCircle,
               },
             ]}
           />
+
+          {/* NOVO: Análise Forense Inteligente */}
+          <HelpCard
+            title="Análise Forense de Combustível (Fuel State Machine)"
+            description="O sistema usa uma Máquina de Estados inteligente que diferencia troca de combustível Flex (normal) de adulteração (problema). Antes de iniciar, você informa o contexto do abastecimento."
+            icon={Brain}
+            variant="info"
+          />
+
+          <HelpCard
+            title="Contexto de Troca (Veículos Flex)"
+            description="Se você trocou de combustível (ex: de gasolina para etanol), é NORMAL o STFT subir bastante. O sistema identifica isso e mostra 'ECU Adaptando' com barra de progresso, ao invés de alertar adulteração."
+            icon={RefreshCw}
+            variant="success"
+          >
+            <div className="text-xs space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span>Gas→Etanol: STFT sobe (etanol tem menos energia)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span>Etanol→Gas: STFT desce (gasolina tem mais energia)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-gray-400" />
+                <span>Mesmo combustível: Comparação direta</span>
+              </div>
+            </div>
+          </HelpCard>
+
+          {/* NOVO: Monitor de Sensor O2 */}
+          <HelpCard
+            title="Monitor de Sensor O2 (Sonda Lambda)"
+            description="Em tempo real, o gráfico mostra a voltagem do sensor O2 oscilando. A sonda deve alternar entre mistura 'pobre' (<0.45V) e 'rica' (>0.45V). Se ficar travada em um valor, indica problema mecânico."
+            icon={CircleDot}
+            variant="default"
+          >
+            <div className="text-xs space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-cyan-500" />
+                <span>0.0 - 0.45V: Mistura pobre (menos combustível)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span>0.45V: Estequiométrico (ideal)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-orange-500" />
+                <span>0.45 - 1.0V: Mistura rica (mais combustível)</span>
+              </div>
+            </div>
+          </HelpCard>
+
+          {/* NOVO: Estados do Diagnóstico */}
+          <HelpCard
+            title="Estados do Diagnóstico Forense"
+            description="O resultado final mostra um de cinco estados, cada um com cor e recomendação específica baseada nas evidências coletadas."
+            icon={CheckCircle}
+            variant="default"
+          >
+            <div className="text-xs space-y-1 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span><strong>Estável:</strong> Combustível aprovado, motor funcionando bem</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span><strong>Adaptando:</strong> ECU aprendendo novo combustível (normal em Flex)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                <span><strong>Suspeito:</strong> Valores fora do normal, continue monitorando</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500" />
+                <span><strong>Contaminado:</strong> Combustível possivelmente adulterado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-gray-500" />
+                <span><strong>Mecânico:</strong> Problema no veículo (sonda, vazamento)</span>
+              </div>
+            </div>
+          </HelpCard>
 
           <HelpCard
             title="O que é Fuel Trim (STFT/LTFT)?"
@@ -830,6 +921,18 @@ export default function Help() {
             </div>
           </HelpCard>
 
+          {/* NOVO: Modo Offline */}
+          <HelpCard
+            title="Modo Offline"
+            description="Sem internet? Os diagnósticos de abastecimento são salvos localmente no dispositivo e sincronizados automaticamente quando a conexão retornar. Um indicador mostra quantos diagnósticos estão pendentes."
+            icon={CloudOff}
+            variant="default"
+          >
+            <div className="text-xs mt-2 text-muted-foreground">
+              O ícone de nuvem com seta indica sincronização pendente. Quando verde, tudo está sincronizado.
+            </div>
+          </HelpCard>
+
           <HelpCard
             title="Sincronização na Nuvem"
             description="Se você estiver logado, o histórico de abastecimentos é salvo automaticamente na nuvem. Você pode acessar de qualquer dispositivo e acompanhar a qualidade do combustível ao longo do tempo."
@@ -843,7 +946,7 @@ export default function Help() {
 
           <HelpCard
             title="Alertas do Jarvis"
-            description="Durante e após o monitoramento, o Jarvis anuncia: início da análise, detecção de anomalias, resultado da qualidade do combustível, precisão da bomba e status de salvamento na nuvem."
+            description="Durante e após o monitoramento, o Jarvis anuncia: início da análise, detecção de anomalias, resultado do diagnóstico forense, precisão da bomba e status de salvamento na nuvem."
             icon={Bot}
             variant="default"
           />
@@ -944,6 +1047,26 @@ export default function Help() {
               question="O Jarvis consegue resumir minhas corridas?"
               answer="Sim! Pergunte 'Como foi o dia de trabalho?' ou 'Qual o lucro das corridas hoje?' e o Jarvis resume verbalmente: total de corridas, quilômetros, custos e lucro líquido."
             />
+            <FAQItem
+              id="faq-18"
+              question="O que significa 'ECU Adaptando'?"
+              answer="Quando você troca de combustível em um veículo Flex (ex: de gasolina para etanol), a ECU precisa aprender a nova proporção de injeção. O STFT sobe (ou desce) bastante, mas isso é NORMAL. O sistema mostra uma barra de progresso e, quando a adaptação terminar, o status muda para 'Estável'."
+            />
+            <FAQItem
+              id="faq-19"
+              question="Por que aparece 'Problema Mecânico'?"
+              answer="Se o sensor O2 (sonda lambda) ficar travado em um valor por muito tempo, ou se o LTFT não estiver adaptando mesmo após quilômetros, o sistema detecta possível problema mecânico como: sonda lambda defeituosa, vazamento de vácuo, ou injetor obstruído. Neste caso, procure um mecânico."
+            />
+            <FAQItem
+              id="faq-20"
+              question="O que é o gráfico de sensor O2?"
+              answer="O sensor O2 (sonda lambda) mede o oxigênio no escapamento. O gráfico mostra a voltagem oscilando em tempo real. A sonda deve alternar rapidamente entre valores baixos (<0.45V = mistura pobre) e altos (>0.45V = mistura rica). Se ficar parada, indica problema."
+            />
+            <FAQItem
+              id="faq-21"
+              question="Os diagnósticos de combustível funcionam offline?"
+              answer="Sim! Se você estiver sem internet, o diagnóstico é salvo localmente no dispositivo. Quando a conexão retornar, os dados são sincronizados automaticamente com a nuvem. Um indicador mostra quantos diagnósticos estão aguardando sincronização."
+            />
           </div>
         </HelpSection>
 
@@ -1019,6 +1142,26 @@ export default function Help() {
               term="Lucro Líquido"
               definition="O valor que realmente sobra no bolso após descontar todos os custos (combustível, manutenção, etc)."
               analogy="É a diferença entre o que você recebeu e o que gastou para fazer a corrida."
+            />
+            <GlossaryItem
+              term="Sensor O2 (Sonda Lambda)"
+              definition="Sensor no escapamento que mede oxigênio residual para ajustar a mistura ar/combustível."
+              analogy="É como um 'nariz eletrônico' que cheira o escapamento para saber se a queima foi boa."
+            />
+            <GlossaryItem
+              term="Veículo Flex"
+              definition="Veículo bicombustível que funciona com gasolina, etanol ou qualquer mistura de ambos."
+              analogy="É como um carro 'bilingue' que entende tanto gasolina quanto etanol."
+            />
+            <GlossaryItem
+              term="Fuel State Machine"
+              definition="Sistema inteligente que analisa padrões de Fuel Trim para distinguir troca de combustível de adulteração."
+              analogy="É como um 'detetive de combustível' que diferencia situações normais de problemas reais."
+            />
+            <GlossaryItem
+              term="Adaptação Flex"
+              definition="Processo onde a ECU aprende a nova proporção de combustível após troca entre gasolina e etanol."
+              analogy="É como o motor 'se acostumando' com o novo combustível, ajustando a receita da mistura."
             />
           </div>
         </HelpSection>

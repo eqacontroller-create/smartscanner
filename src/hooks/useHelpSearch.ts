@@ -85,8 +85,8 @@ const searchableItems: SearchableItem[] = [
     id: "abastecimento",
     title: "Monitor de Abastecimento",
     type: "section",
-    keywords: ["combustível", "gasolina", "álcool", "etanol", "posto", "bomba", "fraude", "adulterado", "fuel trim", "stft", "ltft"],
-    content: "Verificar qualidade do combustível, detectar fraude em bombas, fuel trim, STFT, LTFT",
+    keywords: ["combustível", "gasolina", "álcool", "etanol", "posto", "bomba", "fraude", "adulterado", "fuel trim", "stft", "ltft", "forense", "adaptação", "flex", "o2", "sonda", "lambda", "offline"],
+    content: "Verificar qualidade do combustível, detectar fraude em bombas, fuel trim, STFT, LTFT, análise forense, adaptação Flex, sensor O2, modo offline",
   },
   {
     id: "faq",
@@ -160,6 +160,34 @@ const searchableItems: SearchableItem[] = [
     keywords: ["jarvis", "corrida", "resumo", "dia", "trabalho"],
     content: "Pergunte Como foi o dia de trabalho para um resumo verbal",
   },
+  {
+    id: "faq-18",
+    title: "O que significa 'ECU Adaptando'?",
+    type: "faq",
+    keywords: ["ecu", "adaptando", "flex", "etanol", "gasolina", "troca", "aprendendo"],
+    content: "Quando troca de combustível em veículo Flex, a ECU precisa aprender nova proporção. STFT alto é normal.",
+  },
+  {
+    id: "faq-19",
+    title: "Por que aparece 'Problema Mecânico'?",
+    type: "faq",
+    keywords: ["mecânico", "problema", "sonda", "o2", "ltft", "travado"],
+    content: "Sensor O2 travado ou LTFT não adaptando indica problema mecânico como sonda defeituosa ou vazamento",
+  },
+  {
+    id: "faq-20",
+    title: "O que é o gráfico de sensor O2?",
+    type: "faq",
+    keywords: ["o2", "sensor", "sonda", "lambda", "gráfico", "voltagem", "oscilando"],
+    content: "Gráfico mostra voltagem da sonda lambda oscilando em tempo real entre mistura pobre e rica",
+  },
+  {
+    id: "faq-21",
+    title: "Os diagnósticos de combustível funcionam offline?",
+    type: "faq",
+    keywords: ["offline", "internet", "sincronização", "nuvem", "combustível", "diagnóstico"],
+    content: "Diagnósticos salvos localmente e sincronizados automaticamente quando reconectar à internet",
+  },
 
   // Glossary
   {
@@ -210,6 +238,34 @@ const searchableItems: SearchableItem[] = [
     type: "glossary",
     keywords: ["ltft", "fuel trim", "combustível", "longo prazo"],
     content: "Long Term Fuel Trim - Correção de longo prazo que o motor memoriza",
+  },
+  {
+    id: "glossario-o2",
+    title: "Sensor O2 (Sonda Lambda)",
+    type: "glossary",
+    keywords: ["o2", "sonda", "lambda", "oxigênio", "escapamento", "sensor"],
+    content: "Sensor que mede oxigênio no escapamento para ajustar mistura ar-combustível",
+  },
+  {
+    id: "glossario-flex",
+    title: "Veículo Flex",
+    type: "glossary",
+    keywords: ["flex", "bicombustível", "etanol", "gasolina"],
+    content: "Veículo que funciona com gasolina, etanol ou mistura de ambos",
+  },
+  {
+    id: "glossario-forense",
+    title: "Análise Forense",
+    type: "glossary",
+    keywords: ["forense", "análise", "diagnóstico", "combustível", "state machine"],
+    content: "Análise inteligente que diferencia troca de combustível Flex de adulteração usando padrões de Fuel Trim",
+  },
+  {
+    id: "glossario-adaptacao",
+    title: "Adaptação Flex",
+    type: "glossary",
+    keywords: ["adaptação", "flex", "ecu", "aprendendo", "troca"],
+    content: "Processo onde a ECU aprende nova proporção de combustível após troca entre gasolina e etanol",
   },
 ];
 
