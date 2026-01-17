@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.vision-mechanic]
 verify_jwt = false
+
+[functions.dtc-estimate]
+verify_jwt = false

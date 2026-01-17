@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Wrench, AlertTriangle, Lightbulb, Loader2, Sparkles, Snowflake, Zap } from 'lucide-react';
+import { 
+  Wrench, AlertTriangle, Lightbulb, Loader2, Sparkles, Snowflake, Zap,
+  DollarSign, OctagonX, Clock, Package, Baby
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,11 +12,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ParsedDTC } from '@/lib/dtcParser';
 import { getDTCInfo, getDefaultDTCInfo, type DTCInfo } from '@/lib/dtcDatabase';
 import { analyzeDTC, type AIProvider } from '@/lib/dtcAnalyzer';
 import { FreezeFrameData } from './FreezeFrameData';
 import { useJarvisSettings } from '@/hooks/useJarvisSettings';
+import { getDTCEstimate, type DTCEstimate } from '@/services/ai/DTCEstimateService';
 
 interface DTCModalProps {
   dtc: ParsedDTC | null;
@@ -30,22 +35,61 @@ const severityConfig = {
   high: { label: 'Alta', className: 'bg-destructive/20 text-destructive border-destructive/30' },
 };
 
+const riskConfig = {
+  critical: {
+    bgClass: 'bg-red-500/20 border-red-500/50',
+    textClass: 'text-red-500',
+    icon: OctagonX,
+    label: 'CRÍTICO',
+  },
+  moderate: {
+    bgClass: 'bg-yellow-500/20 border-yellow-500/50',
+    textClass: 'text-yellow-500',
+    icon: AlertTriangle,
+    label: 'ATENÇÃO',
+  },
+  low: {
+    bgClass: 'bg-green-500/20 border-green-500/50',
+    textClass: 'text-green-500',
+    icon: Lightbulb,
+    label: 'BAIXO',
+  },
+};
+
 export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleContext = 'Ford Focus' }: DTCModalProps) {
   const { settings } = useJarvisSettings();
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSource, setAiSource] = useState<'local' | 'openai'>('local');
+  
+  // Budget estimate state
+  const [estimate, setEstimate] = useState<DTCEstimate | null>(null);
+  const [isLoadingEstimate, setIsLoadingEstimate] = useState(false);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     if (isOpen && dtc) {
       fetchAIExplanation(dtc.code);
+      setActiveTab('info');
+      setEstimate(null);
+      setEstimateError(null);
     } else {
       setAiExplanation(null);
       setAiError(null);
       setAiSource('local');
+      setEstimate(null);
+      setEstimateError(null);
     }
   }, [isOpen, dtc?.code, settings.aiProvider, settings.openaiApiKey]);
+
+  // Load estimate when budget tab is selected
+  useEffect(() => {
+    if (isOpen && dtc && activeTab === 'budget' && !estimate && !isLoadingEstimate) {
+      fetchEstimate(dtc);
+    }
+  }, [isOpen, dtc, activeTab]);
 
   const fetchAIExplanation = async (code: string) => {
     setIsLoadingAI(true);
@@ -78,6 +122,27 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleCon
     }
   };
 
+  const fetchEstimate = async (dtcData: ParsedDTC) => {
+    setIsLoadingEstimate(true);
+    setEstimateError(null);
+    
+    try {
+      const info = getDTCInfo(dtcData.code) || getDefaultDTCInfo(dtcData.code);
+      const result = await getDTCEstimate({
+        dtcCode: dtcData.code,
+        dtcName: info.name,
+        dtcDescription: info.description,
+        vehicleContext,
+      });
+      setEstimate(result);
+    } catch (err) {
+      console.error('Estimate error:', err);
+      setEstimateError(err instanceof Error ? err.message : 'Erro ao buscar orçamento');
+    } finally {
+      setIsLoadingEstimate(false);
+    }
+  };
+
   if (!dtc) return null;
 
   const info: DTCInfo = getDTCInfo(dtc.code) || getDefaultDTCInfo(dtc.code);
@@ -104,16 +169,21 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleCon
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-auto">
-            <TabsTrigger value="info" className="gap-1.5 sm:gap-2 py-2 sm:py-2.5 text-xs sm:text-sm touch-target">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="info" className="gap-1 sm:gap-2 py-2 sm:py-2.5 text-xs sm:text-sm touch-target">
               <Wrench className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Informações</span>
+              <span className="hidden xs:inline">Info</span>
               <span className="xs:hidden">Info</span>
             </TabsTrigger>
-            <TabsTrigger value="freeze" className="gap-1.5 sm:gap-2 py-2 sm:py-2.5 text-xs sm:text-sm touch-target" disabled={!sendCommand}>
+            <TabsTrigger value="budget" className="gap-1 sm:gap-2 py-2 sm:py-2.5 text-xs sm:text-sm touch-target">
+              <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Orçamento</span>
+            </TabsTrigger>
+            <TabsTrigger value="freeze" className="gap-1 sm:gap-2 py-2 sm:py-2.5 text-xs sm:text-sm touch-target" disabled={!sendCommand}>
               <Snowflake className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span>Freeze Frame</span>
+              <span className="hidden xs:inline">Freeze</span>
+              <span className="xs:hidden">FF</span>
             </TabsTrigger>
           </TabsList>
           
@@ -183,6 +253,91 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleCon
               )}
             </div>
           </TabsContent>
+
+          {/* Budget Tab */}
+          <TabsContent value="budget" className="space-y-4 mt-3 sm:mt-4">
+            {isLoadingEstimate && (
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Consultando orçamento...</p>
+              </div>
+            )}
+
+            {estimateError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{estimateError}</AlertDescription>
+              </Alert>
+            )}
+
+            {estimate && !isLoadingEstimate && (
+              <>
+                {/* Risk Action Banner */}
+                <RiskActionBanner 
+                  riskLevel={estimate.riskLevel} 
+                  actionMessage={estimate.actionMessage}
+                  canDrive={estimate.canDrive}
+                />
+
+                {/* Simple Explanation for Laymen */}
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Baby className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs text-blue-500 font-medium">Para leigos:</span>
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    {estimate.simpleExplanation}
+                  </p>
+                </div>
+
+                {/* Estimated Parts */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5" />
+                    Peças Prováveis
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {estimate.estimatedParts.map((part, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        🔧 {part}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Estimated Labor */}
+                <div className="space-y-1">
+                  <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    Mão de Obra Estimada
+                  </h4>
+                  <p className="text-sm text-foreground">{estimate.estimatedLabor}</p>
+                </div>
+
+                {/* Cost Range */}
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <h4 className="text-xs font-medium text-green-600 mb-2 flex items-center gap-2">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    Custo Estimado
+                  </h4>
+                  <p className="text-2xl font-bold text-foreground">
+                    R$ {estimate.estimatedCostRange.min.toLocaleString('pt-BR')} - R$ {estimate.estimatedCostRange.max.toLocaleString('pt-BR')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Peças genéricas (min) / Originais (max)
+                  </p>
+                </div>
+
+                {/* Disclaimer */}
+                <Alert className="bg-yellow-500/10 border-yellow-500/30">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  <AlertDescription className="text-xs text-yellow-600">
+                    {estimate.disclaimer}
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
+          </TabsContent>
           
           <TabsContent value="freeze" className="mt-3 sm:mt-4">
             {sendCommand && addLog ? (
@@ -207,5 +362,42 @@ export function DTCModal({ dtc, isOpen, onClose, sendCommand, addLog, vehicleCon
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Risk Action Banner Component
+function RiskActionBanner({ 
+  riskLevel, 
+  actionMessage,
+  canDrive 
+}: { 
+  riskLevel: 'critical' | 'moderate' | 'low';
+  actionMessage: string;
+  canDrive: boolean;
+}) {
+  const config = riskConfig[riskLevel];
+  const Icon = config.icon;
+
+  return (
+    <div className={`rounded-lg border p-3 ${config.bgClass} ${riskLevel === 'critical' ? 'animate-pulse' : ''}`}>
+      <div className="flex items-center gap-3">
+        <div className={`p-2 rounded-full ${config.bgClass}`}>
+          <Icon className={`h-5 w-5 ${config.textClass}`} />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge className={`text-xs ${config.bgClass} ${config.textClass} border-0`}>
+              {config.label}
+            </Badge>
+            <Badge variant="outline" className={`text-xs ${canDrive ? 'text-green-500 border-green-500/30' : 'text-red-500 border-red-500/30'}`}>
+              {canDrive ? '✅ Pode dirigir' : '⛔ Não dirija'}
+            </Badge>
+          </div>
+          <p className={`text-sm font-bold ${config.textClass}`}>
+            {actionMessage}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

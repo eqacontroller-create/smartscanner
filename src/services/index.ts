@@ -15,6 +15,7 @@ export { ScanHistoryService } from './supabase/ScanHistoryService';
 export { JarvisService } from './ai/JarvisService';
 export { TTSService } from './ai/TTSService';
 export { VisionService } from './ai/VisionService';
+export { DTCEstimateService, getDTCEstimate } from './ai/DTCEstimateService';
 
 // Re-export types
 export type { ProfileData } from './supabase/ProfileService';
@@ -25,3 +26,4 @@ export type { VehicleContext, Message, TripData, JarvisRequest, JarvisResponse }
 export type { TTSOptions, OpenAITTSOptions } from './ai/TTSService';
 export type { ParseResult, VINInfo as OBDVINInfo } from './obd/OBDParser';
 export type { PIDDefinition } from './obd/OBDProtocol';
+export type { DTCEstimate, DTCEstimateRequest } from './ai/DTCEstimateService';
