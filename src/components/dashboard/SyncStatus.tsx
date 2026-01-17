@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Cloud, CloudOff, User, RefreshCw, WifiOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +15,7 @@ interface SyncStatusProps {
   lastSyncedAt?: Date | null;
 }
 
-export function SyncStatus({ synced, lastSyncedAt }: SyncStatusProps) {
+function SyncStatusComponent({ synced, lastSyncedAt }: SyncStatusProps) {
   const { user, signOut } = useAuth();
   const { pendingCount, isOnline, isSyncing, processQueue } = useSyncQueue();
 
@@ -122,3 +123,13 @@ export function SyncStatus({ synced, lastSyncedAt }: SyncStatusProps) {
     </div>
   );
 }
+
+// Simple comparator - only re-render when sync state changes
+function arePropsEqual(prevProps: SyncStatusProps, nextProps: SyncStatusProps): boolean {
+  return (
+    prevProps.synced === nextProps.synced &&
+    prevProps.lastSyncedAt?.getTime() === nextProps.lastSyncedAt?.getTime()
+  );
+}
+
+export const SyncStatus = memo(SyncStatusComponent, arePropsEqual);
