@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useRef } from 'react';
+import logger from '@/lib/logger';
 
 interface CelebrationSoundOptions {
   enabled?: boolean;
@@ -87,7 +88,7 @@ export function useCelebrationSound(options: CelebrationSoundOptions = {}) {
       createCelebrationSound(audioContext, volume);
     } catch (error) {
       // Silently fail if Web Audio API is not supported
-      console.debug('Celebration sound not available:', error);
+      logger.debug('Celebration sound not available:', error);
     }
   }, [enabled, volume]);
   
@@ -113,6 +114,6 @@ export function playCelebrationSound(volume: number = 0.3) {
       audioContext.close();
     }, 2000);
   } catch (error) {
-    console.debug('Celebration sound not available:', error);
+    logger.debug('Celebration sound not available:', error);
   }
 }

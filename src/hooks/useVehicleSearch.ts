@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { VehicleModelsService, VehicleModelData } from '@/services/supabase/VehicleModelsService';
+import logger from '@/lib/logger';
 
 interface UseVehicleSearchResult {
   brands: string[];
@@ -80,7 +81,7 @@ export function useVehicleSearch(): UseVehicleSearchResult {
         const uniqueBrands = [...new Set(allModels.map(m => m.brand))].sort();
         setBrands(uniqueBrands);
       } catch (err) {
-        console.error('Error loading vehicle data:', err);
+        logger.error('Error loading vehicle data:', err);
         setError('Erro ao carregar veículos');
       } finally {
         setIsLoading(false);

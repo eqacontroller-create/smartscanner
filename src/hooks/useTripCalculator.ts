@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { TripData, TripSettings, TripHistoryEntry, initialTripData, defaultTripSettings } from '@/types/tripSettings';
+import logger from '@/lib/logger';
 
 const SETTINGS_STORAGE_KEY = 'trip-settings';
 const HISTORY_STORAGE_KEY = 'trip-history';
@@ -60,7 +61,7 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
         setHistory(JSON.parse(storedHistory));
       }
     } catch (error) {
-      console.error('Erro ao carregar configurações de viagem:', error);
+      logger.error('Erro ao carregar configurações de viagem:', error);
     }
   }, []);
   
@@ -71,7 +72,7 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
       } catch (error) {
-        console.error('Erro ao salvar configurações:', error);
+        logger.error('Erro ao salvar configurações:', error);
       }
       return updated;
     });
@@ -198,7 +199,7 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
       try {
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
       } catch (error) {
-        console.error('Erro ao salvar histórico:', error);
+        logger.error('Erro ao salvar histórico:', error);
       }
       return updated;
     });
@@ -213,7 +214,7 @@ export function useTripCalculator(options: UseTripCalculatorOptions): UseTripCal
     try {
       localStorage.removeItem(HISTORY_STORAGE_KEY);
     } catch (error) {
-      console.error('Erro ao limpar histórico:', error);
+      logger.error('Erro ao limpar histórico:', error);
     }
   }, []);
   

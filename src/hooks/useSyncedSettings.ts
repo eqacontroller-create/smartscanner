@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { TripSettings, defaultTripSettings } from '@/types/tripSettings';
+import logger from '@/lib/logger';
 
 const LOCAL_STORAGE_KEY = 'smartscanner-trip-settings';
 
@@ -71,7 +72,7 @@ export function useSyncedSettings(): UseSyncedSettingsReturn {
             setSynced(true);
           }
         } catch (err) {
-          console.error('Error loading settings from cloud:', err);
+          logger.error('Error loading settings from cloud:', err);
         }
       }
 
@@ -105,7 +106,7 @@ export function useSyncedSettings(): UseSyncedSettingsReturn {
           }, { onConflict: 'user_id' });
         setSynced(true);
       } catch (err) {
-        console.error('Error syncing settings to cloud:', err);
+        logger.error('Error syncing settings to cloud:', err);
         setSynced(false);
       }
     }

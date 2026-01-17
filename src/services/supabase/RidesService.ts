@@ -3,6 +3,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { RideEntry } from '@/types/tripSettings';
+import logger from '@/lib/logger';
 
 export interface RideData {
   id: string;
@@ -70,7 +71,7 @@ export const RidesService = {
       .order('start_time', { ascending: true });
 
     if (error) {
-      console.error('[RidesService] Error fetching today rides:', error);
+      logger.error('[RidesService] Error fetching today rides:', error);
       throw error;
     }
 
@@ -88,7 +89,7 @@ export const RidesService = {
       .insert(dbData as any);
 
     if (error) {
-      console.error('[RidesService] Error saving ride:', error);
+      logger.error('[RidesService] Error saving ride:', error);
       throw error;
     }
   },
@@ -112,7 +113,7 @@ export const RidesService = {
       .eq('id', id);
 
     if (error) {
-      console.error('[RidesService] Error updating ride:', error);
+      logger.error('[RidesService] Error updating ride:', error);
       throw error;
     }
   },
@@ -134,7 +135,7 @@ export const RidesService = {
       .lt('start_time', endOfDay.toISOString());
 
     if (error) {
-      console.error('[RidesService] Error deleting today rides:', error);
+      logger.error('[RidesService] Error deleting today rides:', error);
       throw error;
     }
   },

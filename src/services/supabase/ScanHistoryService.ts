@@ -4,6 +4,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { VehicleService } from './VehicleService';
 import type { ParsedDTC } from '@/services/obd/DTCParser';
+import logger from '@/lib/logger';
 
 export interface ScanHistoryEntry {
   id: string;
@@ -63,7 +64,7 @@ export const ScanHistoryService = {
         .single();
 
       if (scanError) {
-        console.error('[ScanHistoryService] Error creating scan:', scanError);
+        logger.error('[ScanHistoryService] Error creating scan:', scanError);
         return null;
       }
 
@@ -83,13 +84,13 @@ export const ScanHistoryService = {
           .insert(findings);
 
         if (findingsError) {
-          console.error('[ScanHistoryService] Error saving findings:', findingsError);
+          logger.error('[ScanHistoryService] Error saving findings:', findingsError);
         }
       }
 
       return scan.id;
     } catch (error) {
-      console.error('[ScanHistoryService] Error in saveScanResult:', error);
+      logger.error('[ScanHistoryService] Error in saveScanResult:', error);
       return null;
     }
   },
@@ -123,13 +124,13 @@ export const ScanHistoryService = {
         .limit(20);
 
       if (error) {
-        console.error('[ScanHistoryService] Error fetching by VIN:', error);
+        logger.error('[ScanHistoryService] Error fetching by VIN:', error);
         return [];
       }
 
       return mapScansToHistory(scans);
     } catch (error) {
-      console.error('[ScanHistoryService] Exception in getByVIN:', error);
+      logger.error('[ScanHistoryService] Exception in getByVIN:', error);
       return [];
     }
   },
@@ -162,13 +163,13 @@ export const ScanHistoryService = {
         .limit(limit);
 
       if (error) {
-        console.error('[ScanHistoryService] Error fetching recent:', error);
+        logger.error('[ScanHistoryService] Error fetching recent:', error);
         return [];
       }
 
       return mapScansToHistory(scans);
     } catch (error) {
-      console.error('[ScanHistoryService] Exception in getRecent:', error);
+      logger.error('[ScanHistoryService] Exception in getRecent:', error);
       return [];
     }
   },

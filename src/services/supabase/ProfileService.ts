@@ -2,6 +2,7 @@
 // Operações CRUD para perfis de usuário no Supabase
 
 import { supabase } from '@/integrations/supabase/client';
+import logger from '@/lib/logger';
 
 export interface ProfileData {
   id: string;
@@ -69,7 +70,7 @@ export const ProfileService = {
       .maybeSingle();
     
     if (error) {
-      console.error('[ProfileService] Error fetching profile:', error);
+      logger.error('[ProfileService] Error fetching profile:', error);
       throw error;
     }
     
@@ -85,7 +86,7 @@ export const ProfileService = {
       .upsert(profile as any);
     
     if (error) {
-      console.error('[ProfileService] Error upserting profile:', error);
+      logger.error('[ProfileService] Error upserting profile:', error);
       throw error;
     }
   },
@@ -99,7 +100,7 @@ export const ProfileService = {
       .insert(profile as any);
     
     if (error) {
-      console.error('[ProfileService] Error inserting profile:', error);
+      logger.error('[ProfileService] Error inserting profile:', error);
       throw error;
     }
   },
@@ -114,7 +115,7 @@ export const ProfileService = {
       .eq('id', userId);
     
     if (error) {
-      console.error('[ProfileService] Error updating profile:', error);
+      logger.error('[ProfileService] Error updating profile:', error);
       throw error;
     }
   },
