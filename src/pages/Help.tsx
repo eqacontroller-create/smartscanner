@@ -516,6 +516,26 @@ export default function Help() {
             variant="info"
           />
 
+          {/* Ilustração do Gráfico ECG */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <HeartPulse className="h-4 w-4 text-primary" />
+                Exemplo do Gráfico ECG de Bateria
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/battery-ecg-graph.png" 
+                alt="Gráfico ECG de bateria mostrando tensão durante partida do motor"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>O gráfico mostra a tensão caindo durante o cranking (momento da partida) e recuperando após o motor ligar.</p>
+            </div>
+          </div>
+
           <div className="p-4 bg-gradient-to-r from-red-500/10 to-green-500/10 rounded-lg border border-border">
             <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
               <HeartPulse className="h-4 w-4 text-primary" />
@@ -526,6 +546,26 @@ export default function Help() {
               <p><strong>Queda de Cranking:</strong> Quanto a tensão cai durante a partida (normal: não abaixo de 9.6V)</p>
               <p><strong>Recuperação:</strong> Velocidade que a tensão volta ao normal após partida</p>
               <p><strong>Tensão do Alternador:</strong> Com motor ligado, deve ficar entre 13.5V-14.5V</p>
+            </div>
+          </div>
+
+          {/* Ilustração dos Status da Bateria */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Battery className="h-4 w-4 text-primary" />
+                Indicadores de Saúde da Bateria
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/src/assets/help/battery-status-cards.png" 
+                alt="Cards de status da bateria mostrando diferentes estados de saúde"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Os cards coloridos indicam o estado: verde (excelente), amarelo (atenção) e vermelho (substituir).</p>
             </div>
           </div>
 
