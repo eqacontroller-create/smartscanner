@@ -14,6 +14,15 @@ export interface LivePID {
 
 export const LIVE_DATA_PIDS: LivePID[] = [
   {
+    pid: '03',
+    name: 'Estado do Sistema de Combustível',
+    shortName: 'Fuel Status',
+    unit: '',
+    min: 0,
+    max: 16,
+    parse: (a) => a, // 0=Off, 1=Open Loop (frio), 2=Closed Loop, 4=Open Loop (carga), 8=Falha, 16=Closed c/ falha
+  },
+  {
     pid: '0C',
     name: 'Rotação do Motor',
     shortName: 'RPM',

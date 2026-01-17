@@ -21,8 +21,9 @@ import type {
   FuelMonitoringData, 
   FuelDiagnosticResult,
   O2SensorReading,
+  FuelSystemStatus,
 } from '@/types/fuelForensics';
-import { DEFAULT_FUEL_THRESHOLDS } from '@/types/fuelForensics';
+import { DEFAULT_FUEL_THRESHOLDS, decodeFuelSystemStatus, isClosedLoop } from '@/types/fuelForensics';
 import { 
   evaluateFuelState, 
   createInitialMonitoringData, 
@@ -30,10 +31,11 @@ import {
 } from '@/services/fuel/FuelStateMachine';
 
 // Constantes de timing
-const MONITORING_INTERVAL = 500;      // Loop principal: 500ms para precisão
-const UI_UPDATE_THROTTLE = 1000;      // Atualizar UI a cada 1s
-const FUEL_TRIM_THROTTLE = 2000;      // Ler Fuel Trim a cada 2s
-const FUEL_LEVEL_THROTTLE = 5000;     // Ler nível de combustível a cada 5s
+const MONITORING_INTERVAL = 500;         // Loop principal: 500ms para precisão
+const UI_UPDATE_THROTTLE = 1000;         // Atualizar UI a cada 1s
+const FUEL_TRIM_THROTTLE = 2000;         // Ler Fuel Trim a cada 2s
+const FUEL_LEVEL_THROTTLE = 5000;        // Ler nível de combustível a cada 5s
+const FUEL_SYSTEM_CHECK_THROTTLE = 2000; // Verificar Closed Loop a cada 2s
 
 interface UseRefuelMonitorOptions {
   speed: number;
@@ -71,6 +73,9 @@ interface UseRefuelMonitorReturn {
   // O2 Sensor data for real-time monitor
   o2Readings: O2SensorReading[];
   o2FrozenDuration: number;
+  // Closed Loop detection
+  fuelSystemStatus: FuelSystemStatus;
+  isClosedLoopActive: boolean;
   // Ações
   startRefuelMode: () => void;
   startQuickTest: () => void;
@@ -134,6 +139,13 @@ export function useRefuelMonitor({
   const [o2FrozenDuration, setO2FrozenDuration] = useState(0);
   const o2FrozenStartRef = useRef<number | null>(null);
   
+  // Closed Loop detection (PID 03)
+  const [fuelSystemStatus, setFuelSystemStatus] = useState<FuelSystemStatus>('motor_off');
+  const [isClosedLoopActive, setIsClosedLoopActive] = useState(false);
+  const isClosedLoopRef = useRef(false);
+  const closedLoopAnnouncedRef = useRef(false);
+  const lastFuelSystemCheckRef = useRef(0);
+  
   // Refs para monitoramento (evitar re-renders e memory leaks)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startOdometerRef = useRef(0);
@@ -182,6 +194,7 @@ export function useRefuelMonitor({
   const readFuelLevelRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readO2SensorRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readSpeedRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
+  const readFuelSystemStatusRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   
   // CORREÇÃO v3: Manter speakRef SEMPRE atualizado com a versão mais recente
   // Isso garante que mudanças nas configurações de voz sejam refletidas imediatamente
@@ -501,6 +514,42 @@ export function useRefuelMonitor({
     return null;
   }, [sendRawCommand]);
   
+  // Ler Fuel System Status (PID 03) - Detecta Open/Closed Loop
+  const readFuelSystemStatus = useCallback(async (): Promise<number | null> => {
+    if (isReadingOBDRef.current) {
+      console.log('[Refuel] readFuelSystemStatus - aguardando mutex...');
+      await new Promise(r => setTimeout(r, 50));
+    }
+    
+    isReadingOBDRef.current = true;
+    
+    try {
+      const response = await sendRawCommand('0103', 2000);
+      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+      
+      if (cleanResponse.includes('NODATA') || 
+          cleanResponse.includes('ERROR') ||
+          cleanResponse.includes('UNABLE')) {
+        isReadingOBDRef.current = false;
+        return null;
+      }
+      
+      // Resposta: 41 03 XX [YY] - XX = status sistema 1, YY = status sistema 2 (opcional)
+      const match = cleanResponse.match(/41\s*03\s*([0-9A-F]{2})/i);
+      if (match) {
+        const statusValue = parseInt(match[1], 16);
+        console.log('[Refuel] Fuel System Status raw:', statusValue);
+        isReadingOBDRef.current = false;
+        return statusValue;
+      }
+    } catch (error) {
+      console.error('[Refuel] Error reading Fuel System Status:', error);
+    }
+    
+    isReadingOBDRef.current = false;
+    return null;
+  }, [sendRawCommand]);
+  
   // Manter refs de funções atualizados
   useEffect(() => {
     readSTFTRef.current = readSTFT;
@@ -508,7 +557,8 @@ export function useRefuelMonitor({
     readFuelLevelRef.current = readFuelLevel;
     readSpeedRef.current = readSpeed;
     readO2SensorRef.current = readO2Sensor;
-  }, [readSTFT, readLTFT, readFuelLevel, readSpeed, readO2Sensor]);
+    readFuelSystemStatusRef.current = readFuelSystemStatus;
+  }, [readSTFT, readLTFT, readFuelLevel, readSpeed, readO2Sensor, readFuelSystemStatus]);
   
   // Iniciar modo abastecimento (fluxo completo)
   const startRefuelMode = useCallback(async () => {
@@ -1171,7 +1221,50 @@ export function useRefuelMonitor({
         console.log(`[Refuel] Distance: ${newDistance.toFixed(3)} km / ${currentSettings.monitoringDistance} km (${progressPercent.toFixed(1)}%) @ ${currentSpeed} km/h`);
       }
       
-      // ========== 3. LER FUEL TRIM (THROTTLED 2s) ==========
+      // ========== 2.5 VERIFICAR CLOSED LOOP ANTES DE FUEL TRIM ==========
+      // PID 03 indica se a ECU está usando feedback do O2 (dados confiáveis)
+      if (now - lastFuelSystemCheckRef.current >= FUEL_SYSTEM_CHECK_THROTTLE) {
+        lastFuelSystemCheckRef.current = now;
+        
+        const rawStatus = await readFuelSystemStatusRef.current();
+        if (rawStatus !== null) {
+          const status = decodeFuelSystemStatus(rawStatus);
+          setFuelSystemStatus(status);
+          
+          const inClosedLoop = isClosedLoop(status);
+          setIsClosedLoopActive(inClosedLoop);
+          
+          // Detectar mudança de estado para anunciar
+          if (isClosedLoopRef.current !== inClosedLoop) {
+            if (!inClosedLoop) {
+              // Entrou em Open Loop - pausar coleta
+              if (status === 'open_loop_cold' && !closedLoopAnnouncedRef.current) {
+                speakRef.current('Aguardando aquecimento do motor. A análise será retomada quando atingir temperatura ideal.');
+                closedLoopAnnouncedRef.current = true;
+              } else if (status === 'open_loop_load' && !closedLoopAnnouncedRef.current) {
+                speakRef.current('Aceleração detectada. Análise pausada temporariamente.');
+                closedLoopAnnouncedRef.current = true;
+              }
+            } else {
+              // Voltou ao Closed Loop - retomar coleta
+              if (closedLoopAnnouncedRef.current) {
+                speakRef.current('Motor aquecido. Retomando análise de combustível.');
+                closedLoopAnnouncedRef.current = false;
+              }
+            }
+            isClosedLoopRef.current = inClosedLoop;
+          }
+          
+          // Se não está em Closed Loop, pular leitura de Fuel Trim neste ciclo
+          if (!inClosedLoop) {
+            console.log('[Refuel] Open Loop detectado:', status, '- pulando leitura de Fuel Trim');
+            // Continuar atualizando UI e distância, mas não coletar Fuel Trim
+            return;
+          }
+        }
+      }
+      
+      // ========== 3. LER FUEL TRIM (THROTTLED 2s) - SÓ SE CLOSED LOOP ==========
       if (now - lastFuelTrimReadRef.current >= FUEL_TRIM_THROTTLE) {
         lastFuelTrimReadRef.current = now;
         
@@ -1368,6 +1461,9 @@ export function useRefuelMonitor({
     // O2 Sensor data
     o2Readings,
     o2FrozenDuration,
+    // Closed Loop detection
+    fuelSystemStatus,
+    isClosedLoopActive,
     // Ações
     startRefuelMode,
     startQuickTest,

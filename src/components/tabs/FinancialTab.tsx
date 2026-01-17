@@ -22,7 +22,7 @@ import { DollarSign, Timer, Fuel, History, Car, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
-import type { O2SensorReading, FuelChangeContext, FuelDiagnosticResult } from '@/types/fuelForensics';
+import type { O2SensorReading, FuelChangeContext, FuelDiagnosticResult, FuelSystemStatus } from '@/types/fuelForensics';
 
 interface FinancialTabProps {
   // Trip Calculator
@@ -76,6 +76,9 @@ interface FinancialTabProps {
   // Forensic State Machine
   forensicResult?: FuelDiagnosticResult | null;
   fuelContext?: FuelChangeContext;
+  // Closed Loop detection
+  fuelSystemStatus?: FuelSystemStatus;
+  isClosedLoopActive?: boolean;
 }
 
 export function FinancialTab({
@@ -124,6 +127,8 @@ export function FinancialTab({
   userId,
   forensicResult,
   fuelContext,
+  fuelSystemStatus = 'closed_loop',
+  isClosedLoopActive = true,
 }: FinancialTabProps) {
   const [subTab, setSubTab] = useState('taximetro');
 
@@ -283,6 +288,8 @@ export function FinancialTab({
               settings={refuelSettings}
               frozenSettings={frozenSettings}
               isSyncing={isSyncing}
+              fuelSystemStatus={fuelSystemStatus}
+              isClosedLoopActive={isClosedLoopActive}
               onCancel={onCancelRefuel}
             />
           )}

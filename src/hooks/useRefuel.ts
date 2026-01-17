@@ -65,6 +65,10 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     o2Readings: refuelMonitor.o2Readings,
     o2FrozenDuration: refuelMonitor.o2FrozenDuration,
     
+    // Closed Loop detection
+    fuelSystemStatus: refuelMonitor.fuelSystemStatus,
+    isClosedLoopActive: refuelMonitor.isClosedLoopActive,
+    
     // Settings
     settings: refuelSettings.settings,
     isSyncing: refuelSettings.isSyncing || offlineRefuel.isSyncing,

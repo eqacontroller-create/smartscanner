@@ -6,7 +6,7 @@ import type { DetectedVehicle, VehicleProfile } from '@/lib/vehicleProfiles';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary, RideEntry } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
-import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData, O2SensorReading } from '@/types/fuelForensics';
+import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData, O2SensorReading, FuelSystemStatus } from '@/types/fuelForensics';
 
 // Interface simplificada para evitar importação circular
 export interface OfflineRefuelEntryBase {
@@ -162,6 +162,10 @@ export interface RefuelContext {
   // O2 Sensor data for real-time monitor
   o2Readings: O2SensorReading[];
   o2FrozenDuration: number;
+  
+  // Fuel System Status (Closed Loop detection)
+  fuelSystemStatus: FuelSystemStatus;
+  isClosedLoopActive: boolean;
   
   // Settings
   settings: RefuelSettings;

@@ -167,6 +167,19 @@ export const OBD_PIDS: Record<string, PIDDefinition> = {
     max: 1.275,
     decode: (a, _b = 0) => Math.round(a / 200 * 1000) / 1000,
   },
+  // Status do Sistema de Combustível (Open/Closed Loop)
+  FUEL_SYSTEM_STATUS: {
+    pid: '03',
+    name: 'Estado do Sistema de Combustível',
+    shortName: 'Fuel Status',
+    unit: '',
+    bytes: 2,
+    min: 0,
+    max: 16,
+    // Byte A = status do sistema 1, Byte B = status do sistema 2 (se aplicável)
+    // 0=Off, 1=Open Loop (frio), 2=Closed Loop, 4=Open Loop (carga), 8=Open Loop (falha), 16=Closed Loop (c/ falha)
+    decode: (a, _b = 0) => a,
+  },
 };
 
 // Comandos AT do ELM327
