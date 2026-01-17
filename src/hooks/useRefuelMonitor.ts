@@ -3,6 +3,7 @@
 // Arquitetura: Loop unificado de 500ms com cálculo preciso baseado em timestamp
 // CORREÇÃO: Sistema de fila de voz, cleanup adequado, mutex OBD, loop unificado
 // CORREÇÃO v2: Settings congelados durante monitoramento, cálculo de distância corrigido
+// V3: FUEL STATE MACHINE - Análise forense com O2 Sensor e contexto de troca Flex
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { 
@@ -15,6 +16,18 @@ import {
   defaultRefuelSettings 
 } from '@/types/refuelTypes';
 import { supabase } from '@/integrations/supabase/client';
+import type { 
+  FuelChangeContext, 
+  FuelMonitoringData, 
+  FuelDiagnosticResult,
+  O2SensorReading,
+} from '@/types/fuelForensics';
+import { DEFAULT_FUEL_THRESHOLDS } from '@/types/fuelForensics';
+import { 
+  evaluateFuelState, 
+  createInitialMonitoringData, 
+  addSample 
+} from '@/services/fuel/FuelStateMachine';
 
 // Constantes de timing
 const MONITORING_INTERVAL = 500;      // Loop principal: 500ms para precisão
@@ -43,15 +56,22 @@ interface UseRefuelMonitorReturn {
   stftSupported: boolean | null;
   currentSTFT: number | null;
   currentLTFT: number | null;
+  currentO2: number | null;
   currentFuelLevel: number | null;
   distanceMonitored: number;
   anomalyActive: boolean;
   anomalyDuration: number;
   settings: RefuelSettings;
   frozenSettings: RefuelSettings | null;
+  // State Machine
+  fuelContext: FuelChangeContext;
+  setFuelContext: (ctx: FuelChangeContext) => void;
+  forensicResult: FuelDiagnosticResult | null;
+  monitoringData: FuelMonitoringData | null;
+  // Ações
   startRefuelMode: () => void;
   startQuickTest: () => void;
-  confirmRefuel: (pricePerLiter: number, litersAdded: number) => void;
+  confirmRefuel: (pricePerLiter: number, litersAdded: number, stationName?: string) => void;
   cancelRefuel: () => void;
   checkPIDSupport: () => Promise<void>;
 }
@@ -87,6 +107,7 @@ export function useRefuelMonitor({
   // Dados atuais
   const [currentSTFT, setCurrentSTFT] = useState<number | null>(null);
   const [currentLTFT, setCurrentLTFT] = useState<number | null>(null);
+  const [currentO2, setCurrentO2] = useState<number | null>(null);
   const [currentFuelLevel, setCurrentFuelLevel] = useState<number | null>(null);
   const [distanceMonitored, setDistanceMonitored] = useState(0);
   
@@ -97,6 +118,13 @@ export function useRefuelMonitor({
   // Anomalias
   const [anomalyActive, setAnomalyActive] = useState(false);
   const [anomalyDuration, setAnomalyDuration] = useState(0);
+  
+  // === STATE MACHINE ===
+  const [fuelContext, setFuelContext] = useState<FuelChangeContext>('unknown');
+  const fuelContextRef = useRef<FuelChangeContext>('unknown');
+  const [forensicResult, setForensicResult] = useState<FuelDiagnosticResult | null>(null);
+  const [monitoringData, setMonitoringData] = useState<FuelMonitoringData | null>(null);
+  const monitoringDataRef = useRef<FuelMonitoringData | null>(null);
   
   // Refs para monitoramento (evitar re-renders e memory leaks)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -144,6 +172,7 @@ export function useRefuelMonitor({
   const readSTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readLTFTRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readFuelLevelRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
+  const readO2SensorRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   const readSpeedRef = useRef<() => Promise<number | null>>(() => Promise.resolve(null));
   
   // CORREÇÃO v3: Manter speakRef SEMPRE atualizado com a versão mais recente
@@ -427,13 +456,51 @@ export function useRefuelMonitor({
     return null;
   }, [sendRawCommand]);
   
+  // Ler O2 Sensor (Sonda Lambda) - PID 0114 Bank 1 Sensor 1
+  const readO2Sensor = useCallback(async (): Promise<number | null> => {
+    if (isReadingOBDRef.current) {
+      console.log('[Refuel] readO2Sensor - aguardando mutex...');
+      await new Promise(r => setTimeout(r, 50));
+    }
+    
+    isReadingOBDRef.current = true;
+    
+    try {
+      const response = await sendRawCommand('0114', 2000);
+      const cleanResponse = response.replace(/[\r\n]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+      
+      if (cleanResponse.includes('NODATA') || 
+          cleanResponse.includes('ERROR') ||
+          cleanResponse.includes('UNABLE')) {
+        isReadingOBDRef.current = false;
+        return null;
+      }
+      
+      // Resposta: 41 14 AA BB - AA = voltage (A/200), BB = STFT (não usado aqui)
+      const match = cleanResponse.match(/41\s*14\s*([0-9A-F]{2})/i);
+      if (match) {
+        const a = parseInt(match[1], 16);
+        const voltage = a / 200; // 0-1.275V
+        console.log('[Refuel] O2 Sensor parsed:', voltage.toFixed(3), 'V');
+        isReadingOBDRef.current = false;
+        return voltage;
+      }
+    } catch (error) {
+      console.error('[Refuel] Error reading O2 sensor:', error);
+    }
+    
+    isReadingOBDRef.current = false;
+    return null;
+  }, [sendRawCommand]);
+  
   // Manter refs de funções atualizados
   useEffect(() => {
     readSTFTRef.current = readSTFT;
     readLTFTRef.current = readLTFT;
     readFuelLevelRef.current = readFuelLevel;
     readSpeedRef.current = readSpeed;
-  }, [readSTFT, readLTFT, readFuelLevel, readSpeed]);
+    readO2SensorRef.current = readO2Sensor;
+  }, [readSTFT, readLTFT, readFuelLevel, readSpeed, readO2Sensor]);
   
   // Iniciar modo abastecimento (fluxo completo)
   const startRefuelMode = useCallback(async () => {
@@ -721,9 +788,9 @@ export function useRefuelMonitor({
     }
   }, []);
   
-  // Finalizar análise
+  // Finalizar análise usando Fuel State Machine
   const finalizeAnalysis = useCallback(async () => {
-    console.log('[Refuel] finalizeAnalysis - Iniciando conclusão');
+    console.log('[Refuel] finalizeAnalysis - Iniciando conclusão com State Machine');
     
     // Parar monitoramento imediatamente
     if (monitoringIntervalRef.current) {
@@ -740,15 +807,51 @@ export function useRefuelMonitor({
     // Ler valores finais
     const finalFuelLevel = await readFuelLevelRef.current();
     const finalLTFT = await readLTFTRef.current();
+    const finalO2 = await readO2SensorRef.current();
     
-    // Calcular resultados
-    const quality = analyzeQuality(stftSamplesRef.current);
-    const avgSTFT = stftSamplesRef.current.length > 0
-      ? stftSamplesRef.current.reduce((a, b) => a + b, 0) / stftSamplesRef.current.length
-      : 0;
-    const ltftDelta = finalLTFT !== null && initialLTFTRef.current !== null
-      ? finalLTFT - initialLTFTRef.current
-      : 0;
+    // Pegar dados de monitoramento acumulados
+    const data = monitoringDataRef.current || createInitialMonitoringData();
+    
+    // Atualizar dados finais
+    const finalData: FuelMonitoringData = {
+      ...data,
+      ltftCurrent: finalLTFT,
+      ltftDelta: finalLTFT !== null && data.ltftInitial !== null 
+        ? finalLTFT - data.ltftInitial 
+        : data.ltftDelta,
+      distanceMonitored: distanceRef.current,
+      monitoringDuration: (Date.now() - data.monitoringStartTime) / 1000,
+    };
+    
+    // Se temos O2, adicionar leitura final
+    if (finalO2 !== null) {
+      const o2Reading: O2SensorReading = {
+        voltage: finalO2,
+        timestamp: Date.now(),
+        isLean: finalO2 < DEFAULT_FUEL_THRESHOLDS.o2LeanThreshold,
+        isRich: finalO2 > DEFAULT_FUEL_THRESHOLDS.o2RichThreshold,
+      };
+      finalData.o2Readings = [...finalData.o2Readings, o2Reading];
+      finalData.o2Average = finalData.o2Readings.reduce((a, b) => a + b.voltage, 0) / finalData.o2Readings.length;
+    }
+    
+    // === USAR A STATE MACHINE ===
+    const forensicDiagnosis = evaluateFuelState(finalData, fuelContextRef.current);
+    console.log('[Refuel] Forensic Diagnosis:', forensicDiagnosis);
+    
+    // Mapear estado para qualidade legada (para compatibilidade)
+    const qualityMap: Record<string, FuelQuality> = {
+      'stable': 'ok',
+      'adapting': 'ok', // Adaptação é OK
+      'suspicious': 'warning',
+      'contaminated': 'critical',
+      'mechanical': 'critical',
+    };
+    const quality = qualityMap[forensicDiagnosis.state] || 'unknown';
+    
+    // Salvar resultado forense
+    setForensicResult(forensicDiagnosis);
+    setMonitoringData(finalData);
     
     // Calcular precisão da bomba
     let pumpAccuracyPercent: number | undefined;
@@ -766,16 +869,15 @@ export function useRefuelMonitor({
       }
     }
     
-    const anomalyDetected = quality === 'warning' || quality === 'critical';
-    
     // Atualizar estado final
     setCurrentRefuel(prev => ({
       ...prev,
       quality,
-      stftAverage: avgSTFT,
-      ltftDelta,
+      stftAverage: finalData.stftAverage,
+      ltftDelta: finalData.ltftDelta,
       distanceMonitored: distanceRef.current,
-      anomalyDetected,
+      anomalyDetected: forensicDiagnosis.anomalyDetected,
+      anomalyDetails: forensicDiagnosis.anomalyDetails,
       pumpAccuracyPercent,
       fuelLevelAfter: finalFuelLevel ?? prev?.fuelLevelAfter,
     }));
@@ -795,16 +897,22 @@ export function useRefuelMonitor({
           tank_capacity: currentSettings.tankCapacity,
           station_name: currentRefuel.stationName || null,
           quality,
-          stft_average: avgSTFT,
-          ltft_delta: ltftDelta,
+          stft_average: finalData.stftAverage,
+          ltft_delta: finalData.ltftDelta,
           distance_monitored: distanceRef.current,
-          anomaly_detected: anomalyDetected,
-          anomaly_details: anomalyDetected ? `STFT médio: ${avgSTFT.toFixed(1)}%, Delta LTFT: ${ltftDelta.toFixed(1)}%` : null,
+          anomaly_detected: forensicDiagnosis.anomalyDetected,
+          anomaly_details: forensicDiagnosis.anomalyDetails || null,
           pump_accuracy_percent: pumpAccuracyPercent ?? null,
+          // Novos campos forenses
+          fuel_context: fuelContextRef.current,
+          fuel_state: forensicDiagnosis.state,
+          o2_avg: finalData.o2Average,
+          ltft_final: finalLTFT,
+          adaptation_complete: forensicDiagnosis.adaptationComplete,
         };
         
         await supabase.from('refuel_entries').insert(insertData);
-        console.log('[Refuel] Dados salvos no Supabase');
+        console.log('[Refuel] Dados forenses salvos no Supabase');
       } catch (error) {
         console.error('[Refuel] Error saving to database:', error);
       }
@@ -812,15 +920,10 @@ export function useRefuelMonitor({
       console.log('[Refuel] Teste rápido - dados não salvos no banco');
     }
     
-    // Anunciar resultado (mensagem diferente por fluxo)
-    // CORREÇÃO v3: Log de debug para confirmar que speakRef está atualizado
-    console.log('[Refuel] Anunciando resultado final com speakRef.current');
-    if (isRefuelFlow) {
-      await speakRef.current(getQualityAnnouncement(quality, avgSTFT, ltftDelta, distanceRef.current));
-    } else {
-      console.log('[Refuel] Teste rápido - anunciando resultado');
-      await speakRef.current(getQuickTestAnnouncement(quality, avgSTFT));
-    }
+    // Anunciar resultado com mensagem baseada no estado forense
+    console.log('[Refuel] Anunciando resultado forense');
+    const announcement = getForensicAnnouncement(forensicDiagnosis, distanceRef.current);
+    await speakRef.current(announcement);
     
     // Marcar como concluído
     setMode('completed');
@@ -830,6 +933,26 @@ export function useRefuelMonitor({
     frozenSettingsRef.current = null;
     
   }, [currentRefuel, analyzeQuality, userId, settings]);
+  
+  // Gerar anúncio baseado no diagnóstico forense
+  const getForensicAnnouncement = (result: FuelDiagnosticResult, distance: number): string => {
+    const distStr = distance.toFixed(1);
+    
+    switch (result.state) {
+      case 'stable':
+        return `Análise concluída em ${distStr} quilômetros. Combustível aprovado! ${result.recommendation}`;
+      case 'adapting':
+        return `Análise concluída em ${distStr} quilômetros. A ECU está adaptando ao novo combustível. Isso é normal para veículos Flex. ${result.recommendation}`;
+      case 'suspicious':
+        return `Análise concluída em ${distStr} quilômetros. Atenção: valores fora do esperado. ${result.recommendation}`;
+      case 'contaminated':
+        return `Análise concluída em ${distStr} quilômetros. Alerta crítico! Combustível possivelmente adulterado. ${result.recommendation}`;
+      case 'mechanical':
+        return `Análise concluída em ${distStr} quilômetros. Detectado possível problema mecânico, não relacionado ao combustível. ${result.recommendation}`;
+      default:
+        return `Análise concluída em ${distStr} quilômetros. ${result.recommendation}`;
+    }
+  };
   
   // Gerar anúncio de qualidade
   const getQualityAnnouncement = (quality: FuelQuality, avgSTFT: number, ltftDelta: number, distance: number): string => {
@@ -927,7 +1050,13 @@ export function useRefuelMonitor({
       const frozen = { ...settings };
       frozenSettingsRef.current = frozen;
       setFrozenSettings(frozen);
-      console.log('[Refuel] Settings congelados para monitoramento:', frozen.monitoringDistance, 'km', '| FlowType:', flowTypeRef.current);
+      console.log('[Refuel] Settings congelados para monitoramento:', frozen.monitoringDistance, 'km', '| FlowType:', flowTypeRef.current, '| Context:', fuelContextRef.current);
+      
+      // Inicializar dados de monitoramento para State Machine
+      const initialData = createInitialMonitoringData();
+      initialData.ltftInitial = initialLTFTRef.current;
+      monitoringDataRef.current = initialData;
+      setMonitoringData(initialData);
       
       setMode('monitoring');
       startOdometerRef.current = 0;
@@ -1096,6 +1225,41 @@ export function useRefuelMonitor({
           setCurrentLTFT(ltft);
         }
         
+        // ========== 3.5 LER O2 SENSOR (Sonda Lambda) ==========
+        const o2 = await readO2SensorRef.current();
+        if (o2 !== null) {
+          setCurrentO2(o2);
+        }
+        
+        // ========== 3.6 ATUALIZAR MONITORING DATA (State Machine) ==========
+        if (stft !== null && monitoringDataRef.current) {
+          // Criar leitura O2 se disponível
+          let o2Reading: O2SensorReading | undefined;
+          if (o2 !== null) {
+            o2Reading = {
+              voltage: o2,
+              timestamp: Date.now(),
+              isLean: o2 < DEFAULT_FUEL_THRESHOLDS.o2LeanThreshold,
+              isRich: o2 > DEFAULT_FUEL_THRESHOLDS.o2RichThreshold,
+            };
+          }
+          
+          // Adicionar sample aos dados de monitoramento
+          const updatedData = addSample(
+            monitoringDataRef.current,
+            stft,
+            ltft,
+            o2Reading
+          );
+          updatedData.distanceMonitored = distanceRef.current;
+          
+          monitoringDataRef.current = updatedData;
+          // Atualizar UI periodicamente (não a cada tick)
+          if (now - lastUIUpdateRef.current >= UI_UPDATE_THROTTLE) {
+            setMonitoringData(updatedData);
+          }
+        }
+        
         // Adicionar ao histórico só com valores válidos (mantém último valor se null)
         if (stft !== null || ltft !== null) {
           setFuelTrimHistory(prev => {
@@ -1166,6 +1330,12 @@ export function useRefuelMonitor({
     }
   }, [mode]);
   
+  // Handler para atualizar fuelContext com ref sincronizado
+  const handleSetFuelContext = useCallback((ctx: FuelChangeContext) => {
+    setFuelContext(ctx);
+    fuelContextRef.current = ctx;
+  }, []);
+  
   return {
     mode,
     flowType,
@@ -1175,12 +1345,19 @@ export function useRefuelMonitor({
     stftSupported,
     currentSTFT,
     currentLTFT,
+    currentO2,
     currentFuelLevel,
     distanceMonitored,
     anomalyActive,
     anomalyDuration,
     settings,
     frozenSettings,
+    // State Machine
+    fuelContext,
+    setFuelContext: handleSetFuelContext,
+    forensicResult,
+    monitoringData,
+    // Ações
     startRefuelMode,
     startQuickTest,
     confirmRefuel,
