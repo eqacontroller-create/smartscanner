@@ -6,6 +6,13 @@ import logger from '@/lib/logger';
 
 export interface ProfileData {
   id: string;
+  // User Profile
+  display_name?: string | null;
+  avatar_url?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  driver_type?: string | null;
+  member_since?: string | null;
   // Vehicle
   vin?: string | null;
   vehicle_brand?: string | null;

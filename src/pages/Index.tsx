@@ -18,11 +18,13 @@ import { AppFooter } from '@/components/dashboard/AppFooter';
 import { ConnectionPanel } from '@/components/dashboard/ConnectionPanel';
 import { MainTabs } from '@/components/dashboard/MainTabs';
 import { FloatingControls } from '@/components/dashboard/FloatingControls';
+import { UserProfileSheet } from '@/components/profile';
 
 const Index = () => {
   const [mainTab, setMainTab] = useState('painel');
   const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
   const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const reconnectAttemptedRef = useRef(false);
 
   // Hooks compostos - useJarvisSystem agora usa store global, então só precisamos de uma instância
@@ -102,7 +104,29 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col safe-area-y">
       {/* Header with stagger animation */}
       <div className="animate-stagger-fade-in" style={{ animationDelay: '0ms', animationFillMode: 'both' }}>
-        <AppHeader themeVehicle={session.themeVehicle} currentProfile={session.currentProfile} syncStatus={{ synced: session.syncedRides.synced, loading: session.syncedRides.loading }} status={session.status} jarvisEnabled={jarvis.settings.aiModeEnabled} isJarvisSupported={jarvis.isTTSSupported} isSpeaking={jarvis.isSpeaking} isListening={jarvis.isListening} isProcessing={jarvis.isProcessing} isAISupported={jarvis.isAISupported} aiError={jarvis.aiError} isWakeLockActive={wakeLock.isWakeLockActive} onOpenSettings={handleOpenSettings} onTestAudio={jarvis.testAudio} onToggleListening={jarvis.toggleListening} />
+        <AppHeader 
+          themeVehicle={session.themeVehicle} 
+          currentProfile={session.currentProfile} 
+          syncStatus={{ synced: session.syncedRides.synced, loading: session.syncedRides.loading }} 
+          status={session.status} 
+          jarvisEnabled={jarvis.settings.aiModeEnabled} 
+          isJarvisSupported={jarvis.isTTSSupported} 
+          isSpeaking={jarvis.isSpeaking} 
+          isListening={jarvis.isListening} 
+          isProcessing={jarvis.isProcessing} 
+          isAISupported={jarvis.isAISupported} 
+          aiError={jarvis.aiError} 
+          isWakeLockActive={wakeLock.isWakeLockActive} 
+          userProfile={{
+            displayName: session.syncedProfile.profile.user.displayName,
+            avatarUrl: session.syncedProfile.profile.user.avatarUrl,
+            email: session.user?.email,
+          }}
+          onOpenSettings={handleOpenSettings} 
+          onTestAudio={jarvis.testAudio} 
+          onToggleListening={jarvis.toggleListening}
+          onOpenProfile={() => setIsProfileOpen(true)}
+        />
       </div>
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 safe-area-x">
@@ -125,6 +149,39 @@ const Index = () => {
       </div>
 
       <FloatingControls isListening={jarvis.isListening} isContinuousMode={jarvis.isContinuousMode} isWakeWordDetected={jarvis.isWakeWordDetected} isProcessing={jarvis.isProcessing} isSpeakingAI={jarvis.isSpeakingAI} isAISupported={jarvis.isAISupported} aiEnabled={jarvis.settings.aiModeEnabled} continuousListeningEnabled={jarvis.settings.continuousListening} wakeWord={jarvis.settings.wakeWord} aiError={jarvis.aiError} lastTranscript={jarvis.lastTranscript} interimTranscript={jarvis.interimTranscript} lastResponse={jarvis.lastResponse} conversationHistory={jarvis.conversationHistory} onToggleListening={jarvis.toggleListening} onToggleContinuousMode={jarvis.toggleContinuousMode} onClearHistory={jarvis.clearHistory} isSettingsOpen={false} onSettingsChange={() => {}} jarvisSettings={jarvis.settings} onUpdateJarvisSetting={jarvis.updateSetting} onResetJarvisSettings={jarvis.resetToDefaults} availableVoices={jarvis.availableVoices} portugueseVoices={jarvis.portugueseVoices} onTestVoice={jarvis.testAudio} isSpeaking={jarvis.isSpeaking} isWakeLockActive={wakeLock.isWakeLockActive} autoRide={autoRide} refuelMode={refuelMonitor.mode} refuelFlowType={refuelMonitor.flowType} currentRefuel={refuelMonitor.currentRefuel} currentFuelLevel={refuelMonitor.currentFuelLevel} fuelLevelSupported={refuelMonitor.fuelLevelSupported} distanceMonitored={refuelMonitor.distanceMonitored} currentSTFT={refuelMonitor.currentSTFT} currentLTFT={refuelMonitor.currentLTFT} anomalyActive={refuelMonitor.anomalyActive} anomalyDuration={refuelMonitor.anomalyDuration} fuelTrimHistory={refuelMonitor.fuelTrimHistory} refuelSettings={refuelSettings.settings} frozenSettings={refuelMonitor.frozenSettings} confirmRefuel={refuelMonitor.confirmRefuel} cancelRefuel={refuelMonitor.cancelRefuel} startRefuelMode={refuelMonitor.startRefuelMode} startQuickTest={refuelMonitor.startQuickTest} stftSupported={refuelMonitor.stftSupported} onUpdateRefuelSettings={refuelSettings.updateSettings} onResetRefuelSettings={refuelSettings.resetToDefaults} isSyncing={refuelSettings.isSyncing} tripFuelPrice={tripCalc.settings.fuelPrice} isConnected={session.isConnected} isAuthenticated={session.isAuthenticated} isFlowSelectorOpen={isFlowSelectorOpen} isRefuelModalOpen={isRefuelModalOpen} onFlowSelectorChange={setIsFlowSelectorOpen} onRefuelModalChange={setIsRefuelModalOpen} forensicResult={refuelMonitor.forensicResult} fuelContext={refuelMonitor.fuelContext} setFuelContext={refuelMonitor.setFuelContext} fuelSystemStatus={refuelMonitor.fuelSystemStatus} isClosedLoopActive={refuelMonitor.isClosedLoopActive} pendingOfflineCount={offlineRefuel.pendingCount} />
+
+      {/* User Profile Sheet */}
+      <UserProfileSheet
+        open={isProfileOpen}
+        onOpenChange={setIsProfileOpen}
+        userId={session.user?.id}
+        userEmail={session.user?.email}
+        profileData={{
+          displayName: session.syncedProfile.profile.user.displayName,
+          avatarUrl: session.syncedProfile.profile.user.avatarUrl,
+          phone: session.syncedProfile.profile.user.phone,
+          city: session.syncedProfile.profile.user.city,
+          driverType: session.syncedProfile.profile.user.driverType,
+        }}
+        vehicleInfo={{
+          brand: session.syncedProfile.profile.vehicle.vehicleBrand,
+          model: session.syncedProfile.profile.vehicle.vehicleModel,
+          year: session.syncedProfile.profile.vehicle.modelYear,
+          nickname: session.syncedProfile.profile.vehicle.vehicleNickname,
+        }}
+        synced={session.syncedProfile.synced}
+        loading={session.syncedProfile.loading}
+        onUpdateProfile={async (updates) => {
+          await session.syncedProfile.updateUser({
+            displayName: updates.displayName,
+            avatarUrl: updates.avatarUrl,
+            phone: updates.phone,
+            city: updates.city,
+            driverType: updates.driverType,
+          });
+        }}
+        onLogout={() => setIsProfileOpen(false)}
+      />
     </div>
   );
 };
