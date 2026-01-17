@@ -452,6 +452,25 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           </div>
         </div>
 
+        {/* Proteção de Motor Frio (Closed Loop) */}
+        <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/30 mt-3">
+          <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Thermometer className="h-4 w-4" />
+            Proteção de Motor Frio (Closed Loop)
+          </h4>
+          <p className="text-sm text-muted-foreground mb-2">
+            O sistema verifica se o motor está aquecido antes de coletar dados.
+            Se aparecer "Aguardando Aquecimento":
+          </p>
+          <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+            <li>Motor está em Open Loop (frio ou acelerando forte)</li>
+            <li>Coleta de Fuel Trim pausada automaticamente</li>
+            <li>Distância continua sendo contada normalmente</li>
+            <li>Quando aquece (~60°C), retoma a análise</li>
+            <li>Jarvis anuncia quando está pronto</li>
+          </ul>
+        </div>
+
         {/* Modo Offline */}
         <div className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg mt-3">
           <CloudOff className="h-5 w-5 text-orange-500 mt-0.5" />
@@ -552,6 +571,14 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
             title="Por que 'Problema Mecânico'?"
             description="Se sensor O2 ficar travado ou LTFT não adaptar após km, indica problema mecânico (sonda defeituosa, vazamento). Procure um mecânico."
           />
+          <ManualCard
+            title="Por que 'Aguardando Aquecimento'?"
+            description="Motor frio (Open Loop) não fornece dados confiáveis de Fuel Trim. O sistema aguarda aquecimento (~60°C) para garantir análise precisa. A distância continua contando."
+          />
+          <ManualCard
+            title="O que é o badge vermelho no botão?"
+            description="Indica diagnósticos aguardando sincronização com a nuvem (feitos offline). Quando reconectar à internet, sincronizam automaticamente."
+          />
         </div>
       </ManualSection>
 
@@ -613,6 +640,14 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <div className="p-2 bg-muted/20 rounded">
             <span className="font-mono font-bold text-primary">Adaptação</span>
             <p className="text-muted-foreground">ECU aprendendo novo combustível</p>
+          </div>
+          <div className="p-2 bg-muted/20 rounded">
+            <span className="font-mono font-bold text-primary">Closed Loop</span>
+            <p className="text-muted-foreground">ECU usando feedback do O2</p>
+          </div>
+          <div className="p-2 bg-muted/20 rounded">
+            <span className="font-mono font-bold text-primary">Open Loop</span>
+            <p className="text-muted-foreground">Valores fixos (motor frio/WOT)</p>
           </div>
         </div>
       </ManualSection>

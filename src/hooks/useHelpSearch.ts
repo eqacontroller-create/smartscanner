@@ -85,8 +85,8 @@ const searchableItems: SearchableItem[] = [
     id: "abastecimento",
     title: "Monitor de Abastecimento",
     type: "section",
-    keywords: ["combustível", "gasolina", "álcool", "etanol", "posto", "bomba", "fraude", "adulterado", "fuel trim", "stft", "ltft", "forense", "adaptação", "flex", "o2", "sonda", "lambda", "offline"],
-    content: "Verificar qualidade do combustível, detectar fraude em bombas, fuel trim, STFT, LTFT, análise forense, adaptação Flex, sensor O2, modo offline",
+    keywords: ["combustível", "gasolina", "álcool", "etanol", "posto", "bomba", "fraude", "adulterado", "fuel trim", "stft", "ltft", "forense", "adaptação", "flex", "o2", "sonda", "lambda", "offline", "closed loop", "open loop", "motor frio", "aquecimento", "aguardando", "pid 03", "termômetro", "temperatura"],
+    content: "Verificar qualidade do combustível, detectar fraude em bombas, fuel trim, STFT, LTFT, análise forense, adaptação Flex, sensor O2, modo offline, proteção de motor frio, Closed Loop, Open Loop, aguardando aquecimento",
   },
   {
     id: "faq",
@@ -188,6 +188,27 @@ const searchableItems: SearchableItem[] = [
     keywords: ["offline", "internet", "sincronização", "nuvem", "combustível", "diagnóstico"],
     content: "Diagnósticos salvos localmente e sincronizados automaticamente quando reconectar à internet",
   },
+  {
+    id: "faq-22",
+    title: "Por que aparece 'Aguardando Aquecimento'?",
+    type: "faq",
+    keywords: ["aquecimento", "aguardando", "motor frio", "closed loop", "open loop", "temperatura"],
+    content: "Motor frio opera em Open Loop, dados de Fuel Trim não são confiáveis. Aguarda aquecer para análise precisa.",
+  },
+  {
+    id: "faq-23",
+    title: "O que significa 'Aceleração/Corte'?",
+    type: "faq",
+    keywords: ["aceleração", "corte", "open loop", "wot", "acelerando"],
+    content: "Durante aceleração forte a ECU entra em Open Loop Load, pausa temporária na coleta.",
+  },
+  {
+    id: "faq-24",
+    title: "O que é o badge vermelho no botão?",
+    type: "faq",
+    keywords: ["badge", "vermelho", "pendente", "offline", "sincronização"],
+    content: "Indica diagnósticos aguardando sincronização com a nuvem quando você estava offline.",
+  },
 
   // Glossary
   {
@@ -266,6 +287,27 @@ const searchableItems: SearchableItem[] = [
     type: "glossary",
     keywords: ["adaptação", "flex", "ecu", "aprendendo", "troca"],
     content: "Processo onde a ECU aprende nova proporção de combustível após troca entre gasolina e etanol",
+  },
+  {
+    id: "glossario-closedloop",
+    title: "Closed Loop",
+    type: "glossary",
+    keywords: ["closed loop", "circuito fechado", "feedback", "sensor o2"],
+    content: "Modo onde ECU usa sensor O2 para ajuste de mistura em tempo real",
+  },
+  {
+    id: "glossario-openloop",
+    title: "Open Loop",
+    type: "glossary",
+    keywords: ["open loop", "circuito aberto", "motor frio", "aquecimento"],
+    content: "Modo sem feedback do sensor O2, ocorre com motor frio ou aceleração",
+  },
+  {
+    id: "glossario-pid03",
+    title: "PID 03",
+    type: "glossary",
+    keywords: ["pid 03", "fuel system", "status", "closed loop"],
+    content: "Parâmetro OBD-II que indica status do sistema de combustível",
   },
 ];
 
