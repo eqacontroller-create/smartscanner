@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { RefuelEntry } from '@/types/refuelTypes';
+import logger from '@/lib/logger';
 
 const OFFLINE_QUEUE_KEY = 'offline-refuel-queue';
 
@@ -52,7 +53,7 @@ function saveQueue(queue: OfflineRefuelEntry[]) {
   try {
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
   } catch (error) {
-    console.error('[OfflineRefuel] Erro ao salvar fila:', error);
+    logger.error('[OfflineRefuel] Erro ao salvar fila:', error);
   }
 }
 
@@ -68,18 +69,18 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
   useEffect(() => {
     const queue = loadQueue();
     setPendingEntries(queue);
-    console.log('[OfflineRefuel] Carregou', queue.length, 'entradas pendentes');
+    logger.debug('[OfflineRefuel] Carregou', queue.length, 'entradas pendentes');
   }, []);
 
   // Monitora status online/offline
   useEffect(() => {
     const handleOnline = () => {
-      console.log('📶 [OfflineRefuel] Conexão restaurada');
+      logger.info('[OfflineRefuel] Conexão restaurada');
       setIsOnline(true);
     };
     
     const handleOffline = () => {
-      console.log('📴 [OfflineRefuel] Sem conexão');
+      logger.info('[OfflineRefuel] Sem conexão');
       setIsOnline(false);
     };
     
@@ -96,7 +97,7 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
   useEffect(() => {
     const unsyncedCount = pendingEntries.filter(e => !e.synced).length;
     if (isOnline && unsyncedCount > 0 && isAuthenticated && !syncingRef.current) {
-      console.log('[OfflineRefuel] Iniciando sync automático...');
+      logger.debug('[OfflineRefuel] Iniciando sync automático...');
       syncNow();
     }
   }, [isOnline, pendingEntries, isAuthenticated]);
@@ -113,7 +114,7 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
     setPendingEntries(prev => {
       const updated = [...prev, newEntry];
       saveQueue(updated);
-      console.log('[OfflineRefuel] Salvo offline:', newEntry.localId);
+      logger.debug('[OfflineRefuel] Salvo offline:', newEntry.localId);
       return updated;
     });
     
@@ -135,7 +136,7 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
     
     const unsynced = pendingEntries.filter(e => !e.synced);
     if (unsynced.length === 0) {
-      console.log('[OfflineRefuel] Nada para sincronizar');
+      logger.debug('[OfflineRefuel] Nada para sincronizar');
       return;
     }
     
@@ -143,7 +144,7 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
     setIsSyncing(true);
     setSyncProgress(0);
     
-    console.log(`[OfflineRefuel] Sincronizando ${unsynced.length} entradas...`);
+    logger.info(`[OfflineRefuel] Sincronizando ${unsynced.length} entradas...`);
     
     const syncedIds: string[] = [];
     
@@ -178,13 +179,13 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
           });
         
         if (error) {
-          console.error('[OfflineRefuel] Erro ao sincronizar:', entry.localId, error);
+          logger.error('[OfflineRefuel] Erro ao sincronizar:', entry.localId, error);
         } else {
-          console.log('[OfflineRefuel] Sincronizado:', entry.localId);
+          logger.debug('[OfflineRefuel] Sincronizado:', entry.localId);
           syncedIds.push(entry.localId);
         }
       } catch (err) {
-        console.error('[OfflineRefuel] Erro inesperado:', entry.localId, err);
+        logger.error('[OfflineRefuel] Erro inesperado:', entry.localId, err);
       }
       
       setSyncProgress(Math.round(((i + 1) / unsynced.length) * 100));
@@ -221,7 +222,7 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
     setPendingEntries(prev => {
       const updated = prev.filter(e => e.localId !== localId);
       saveQueue(updated);
-      console.log('[OfflineRefuel] Removido:', localId);
+      logger.debug('[OfflineRefuel] Removido:', localId);
       return updated;
     });
   }, []);
@@ -231,7 +232,7 @@ export function useOfflineRefuel(): UseOfflineRefuelReturn {
     setPendingEntries(prev => {
       const updated = prev.filter(e => !e.synced);
       saveQueue(updated);
-      console.log('[OfflineRefuel] Limpou entradas sincronizadas');
+      logger.debug('[OfflineRefuel] Limpou entradas sincronizadas');
       return updated;
     });
   }, []);

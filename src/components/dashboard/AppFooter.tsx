@@ -1,4 +1,6 @@
-export function AppFooter() {
+import { memo } from 'react';
+
+export const AppFooter = memo(function AppFooter() {
   return (
     <footer className="border-t border-border mt-auto safe-area-bottom">
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
@@ -8,4 +10,4 @@ export function AppFooter() {
       </div>
     </footer>
   );
-}
+});

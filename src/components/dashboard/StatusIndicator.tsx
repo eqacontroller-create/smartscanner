@@ -1,5 +1,6 @@
+import { memo } from 'react';
 import { ConnectionStatus } from '@/contexts/OBDContext';
-import { Bluetooth, BluetoothOff, Loader2, CheckCircle, AlertCircle, Gauge } from 'lucide-react';
+import { BluetoothOff, Loader2, CheckCircle, AlertCircle, Gauge } from 'lucide-react';
 
 interface StatusIndicatorProps {
   status: ConnectionStatus;
@@ -38,7 +39,7 @@ const statusConfig: Record<ConnectionStatus, { label: string; color: string; ico
   }
 };
 
-export function StatusIndicator({ status }: StatusIndicatorProps) {
+export const StatusIndicator = memo(function StatusIndicator({ status }: StatusIndicatorProps) {
   const config = statusConfig[status];
 
   return (
@@ -53,4 +54,4 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
       )}
     </div>
   );
-}
+});

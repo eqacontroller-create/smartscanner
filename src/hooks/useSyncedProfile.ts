@@ -5,6 +5,7 @@ import { TripSettings, defaultTripSettings } from '@/types/tripSettings';
 import { ProfileService, ProfileData } from '@/services/supabase/ProfileService';
 import { saveSplashBrand } from '@/hooks/useSplashTheme';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 
 // Chaves do localStorage para migração
 const LOCAL_JARVIS_KEY = 'jarvis-settings';
@@ -184,7 +185,7 @@ function getLocalStorageData(): Partial<SyncedProfile> {
       result.vehicle = { ...defaultVehicle, ...JSON.parse(vehicleData) };
     }
   } catch (error) {
-    console.error('Erro ao ler localStorage:', error);
+    logger.error('Erro ao ler localStorage:', error);
   }
   
   return result;
@@ -196,9 +197,9 @@ function clearLocalStorageData() {
     localStorage.removeItem(LOCAL_JARVIS_KEY);
     localStorage.removeItem(LOCAL_TRIP_KEY);
     localStorage.removeItem(LOCAL_VEHICLE_KEY);
-    console.log('✅ Dados locais migrados e removidos do localStorage');
+    logger.info('[Profile] Dados locais migrados e removidos');
   } catch (error) {
-    console.error('Erro ao limpar localStorage:', error);
+    logger.error('Erro ao limpar localStorage:', error);
   }
 }
 
@@ -225,7 +226,7 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
 
         // Se encontrou perfil no banco
         if (data) {
-          console.log('✅ Perfil carregado do Cloud:', data);
+          logger.info('[Profile] Perfil carregado do Cloud');
           const loadedProfile = dbToProfile(data);
           setProfile(loadedProfile);
           setSynced(true);
@@ -237,7 +238,7 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
           }
         } else {
           // Não existe perfil, verificar se tem dados locais para migrar
-          console.log('📦 Perfil não encontrado, verificando localStorage...');
+          logger.info('[Profile] Perfil não encontrado, verificando localStorage...');
           const localData = getLocalStorageData();
           
           const newProfile: SyncedProfile = {
@@ -252,7 +253,7 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
           // Cria perfil no banco usando ProfileService
           try {
             await ProfileService.insert(dbData);
-            console.log('✅ Perfil criado no Cloud');
+            logger.info('[Profile] Perfil criado no Cloud');
             setProfile(newProfile);
             setSynced(true);
             setLastSyncedAt(new Date());
@@ -263,12 +264,12 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
               toast.success('Suas configurações foram sincronizadas na nuvem!');
             }
           } catch (insertError) {
-            console.error('Erro ao criar perfil:', insertError);
+            logger.error('[Profile] Erro ao criar perfil:', insertError);
             toast.error('Erro ao criar configurações');
           }
         }
       } catch (err) {
-        console.error('Erro inesperado:', err);
+        logger.error('[Profile] Erro inesperado:', err);
         toast.error('Erro ao carregar configurações');
       }
       
@@ -287,11 +288,11 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
     try {
       const dbData = profileToDb(updatedProfile, user.id);
       await ProfileService.upsert(dbData);
-      console.log('✅ Perfil salvo no Cloud');
+      logger.info('[Profile] Perfil salvo no Cloud');
       setSynced(true);
       setLastSyncedAt(new Date());
     } catch (error) {
-      console.error('Erro ao salvar perfil:', error);
+      logger.error('[Profile] Erro ao salvar:', error);
       toast.error('Erro ao salvar configurações');
       setSynced(false);
     }

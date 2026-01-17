@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { RideStatus, RideEntry, DailySummary, TripSettings } from '@/types/tripSettings';
+import logger from '@/lib/logger';
 
 // Constantes para backup
 const BACKUP_KEY = 'current_trip_backup';
@@ -104,16 +105,16 @@ export function useAutoRide({
         
         if (age < BACKUP_MAX_AGE && ride.endTime === 0) {
           // Corrida não finalizada encontrada
-          console.log('[AutoRide] Backup encontrado:', ride);
+          logger.info('[AutoRide] Backup encontrado');
           setPendingRecovery(ride);
         } else {
           // Backup expirado, limpar
-          console.log('[AutoRide] Backup expirado, removendo');
+          logger.debug('[AutoRide] Backup expirado, removendo');
           localStorage.removeItem(BACKUP_KEY);
         }
       }
     } catch (err) {
-      console.error('[AutoRide] Erro ao verificar backup:', err);
+      logger.error('[AutoRide] Erro ao verificar backup:', err);
       localStorage.removeItem(BACKUP_KEY);
     }
   }, []);
@@ -142,9 +143,9 @@ export function useAutoRide({
       
       try {
         localStorage.setItem(BACKUP_KEY, JSON.stringify(backupData));
-        console.log('[AutoRide] Backup salvo:', backupData.ride.distance.toFixed(2), 'km');
+        logger.debug('[AutoRide] Backup salvo:', backupData.ride.distance.toFixed(2), 'km');
       } catch (err) {
-        console.error('[AutoRide] Erro ao salvar backup:', err);
+        logger.error('[AutoRide] Erro ao salvar backup:', err);
       }
     }, BACKUP_INTERVAL);
     
@@ -160,7 +161,7 @@ export function useAutoRide({
   const recoverRide = useCallback(() => {
     if (!pendingRecovery) return;
     
-    console.log('[AutoRide] Recuperando corrida:', pendingRecovery);
+    logger.info('[AutoRide] Recuperando corrida');
     
     // Restaurar refs
     totalDistanceRef.current = pendingRecovery.distance;
@@ -183,7 +184,7 @@ export function useAutoRide({
   
   // Função para descartar recuperação
   const discardRecovery = useCallback(() => {
-    console.log('[AutoRide] Descartando recuperação');
+    logger.debug('[AutoRide] Descartando recuperação');
     setPendingRecovery(null);
     localStorage.removeItem(BACKUP_KEY);
   }, []);

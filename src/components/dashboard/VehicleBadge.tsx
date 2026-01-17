@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { VehicleBrand, VehicleProfile } from '@/lib/vehicleProfiles';
 import { Car } from 'lucide-react';
 
@@ -12,7 +13,7 @@ interface VehicleBadgeProps {
  * Badge que exibe o logo/nome da marca detectada
  * Usa ícones simples e cores da marca para identificação visual
  */
-export function VehicleBadge({ brand, profile, modelYear, compact = false }: VehicleBadgeProps) {
+export const VehicleBadge = memo(function VehicleBadge({ brand, profile, modelYear, compact = false }: VehicleBadgeProps) {
   // Para versão compacta (header)
   if (compact) {
     return (
@@ -68,7 +69,7 @@ export function VehicleBadge({ brand, profile, modelYear, compact = false }: Veh
       </div>
     </div>
   );
-}
+});
 
 // Componente de ícone por marca (usa ícones simples por enquanto)
 function BrandIcon({ brand, className, style }: { brand: VehicleBrand; className?: string; style?: React.CSSProperties }) {
