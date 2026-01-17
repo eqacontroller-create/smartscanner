@@ -257,6 +257,45 @@ export default {
             transform: "translateX(0)"
           },
         },
+        // Flying logo particle trail
+        "particle-trail": {
+          "0%": { 
+            opacity: "1",
+            transform: "translate(var(--particle-offset-x), var(--particle-offset-y)) scale(1)"
+          },
+          "30%": { 
+            opacity: "0.8",
+            transform: "translate(calc(var(--particle-end-x) * 0.3 + var(--particle-offset-x)), calc(var(--particle-end-y) * 0.3 + var(--particle-offset-y))) scale(0.8)"
+          },
+          "100%": { 
+            opacity: "0",
+            transform: "translate(var(--particle-end-x), var(--particle-end-y)) scale(0)"
+          },
+        },
+        "sparkle-burst": {
+          "0%": { 
+            opacity: "0",
+            transform: "scale(0) rotate(0deg)"
+          },
+          "30%": { 
+            opacity: "1",
+            transform: "scale(1.2) rotate(45deg)"
+          },
+          "100%": { 
+            opacity: "0",
+            transform: "scale(0) rotate(90deg)"
+          },
+        },
+        "logo-trail-glow": {
+          "0%": { 
+            opacity: "0.8",
+            transform: "scale(3) translateX(0)"
+          },
+          "100%": { 
+            opacity: "0",
+            transform: "scale(1) translateX(-50px)"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -292,6 +331,10 @@ export default {
         // Header logo arrival
         "header-logo-arrive": "header-logo-arrive 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "header-text-arrive": "header-text-arrive 0.4s ease-out forwards",
+        // Particle trail animations
+        "particle-trail": "particle-trail 0.6s ease-out forwards",
+        "sparkle-burst": "sparkle-burst 0.5s ease-out forwards",
+        "logo-trail-glow": "logo-trail-glow 0.7s ease-out forwards",
       },
     },
   },
