@@ -1,7 +1,64 @@
 import { useState, useEffect } from 'react';
 import { getSplashTheme, DEFAULT_THEME, type SplashTheme } from '@/lib/splashThemes';
 
-const PROFILE_STORAGE_KEY = 'jarvis-settings';
+// Chave dedicada para tema da splash (persistido entre sessões)
+const SPLASH_BRAND_KEY = 'splash-vehicle-brand';
+
+// Chaves alternativas para fallback
+const VEHICLE_INFO_KEY = 'vehicle-info';
+const JARVIS_SETTINGS_KEY = 'jarvis-settings';
+
+/**
+ * Tenta encontrar a marca do veículo em qualquer fonte disponível
+ */
+function detectBrandFromLocalStorage(): string | null {
+  try {
+    // 1. Prioridade: chave dedicada da splash
+    const splashBrand = localStorage.getItem(SPLASH_BRAND_KEY);
+    if (splashBrand) {
+      return splashBrand;
+    }
+    
+    // 2. Fallback: vehicle-info
+    const vehicleInfo = localStorage.getItem(VEHICLE_INFO_KEY);
+    if (vehicleInfo) {
+      const parsed = JSON.parse(vehicleInfo);
+      if (parsed.vehicleBrand) {
+        return parsed.vehicleBrand;
+      }
+    }
+    
+    // 3. Fallback: jarvis-settings (legado)
+    const jarvisSettings = localStorage.getItem(JARVIS_SETTINGS_KEY);
+    if (jarvisSettings) {
+      const parsed = JSON.parse(jarvisSettings);
+      if (parsed.vehicleBrand) {
+        return parsed.vehicleBrand;
+      }
+    }
+  } catch (e) {
+    console.warn('[SplashTheme] Erro ao ler localStorage:', e);
+  }
+  
+  return null;
+}
+
+/**
+ * Salva a marca do veículo para próximas splashs
+ * Chamado quando o veículo é detectado/configurado
+ */
+export function saveSplashBrand(brand: string | null): void {
+  try {
+    if (brand) {
+      localStorage.setItem(SPLASH_BRAND_KEY, brand);
+      console.log('[SplashTheme] Marca salva para splash:', brand);
+    } else {
+      localStorage.removeItem(SPLASH_BRAND_KEY);
+    }
+  } catch (e) {
+    console.warn('[SplashTheme] Erro ao salvar marca:', e);
+  }
+}
 
 /**
  * Hook para carregar o tema da splash baseado no veículo configurado
@@ -10,33 +67,18 @@ const PROFILE_STORAGE_KEY = 'jarvis-settings';
 export function useSplashTheme(): SplashTheme {
   // Tentar ler sincronamente no estado inicial para evitar flash
   const [theme, setTheme] = useState<SplashTheme>(() => {
-    try {
-      const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // vehicleBrand está armazenado nas configurações do Jarvis
-        if (parsed.vehicleBrand) {
-          return getSplashTheme(parsed.vehicleBrand);
-        }
-      }
-    } catch (e) {
-      console.warn('[SplashTheme] Erro ao ler localStorage:', e);
+    const brand = detectBrandFromLocalStorage();
+    if (brand) {
+      return getSplashTheme(brand);
     }
     return DEFAULT_THEME;
   });
   
   // Re-verificar após mount (caso localStorage mude)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.vehicleBrand) {
-          setTheme(getSplashTheme(parsed.vehicleBrand));
-        }
-      }
-    } catch (e) {
-      // Silently fail, keep default theme
+    const brand = detectBrandFromLocalStorage();
+    if (brand) {
+      setTheme(getSplashTheme(brand));
     }
   }, []);
   

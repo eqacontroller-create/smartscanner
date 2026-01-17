@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { JarvisSettings, defaultJarvisSettings, FuelType, AIProvider, OpenAIVoice } from '@/types/jarvisSettings';
 import { TripSettings, defaultTripSettings } from '@/types/tripSettings';
 import { ProfileService, ProfileData } from '@/services/supabase/ProfileService';
+import { saveSplashBrand } from '@/hooks/useSplashTheme';
 import { toast } from 'sonner';
 
 // Chaves do localStorage para migração
@@ -229,6 +230,11 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
           setProfile(loadedProfile);
           setSynced(true);
           setLastSyncedAt(new Date(data.updated_at as string));
+          
+          // Salvar marca para próximas splashs (sincroniza Cloud → localStorage)
+          if (data.vehicle_brand) {
+            saveSplashBrand(data.vehicle_brand);
+          }
         } else {
           // Não existe perfil, verificar se tem dados locais para migrar
           console.log('📦 Perfil não encontrado, verificando localStorage...');
@@ -298,6 +304,12 @@ export function useSyncedProfile(): UseSyncedProfileReturn {
       vehicle: { ...profile.vehicle, ...vehicle },
     };
     setProfile(newProfile);
+    
+    // Salvar marca para próximas splashs
+    if (vehicle.vehicleBrand) {
+      saveSplashBrand(vehicle.vehicleBrand);
+    }
+    
     await saveToDb(newProfile);
   }, [profile, saveToDb]);
 
