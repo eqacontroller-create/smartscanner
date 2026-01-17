@@ -229,6 +229,34 @@ export default {
             transform: "translateY(0)" 
           },
         },
+        // Header logo arrival from splash transition
+        "header-logo-arrive": {
+          "0%": { 
+            opacity: "0", 
+            transform: "scale(1.5) translateX(-20px)",
+            filter: "blur(4px)"
+          },
+          "60%": { 
+            opacity: "1", 
+            transform: "scale(1.1) translateX(0)",
+            filter: "blur(0)"
+          },
+          "100%": { 
+            opacity: "1", 
+            transform: "scale(1) translateX(0)",
+            filter: "blur(0)"
+          },
+        },
+        "header-text-arrive": {
+          "0%": { 
+            opacity: "0", 
+            transform: "translateX(-10px)"
+          },
+          "100%": { 
+            opacity: "1", 
+            transform: "translateX(0)"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -261,6 +289,9 @@ export default {
         "splash-exit": "splash-exit 0.7s ease-out forwards",
         "dashboard-enter": "dashboard-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "stagger-fade-in": "stagger-fade-in 0.5s ease-out forwards",
+        // Header logo arrival
+        "header-logo-arrive": "header-logo-arrive 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "header-text-arrive": "header-text-arrive 0.4s ease-out forwards",
       },
     },
   },

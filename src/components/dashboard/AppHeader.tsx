@@ -50,24 +50,43 @@ export function AppHeader({
   onTestAudio,
   onToggleListening,
 }: AppHeaderProps) {
+  // Check if logo has landed from splash transition
+  const logoLanded = typeof document !== 'undefined' 
+    ? document.querySelector('[data-logo-landed="true"]') !== null 
+    : true;
+  
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 safe-area-top">
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {themeVehicle ? (
-              <VehicleBadge 
-                brand={themeVehicle.brand} 
-                profile={themeVehicle.profile}
-                modelYear={themeVehicle.modelYear}
-                compact
-              />
+              <div 
+                className="animate-header-logo-arrive"
+                style={{ 
+                  animationDelay: '100ms',
+                  animationFillMode: 'both',
+                }}
+              >
+                <VehicleBadge 
+                  brand={themeVehicle.brand} 
+                  profile={themeVehicle.profile}
+                  modelYear={themeVehicle.modelYear}
+                  compact
+                />
+              </div>
             ) : (
-              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
+              <div 
+                className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0 animate-header-logo-arrive"
+                style={{ 
+                  animationDelay: '100ms',
+                  animationFillMode: 'both',
+                }}
+              >
                 <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 animate-header-text-arrive" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
               <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
                 {themeVehicle ? 'Scanner OBD-II' : 'OBD-II Scanner'}
               </h1>
