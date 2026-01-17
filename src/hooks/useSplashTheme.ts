@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSplashTheme, DEFAULT_THEME, type SplashTheme } from '@/lib/splashThemes';
+import logger from '@/lib/logger';
 
 // Chave dedicada para tema da splash (persistido entre sessões)
 const SPLASH_BRAND_KEY = 'splash-vehicle-brand';
@@ -51,12 +52,12 @@ export function saveSplashBrand(brand: string | null): void {
   try {
     if (brand) {
       localStorage.setItem(SPLASH_BRAND_KEY, brand);
-      console.log('[SplashTheme] Marca salva para splash:', brand);
+      logger.debug('[SplashTheme] Marca salva para splash:', brand);
     } else {
       localStorage.removeItem(SPLASH_BRAND_KEY);
     }
   } catch (e) {
-    console.warn('[SplashTheme] Erro ao salvar marca:', e);
+    logger.warn('[SplashTheme] Erro ao salvar marca:', e);
   }
 }
 

@@ -2,6 +2,7 @@
 // Suporta respostas com/sem headers CAN, protocolo UDS (serviço 19) e multi-frame
 
 import type { ECUModule } from '@/lib/ecuModules';
+import logger from '@/lib/logger';
 
 export interface ParsedDTC {
   code: string;
@@ -60,7 +61,7 @@ function isValidDTCData(data: string): boolean {
   
   for (const pattern of junkPatterns) {
     if (pattern.test(data)) {
-      console.log(`[DTC Parser] Dados descartados: buffer inválido (${data.substring(0, 20)})`);
+      logger.debug(`[DTC Parser] Dados descartados: buffer inválido (${data.substring(0, 20)})`);
       return false;
     }
   }
@@ -85,7 +86,7 @@ function isPlausibleDTC(code: string): boolean {
   
   for (const pattern of impossiblePatterns) {
     if (pattern.test(code)) {
-      console.log(`[DTC Parser] Código improvável descartado: ${code}`);
+      logger.debug(`[DTC Parser] Código improvável descartado: ${code}`);
       return false;
     }
   }
@@ -120,7 +121,7 @@ function isValidDTCCode(code: string): boolean {
   // Verificar padrões específicos que indicam headers ou ruído
   // P7E8 = 7E8x (header), P7EA = 7EAx (header), etc.
   if (/^[78][0-9A-F]{3}$/.test(numericPart)) {
-    console.log(`[DTC Parser] Rejeitando código suspeito (parece header): ${code}`);
+    logger.debug(`[DTC Parser] Rejeitando código suspeito (parece header): ${code}`);
     return false;
   }
   
@@ -297,7 +298,7 @@ export function parseUDSResponse(response: string): ParsedDTC[] {
     
     // NOVO: Verificar se não é um header CAN disfarçado
     if (!isNotCANHeader(dtcBytes.substring(0, 3))) {
-      console.log(`[DTC Parser UDS] Ignorando header CAN: ${dtcBytes}`);
+      logger.debug(`[DTC Parser UDS] Ignorando header CAN: ${dtcBytes}`);
       continue;
     }
     
@@ -314,7 +315,7 @@ export function parseUDSResponse(response: string): ParsedDTC[] {
     
     // NOVO: Validar formato do código DTC
     if (!isValidDTCCode(code)) {
-      console.log(`[DTC Parser UDS] Ignorando código inválido: ${code} (raw: ${dtcBytes})`);
+      logger.debug(`[DTC Parser UDS] Ignorando código inválido: ${code} (raw: ${dtcBytes})`);
       continue;
     }
     
@@ -404,7 +405,7 @@ export function parseDTCResponse(response: string): ParsedDTC[] {
     
     // NOVO: Verificar se não é um header CAN
     if (!isNotCANHeader(rawCode)) {
-      console.log(`[DTC Parser] Ignorando header CAN: ${rawCode}`);
+      logger.debug(`[DTC Parser] Ignorando header CAN: ${rawCode}`);
       continue;
     }
 
@@ -416,7 +417,7 @@ export function parseDTCResponse(response: string): ParsedDTC[] {
     
     // NOVO: Validar formato do código DTC
     if (!isValidDTCCode(code)) {
-      console.log(`[DTC Parser] Ignorando código inválido: ${code} (raw: ${rawCode})`);
+      logger.debug(`[DTC Parser] Ignorando código inválido: ${code} (raw: ${rawCode})`);
       continue;
     }
     

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import logger from '@/lib/logger';
 
 // 1 segundo de silêncio em WAV base64 (para manter processamento no Android)
 const SILENT_AUDIO_BASE64 = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
@@ -35,7 +36,7 @@ export function useWakeLock({
 
   // Handler quando wake lock é liberado pelo sistema
   const handleWakeLockRelease = useCallback(() => {
-    console.log('🌙 Wake Lock liberado pelo sistema');
+    logger.log('🌙 Wake Lock liberado pelo sistema');
     setIsWakeLockActive(false);
     wakeLockRef.current = null;
   }, []);
@@ -43,7 +44,7 @@ export function useWakeLock({
   // Solicitar Wake Lock
   const requestWakeLock = useCallback(async () => {
     if (!isWakeLockSupported) {
-      console.log('⚠️ Wake Lock API não suportada');
+      logger.log('⚠️ Wake Lock API não suportada');
       return;
     }
 
@@ -57,9 +58,9 @@ export function useWakeLock({
       wakeLockRef.current = sentinel;
       sentinel.addEventListener('release', handleWakeLockRelease);
       setIsWakeLockActive(true);
-      console.log('🌙 Wake Lock ativado - tela permanecerá ligada');
+      logger.log('🌙 Wake Lock ativado - tela permanecerá ligada');
     } catch (err) {
-      console.warn('⚠️ Não foi possível ativar Wake Lock:', err);
+      logger.warn('⚠️ Não foi possível ativar Wake Lock:', err);
       setIsWakeLockActive(false);
     }
   }, [isWakeLockSupported, handleWakeLockRelease]);
@@ -71,9 +72,9 @@ export function useWakeLock({
         await wakeLockRef.current.release();
         wakeLockRef.current = null;
         setIsWakeLockActive(false);
-        console.log('🌙 Wake Lock liberado manualmente');
+        logger.log('🌙 Wake Lock liberado manualmente');
       } catch (err) {
-        console.warn('⚠️ Erro ao liberar Wake Lock:', err);
+        logger.warn('⚠️ Erro ao liberar Wake Lock:', err);
       }
     }
   }, []);
@@ -91,12 +92,12 @@ export function useWakeLock({
       audio.play().then(() => {
         audioRef.current = audio;
         setIsAudioKeepAliveActive(true);
-        console.log('🔊 Audio keep-alive iniciado');
+        logger.log('🔊 Audio keep-alive iniciado');
       }).catch((err) => {
-        console.warn('⚠️ Não foi possível iniciar audio keep-alive:', err);
+        logger.warn('⚠️ Não foi possível iniciar audio keep-alive:', err);
       });
     } catch (err) {
-      console.warn('⚠️ Erro ao criar audio keep-alive:', err);
+      logger.warn('⚠️ Erro ao criar audio keep-alive:', err);
     }
   }, []);
 
@@ -108,11 +109,11 @@ export function useWakeLock({
         audioRef.current.currentTime = 0;
         // Não resetar src para evitar warnings
       } catch (e) {
-        console.warn('⚠️ Erro ao parar audio keep-alive:', e);
+        logger.warn('⚠️ Erro ao parar audio keep-alive:', e);
       }
       audioRef.current = null;
       setIsAudioKeepAliveActive(false);
-      console.log('🔊 Audio keep-alive parado');
+      logger.log('🔊 Audio keep-alive parado');
     }
   }, []);
 
@@ -120,7 +121,7 @@ export function useWakeLock({
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        console.log('👁 Tela desbloqueada - verificando conexões...');
+        logger.log('👁 Tela desbloqueada - verificando conexões...');
         
         // Re-adquirir wake lock se estava conectado E habilitado antes
         if (wasEnabledRef.current && wasConnectedRef.current) {
@@ -132,7 +133,7 @@ export function useWakeLock({
           onVisibilityRestore?.();
         }
       } else {
-        console.log('👁 Tela bloqueada - wake lock pode ser liberado pelo sistema');
+        logger.log('👁 Tela bloqueada - wake lock pode ser liberado pelo sistema');
       }
     };
 

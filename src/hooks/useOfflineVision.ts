@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { VisionService, fileToBase64, resizeImage } from '@/services/ai/VisionService';
 import type { VisionAnalysisResult, AnalysisType } from '@/types/visionTypes';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 
 const OFFLINE_QUEUE_KEY = 'vision-offline-queue';
 const PROCESSED_RESULTS_KEY = 'vision-processed-results';
@@ -159,12 +160,12 @@ export function useOfflineVision(): UseOfflineVisionReturn {
   // Monitora status online/offline
   useEffect(() => {
     const handleOnline = () => {
-      console.log('📶 Conexão restaurada - Verificando fotos pendentes');
+      logger.log('📶 Conexão restaurada - Verificando fotos pendentes');
       setIsOnline(true);
     };
     
     const handleOffline = () => {
-      console.log('📴 Sem conexão - Modo offline ativado');
+      logger.log('📴 Sem conexão - Modo offline ativado');
       setIsOnline(false);
     };
     
@@ -234,7 +235,7 @@ export function useOfflineVision(): UseOfflineVisionReturn {
         duration: 4000,
       });
       
-      console.log(`📷 Mídia salva offline: ${id}`);
+      logger.log(`📷 Mídia salva offline: ${id}`);
       return id;
       
     } catch (error) {
@@ -257,7 +258,7 @@ export function useOfflineVision(): UseOfflineVisionReturn {
     setIsSyncing(true);
     setSyncProgress({ current: 0, total: pendingItems.length });
     
-    console.log(`🔄 Processando ${pendingItems.length} diagnóstico(s) pendente(s)`);
+    logger.log(`🔄 Processando ${pendingItems.length} diagnóstico(s) pendente(s)`);
     
     const successIds: string[] = [];
     const newResults: ProcessedVisionResult[] = [];
@@ -296,7 +297,7 @@ export function useOfflineVision(): UseOfflineVisionReturn {
         newResults.push(processedResult);
         successIds.push(item.id);
         
-        console.log(`✅ Diagnóstico ${item.id} processado com sucesso`);
+        logger.log(`✅ Diagnóstico ${item.id} processado com sucesso`);
         
       } catch (error) {
         console.error(`❌ Erro ao processar diagnóstico ${item.id}:`, error);

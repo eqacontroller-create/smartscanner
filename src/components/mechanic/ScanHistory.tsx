@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import logger from '@/lib/logger';
 import { History, ChevronRight, CheckCircle2, AlertCircle, Clock, Car, RefreshCw, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,13 +30,13 @@ export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
     setError(null);
     
     try {
-      console.log('[ScanHistory] Carregando histórico...', { currentVIN });
+      logger.log('[ScanHistory] Carregando histórico...', { currentVIN });
       
       const scans = currentVIN 
         ? await ScanHistoryService.getByVIN(currentVIN)
         : await ScanHistoryService.getRecent(15);
       
-      console.log('[ScanHistory] Scans carregados:', scans.length);
+      logger.log('[ScanHistory] Scans carregados:', scans.length);
       setHistory(scans);
     } catch (err) {
       console.error('[ScanHistory] Erro ao carregar:', err);

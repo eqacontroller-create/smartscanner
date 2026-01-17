@@ -6,6 +6,7 @@
 // V3: FUEL STATE MACHINE - Análise forense com O2 Sensor e contexto de troca Flex
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import logger from '@/lib/logger';
 import { 
   RefuelMode, 
   RefuelFlowType,
@@ -199,7 +200,7 @@ export function useRefuelMonitor({
   // CORREÇÃO v3: Manter speakRef SEMPRE atualizado com a versão mais recente
   // Isso garante que mudanças nas configurações de voz sejam refletidas imediatamente
   useEffect(() => {
-    console.log('[Refuel] speakRef atualizado - nova função speak recebida');
+    logger.debug('[Refuel] speakRef atualizado - nova função speak recebida');
     speakRef.current = speak;
   }, [speak]);
   
@@ -225,7 +226,7 @@ export function useRefuelMonitor({
       reconnectAttemptsRef.current++;
       const attempt = reconnectAttemptsRef.current;
       
-      console.log(`[Refuel] Auto-reconnect attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS}`);
+      logger.debug(`[Refuel] Auto-reconnect attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS}`);
       
       try {
         const success = await reconnectRef.current();
@@ -266,7 +267,7 @@ export function useRefuelMonitor({
           if (success) {
             disconnectionAnnouncedRef.current = false;
             speakRef.current('Conexão restaurada. Monitoramento retomado.');
-            console.log('[Refuel] Auto-reconnect successful');
+            logger.log('[Refuel] Auto-reconnect successful');
           } else {
             speakRef.current('Não foi possível reconectar. O monitoramento continua pausado. Verifique o adaptador.');
             console.error('[Refuel] Auto-reconnect failed after all attempts');
@@ -281,14 +282,14 @@ export function useRefuelMonitor({
       reconnectAttemptsRef.current = 0;
       isReconnectingRef.current = false;
       speakRef.current('Conexão restaurada. Monitoramento retomado.');
-      console.log('[Refuel] Bluetooth reconnected during monitoring');
+      logger.log('[Refuel] Bluetooth reconnected during monitoring');
     }
   }, [isConnected, mode, attemptAutoReconnect]);
   
   // Cleanup geral no unmount do componente
   useEffect(() => {
     return () => {
-      console.log('[Refuel] Unmount - limpando intervalos');
+      logger.debug('[Refuel] Unmount - limpando intervalos');
       if (monitoringIntervalRef.current) {
         clearInterval(monitoringIntervalRef.current);
         monitoringIntervalRef.current = null;
