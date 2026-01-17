@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
 import type { RideEntry } from '@/types/tripSettings';
-import type { FuelChangeContext, FuelDiagnosticResult } from '@/types/fuelForensics';
+import type { FuelChangeContext, FuelDiagnosticResult, FuelSystemStatus } from '@/types/fuelForensics';
 
 interface FloatingControlsProps {
   // Jarvis AI
@@ -89,6 +89,11 @@ interface FloatingControlsProps {
   forensicResult: FuelDiagnosticResult | null;
   fuelContext: FuelChangeContext;
   setFuelContext: (ctx: FuelChangeContext) => void;
+  // Closed Loop detection
+  fuelSystemStatus?: FuelSystemStatus;
+  isClosedLoopActive?: boolean;
+  // Offline sync
+  pendingOfflineCount?: number;
 }
 
 export function FloatingControls(props: FloatingControlsProps) {
@@ -148,7 +153,7 @@ export function FloatingControls(props: FloatingControlsProps) {
 
       {(props.refuelMode === 'monitoring' || props.refuelMode === 'analyzing') && (
         <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
-          <FuelQualityMonitor mode={props.refuelMode} distanceMonitored={props.distanceMonitored} currentSTFT={props.currentSTFT} currentLTFT={props.currentLTFT} anomalyActive={props.anomalyActive} anomalyDuration={props.anomalyDuration} fuelTrimHistory={props.fuelTrimHistory} settings={props.refuelSettings} frozenSettings={props.frozenSettings} isSyncing={props.isSyncing} flowType={props.refuelFlowType} />
+          <FuelQualityMonitor mode={props.refuelMode} distanceMonitored={props.distanceMonitored} currentSTFT={props.currentSTFT} currentLTFT={props.currentLTFT} anomalyActive={props.anomalyActive} anomalyDuration={props.anomalyDuration} fuelTrimHistory={props.fuelTrimHistory} settings={props.refuelSettings} frozenSettings={props.frozenSettings} isSyncing={props.isSyncing} flowType={props.refuelFlowType} fuelSystemStatus={props.fuelSystemStatus} isClosedLoopActive={props.isClosedLoopActive} />
         </div>
       )}
       
@@ -166,7 +171,7 @@ export function FloatingControls(props: FloatingControlsProps) {
       
       {props.isConnected && (
         <div className="fixed bottom-4 left-4 z-50 safe-area-bottom flex items-center gap-2">
-          <RefuelButton mode={props.refuelMode} flowType={props.refuelFlowType} isConnected={props.isConnected} isAuthenticated={props.isAuthenticated} onStart={() => props.onFlowSelectorChange(true)} onCancel={props.cancelRefuel} />
+          <RefuelButton mode={props.refuelMode} flowType={props.refuelFlowType} isConnected={props.isConnected} isAuthenticated={props.isAuthenticated} onStart={() => props.onFlowSelectorChange(true)} onCancel={props.cancelRefuel} pendingOfflineCount={props.pendingOfflineCount} />
           {props.refuelMode === 'inactive' && <RefuelSettingsSheet settings={props.refuelSettings} onSettingsChange={props.onUpdateRefuelSettings} onReset={props.onResetRefuelSettings} />}
         </div>
       )}

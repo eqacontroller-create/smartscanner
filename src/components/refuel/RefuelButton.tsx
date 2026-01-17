@@ -19,6 +19,7 @@ interface RefuelButtonProps {
   isAuthenticated?: boolean;
   onStart: () => void;
   onCancel: () => void;
+  pendingOfflineCount?: number;
 }
 
 export function RefuelButton({
@@ -28,6 +29,7 @@ export function RefuelButton({
   isAuthenticated = false,
   onStart,
   onCancel,
+  pendingOfflineCount = 0,
 }: RefuelButtonProps) {
   const isActive = mode !== 'inactive';
   const isQuickTest = flowType === 'quick-test';
@@ -77,31 +79,41 @@ export function RefuelButton({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              onClick={isActive ? undefined : onStart}
-              disabled={mode === 'analyzing'}
-              className={cn(
-                'gap-2 min-h-[44px] transition-all duration-300',
-                getModeStyles()
+            <div className="relative">
+              <Button
+                onClick={isActive ? undefined : onStart}
+                disabled={mode === 'analyzing'}
+                className={cn(
+                  'gap-2 min-h-[44px] transition-all duration-300',
+                  getModeStyles()
+                )}
+                size="sm"
+              >
+                <Fuel className="h-4 w-4" />
+                <span className="hidden xs:inline">{getModeLabel()}</span>
+                {/* Indicador de sync no botão */}
+                {!isActive && (
+                  isAuthenticated ? (
+                    <Cloud className="h-3 w-3 opacity-60" />
+                  ) : (
+                    <CloudOff className="h-3 w-3 opacity-60" />
+                  )
+                )}
+              </Button>
+              {/* Badge de pendentes offline */}
+              {pendingOfflineCount > 0 && !isActive && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
+                  {pendingOfflineCount > 9 ? '9+' : pendingOfflineCount}
+                </span>
               )}
-              size="sm"
-            >
-              <Fuel className="h-4 w-4" />
-              <span className="hidden xs:inline">{getModeLabel()}</span>
-              {/* Indicador de sync no botão */}
-              {!isActive && (
-                isAuthenticated ? (
-                  <Cloud className="h-3 w-3 opacity-60" />
-                ) : (
-                  <CloudOff className="h-3 w-3 opacity-60" />
-                )
-              )}
-            </Button>
+            </div>
           </TooltipTrigger>
           <TooltipContent>
-            {isAuthenticated 
-              ? 'Histórico será salvo na nuvem' 
-              : 'Faça login para salvar histórico'
+            {pendingOfflineCount > 0 
+              ? `${pendingOfflineCount} entrada(s) aguardando sincronização`
+              : isAuthenticated 
+                ? 'Histórico será salvo na nuvem' 
+                : 'Faça login para salvar histórico'
             }
           </TooltipContent>
         </Tooltip>

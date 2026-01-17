@@ -4,8 +4,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Fuel, Activity, AlertTriangle, CheckCircle2, Settings, Cloud, FlaskConical } from 'lucide-react';
+import { Fuel, Activity, AlertTriangle, CheckCircle2, Settings, Cloud, FlaskConical, Thermometer, Gauge } from 'lucide-react';
 import { RefuelMode, RefuelFlowType, RefuelSettings } from '@/types/refuelTypes';
+import type { FuelSystemStatus } from '@/types/fuelForensics';
+import { FUEL_SYSTEM_LABELS } from '@/types/fuelForensics';
 import { FuelTrimChart } from './FuelTrimChart';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +23,8 @@ interface FuelQualityMonitorProps {
   settings: RefuelSettings;
   frozenSettings?: RefuelSettings | null;
   isSyncing?: boolean;
+  fuelSystemStatus?: FuelSystemStatus;
+  isClosedLoopActive?: boolean;
 }
 
 export function FuelQualityMonitor({
@@ -35,6 +39,8 @@ export function FuelQualityMonitor({
   settings,
   frozenSettings,
   isSyncing,
+  fuelSystemStatus = 'closed_loop',
+  isClosedLoopActive = true,
 }: FuelQualityMonitorProps) {
   if (mode !== 'monitoring' && mode !== 'analyzing') return null;
   
@@ -102,6 +108,29 @@ export function FuelQualityMonitor({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Aviso de Open Loop (motor frio, aceleração, etc) */}
+        {!isClosedLoopActive && (
+          <div className={cn(
+            "p-2 rounded-lg border flex items-center gap-2 text-sm animate-pulse",
+            fuelSystemStatus === 'open_loop_cold' 
+              ? "bg-orange-500/10 border-orange-500/50 text-orange-600 dark:text-orange-400" 
+              : fuelSystemStatus === 'open_loop_load'
+                ? "bg-blue-500/10 border-blue-500/50 text-blue-600 dark:text-blue-400"
+                : "bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400"
+          )}>
+            {fuelSystemStatus === 'open_loop_cold' && (
+              <Thermometer className="h-4 w-4 animate-pulse shrink-0" />
+            )}
+            {fuelSystemStatus === 'open_loop_load' && (
+              <Gauge className="h-4 w-4 shrink-0" />
+            )}
+            {fuelSystemStatus !== 'open_loop_cold' && fuelSystemStatus !== 'open_loop_load' && (
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+            )}
+            <span className="text-xs">{FUEL_SYSTEM_LABELS[fuelSystemStatus]} - Leitura pausada</span>
+          </div>
+        )}
+        
         {/* Indicador de configurações congeladas */}
         {settingsChanged && (
           <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center gap-2 text-xs">
