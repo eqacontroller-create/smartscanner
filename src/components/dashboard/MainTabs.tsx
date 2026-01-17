@@ -11,6 +11,7 @@ import type { UseVehicleBenefitsReturn } from '@/hooks/useVehicleBenefits';
 import type { UseMaintenanceScheduleReturn } from '@/hooks/useMaintenanceSchedule';
 import type { VehicleContextForVision } from '@/types/visionTypes';
 import type { O2SensorReading, FuelChangeContext, FuelDiagnosticResult, FuelSystemStatus } from '@/types/fuelForensics';
+import type { BatteryHealthStatus, FuelHealthStatus, DTCHealthStatus } from '@/types/vehicleHealth';
 
 // Lazy load tab components for better initial load performance
 const DashboardTab = lazy(() => import('@/components/tabs/DashboardTab').then(m => ({ default: m.DashboardTab })));
@@ -125,14 +126,21 @@ interface MainTabsProps {
     vehicleTransmission: string | null;
     vehicleNickname: string | null;
   }>) => Promise<void>;
+  // Vehicle Health Overrides
+  batteryHealthOverride?: BatteryHealthStatus;
+  fuelHealthOverride?: FuelHealthStatus;
+  dtcHealthOverride?: DTCHealthStatus;
 }
 
 export function MainTabs(props: MainTabsProps) {
-  const { vehicleData, status, jarvisSettings } = props;
+  const { vehicleData, status, jarvisSettings, dtcHealthOverride } = props;
   const isReady = status === 'ready';
   const isReading = status === 'reading';
   const isConnected = isReady || isReading;
   const { rpm, speed, temperature, voltage, fuelLevel, engineLoad } = vehicleData;
+  
+  // Número de DTCs ativos para badge
+  const dtcCount = dtcHealthOverride?.count ?? 0;
 
   return (
     <Tabs value={props.value} onValueChange={props.onValueChange} className="w-full">
@@ -140,8 +148,16 @@ export function MainTabs(props: MainTabsProps) {
         <TabsTrigger value="painel" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
           <Home className="h-4 w-4" /><span className="hidden xs:inline">Painel</span>
         </TabsTrigger>
-        <TabsTrigger value="mecanica" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
-          <Wrench className="h-4 w-4" /><span className="hidden xs:inline">Mecânica</span>
+        <TabsTrigger value="mecanica" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row relative">
+          <div className="relative">
+            <Wrench className="h-4 w-4" />
+            {dtcCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center font-bold animate-pulse">
+                {dtcCount > 9 ? '9+' : dtcCount}
+              </span>
+            )}
+          </div>
+          <span className="hidden xs:inline">Mecânica</span>
         </TabsTrigger>
         <TabsTrigger value="financas" className="gap-1.5 py-2.5 text-xs sm:text-sm touch-target flex-col sm:flex-row">
           <DollarSign className="h-4 w-4" /><span className="hidden xs:inline">Finanças</span>
@@ -153,7 +169,7 @@ export function MainTabs(props: MainTabsProps) {
 
       <TabsContent value="painel" className="mt-4 sm:mt-6">
         <Suspense fallback={<TabSkeleton />}>
-          <DashboardTab rpm={rpm} speed={speed} temperature={temperature} voltage={voltage} fuelLevel={fuelLevel} engineLoad={engineLoad} redlineRPM={jarvisSettings.redlineRPM} isReady={isReady} isReading={isReading} isPolling={props.isPolling} logs={props.logs} onStartPolling={props.onStartPolling} onStopPolling={props.onStopPolling} />
+          <DashboardTab rpm={rpm} speed={speed} temperature={temperature} voltage={voltage} fuelLevel={fuelLevel} engineLoad={engineLoad} redlineRPM={jarvisSettings.redlineRPM} isReady={isReady} isReading={isReading} isPolling={props.isPolling} logs={props.logs} onStartPolling={props.onStartPolling} onStopPolling={props.onStopPolling} batteryHealthOverride={props.batteryHealthOverride} fuelHealthOverride={props.fuelHealthOverride} />
         </Suspense>
       </TabsContent>
 

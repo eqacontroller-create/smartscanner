@@ -4,6 +4,7 @@ import { RPMCard } from '@/components/dashboard/RPMCard';
 import { LogPanel } from '@/components/dashboard/LogPanel';
 import { Button } from '@/components/ui/button';
 import { Play, Square } from 'lucide-react';
+import type { BatteryHealthStatus, FuelHealthStatus } from '@/types/vehicleHealth';
 
 interface DashboardTabProps {
   rpm: number | null;
@@ -19,6 +20,9 @@ interface DashboardTabProps {
   logs: string[];
   onStartPolling: () => void;
   onStopPolling: () => void;
+  // Health overrides
+  batteryHealthOverride?: BatteryHealthStatus;
+  fuelHealthOverride?: FuelHealthStatus;
 }
 
 export function DashboardTab({
@@ -35,6 +39,8 @@ export function DashboardTab({
   logs,
   onStartPolling,
   onStopPolling,
+  batteryHealthOverride,
+  fuelHealthOverride,
 }: DashboardTabProps) {
   return (
     <div className="space-y-4 sm:space-y-6 tab-content-enter">
@@ -76,6 +82,8 @@ export function DashboardTab({
           fuelLevel={fuelLevel}
           engineLoad={engineLoad}
           isReading={isReading}
+          batteryHealthOverride={batteryHealthOverride}
+          fuelHealthOverride={fuelHealthOverride}
         />
       </div>
 
