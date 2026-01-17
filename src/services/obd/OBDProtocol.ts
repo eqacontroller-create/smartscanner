@@ -144,6 +144,29 @@ export const OBD_PIDS: Record<string, PIDDefinition> = {
     max: 20,
     decode: (a, b = 0) => Math.round((a * 256 + b) / 1000 * 10) / 10,
   },
+  // Sensor O2 para validação forense de combustível
+  O2_SENSOR_B1S1: {
+    pid: '14',
+    name: 'Sensor O2 Banco 1 Sensor 1',
+    shortName: 'O2 B1S1',
+    unit: 'V',
+    bytes: 2,
+    min: 0,
+    max: 1.275,
+    // Byte A = voltagem (0-1.275V), Byte B = STFT associado (ignoramos aqui)
+    decode: (a, _b = 0) => Math.round(a / 200 * 1000) / 1000,
+  },
+  // Sensor O2 Banco 1 Sensor 2 (após catalisador)
+  O2_SENSOR_B1S2: {
+    pid: '15',
+    name: 'Sensor O2 Banco 1 Sensor 2',
+    shortName: 'O2 B1S2',
+    unit: 'V',
+    bytes: 2,
+    min: 0,
+    max: 1.275,
+    decode: (a, _b = 0) => Math.round(a / 200 * 1000) / 1000,
+  },
 };
 
 // Comandos AT do ELM327
