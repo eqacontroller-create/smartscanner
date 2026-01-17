@@ -18,9 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { ProfileAvatar } from './ProfileAvatar';
 
 export interface ProfileFormData {
   displayName: string | null;
+  avatarUrl: string | null;
   phone: string | null;
   city: string | null;
   driverType: string;
@@ -30,6 +32,8 @@ interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialData: ProfileFormData;
+  email?: string;
+  userId?: string;
   onSave: (data: ProfileFormData) => Promise<void>;
 }
 
@@ -45,6 +49,8 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
   open,
   onOpenChange,
   initialData,
+  email,
+  userId,
   onSave,
 }) => {
   const [formData, setFormData] = useState<ProfileFormData>(initialData);
@@ -67,6 +73,10 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
     }
   };
 
+  const handleAvatarChange = (url: string) => {
+    setFormData(prev => ({ ...prev, avatarUrl: url }));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -78,6 +88,22 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          {/* Avatar com upload */}
+          <div className="flex flex-col items-center gap-2">
+            <ProfileAvatar
+              avatarUrl={formData.avatarUrl}
+              displayName={formData.displayName}
+              email={email}
+              size="xl"
+              editable
+              userId={userId}
+              onAvatarChange={handleAvatarChange}
+            />
+            <span className="text-xs text-muted-foreground">
+              Clique para alterar a foto
+            </span>
+          </div>
+
           <div className="grid gap-2">
             <Label htmlFor="displayName">Nome de exibição</Label>
             <Input
