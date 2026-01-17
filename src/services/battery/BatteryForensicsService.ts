@@ -59,6 +59,7 @@ export interface BurstCaptureOptions {
   onVoltageReading: (point: VoltagePoint) => void;
   onPhaseChange: (phase: 'preparing' | 'waiting_start' | 'capturing' | 'post_start') => void;
   onStatusMessage: (message: string) => void;
+  onPostStartProgress?: (elapsedMs: number, totalMs: number) => void;
   abortSignal?: AbortSignal;
 }
 
@@ -388,9 +389,18 @@ export async function startBurstCapture(options: BurstCaptureOptions): Promise<C
     }
     
     // Stop POST_START_DURATION_MS after engine starts (to check alternator)
-    if (engineRunning && engineStartMs && (now - engineStartMs) > POST_START_DURATION_MS) {
-      onStatusMessage('✅ Captura completa!');
-      break;
+    if (engineRunning && engineStartMs) {
+      const elapsedPostStart = now - engineStartMs;
+      
+      // Report post-start progress
+      if (options.onPostStartProgress) {
+        options.onPostStartProgress(elapsedPostStart, POST_START_DURATION_MS);
+      }
+      
+      if (elapsedPostStart > POST_START_DURATION_MS) {
+        onStatusMessage('✅ Captura completa!');
+        break;
+      }
     }
     
     // Minimum delay between readings

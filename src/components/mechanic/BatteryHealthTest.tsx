@@ -110,6 +110,10 @@ export function BatteryHealthTest({
   const [activeTab, setActiveTab] = useState<'test' | 'parasitic' | 'history'>('test');
   const [isSaved, setIsSaved] = useState(false);
   
+  // Post-start progress state
+  const [postStartProgress, setPostStartProgress] = useState<number>(0);
+  const [postStartSecondsLeft, setPostStartSecondsLeft] = useState<number>(10);
+  
   // Captured data
   const [voltageData, setVoltageData] = useState<VoltagePoint[]>([]);
   const [result, setResult] = useState<CrankingTestResult | null>(null);
@@ -155,6 +159,8 @@ export function BatteryHealthTest({
     setVoltageData([]);
     setResult(null);
     setCurrentVoltage(null);
+    setPostStartProgress(0);
+    setPostStartSecondsLeft(10);
     
     // Create abort controller
     abortControllerRef.current = new AbortController();
@@ -170,10 +176,21 @@ export function BatteryHealthTest({
         },
         onPhaseChange: (newPhase) => {
           setPhase(newPhase);
+          // Reset progress when entering post_start
+          if (newPhase === 'post_start') {
+            setPostStartProgress(0);
+            setPostStartSecondsLeft(10);
+          }
         },
         onStatusMessage: (msg) => {
           setStatusMessage(msg);
           addLog(`[BATTERY] ${msg}`);
+        },
+        onPostStartProgress: (elapsedMs, totalMs) => {
+          const percent = Math.round((elapsedMs / totalMs) * 100);
+          const secondsLeft = Math.ceil((totalMs - elapsedMs) / 1000);
+          setPostStartProgress(Math.min(percent, 100));
+          setPostStartSecondsLeft(Math.max(secondsLeft, 0));
         },
         abortSignal: abortControllerRef.current.signal,
       });
@@ -348,6 +365,25 @@ export function BatteryHealthTest({
               <div className="text-4xl font-bold text-primary">{currentVoltage.toFixed(1)}V</div>
               <div className="text-sm text-muted-foreground">Voltagem Atual</div>
             </div>
+          </div>
+        )}
+
+        {/* Post-Start Progress Indicator */}
+        {phase === 'post_start' && (
+          <div className="space-y-2 p-4 bg-primary/10 rounded-lg border border-primary/30">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary animate-pulse" />
+                Verificando alternador...
+              </span>
+              <span className="font-mono font-bold text-primary text-lg">
+                {postStartSecondsLeft}s
+              </span>
+            </div>
+            <Progress value={postStartProgress} className="h-2" />
+            <p className="text-xs text-muted-foreground text-center">
+              Aguardando alternador estabilizar a carga
+            </p>
           </div>
         )}
         
