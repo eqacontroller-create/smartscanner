@@ -21,6 +21,11 @@ import {
   Brain,
   CircleDot,
   CloudOff,
+  HeartPulse,
+  Clock,
+  TrendingDown,
+  Key,
+  History,
 } from "lucide-react";
 
 interface ManualSectionProps {
@@ -69,8 +74,12 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           OBD-II Scanner com Jarvis AI
         </h2>
         <p className="text-muted-foreground text-sm">
-          Versão 2.0 • {currentDate}
+          Versão 3.0 • {currentDate}
         </p>
+        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 text-xs font-medium">
+          <CheckCircle className="h-3 w-3" />
+          Atualizado com Teste de Bateria ECG
+        </div>
       </div>
 
       {/* Índice */}
@@ -82,9 +91,10 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <div>3. Conexão com o Veículo</div>
           <div>4. Dashboard (Painel)</div>
           <div>5. Scanner de Erros</div>
-          <div>6. Catálogo de Veículos</div>
+          <div className="text-primary font-medium">5.5 Diagnóstico de Bateria ⚡</div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+          <div>6. Catálogo de Veículos</div>
           <div>7. Mecânico Visual (IA)</div>
           <div>8. Controle Financeiro</div>
           <div>9. Monitor de Abastecimento</div>
@@ -107,6 +117,8 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <li>Verificar qualidade de combustível após abastecer</li>
           <li>Diagnosticar problemas visuais com fotos (IA)</li>
           <li>Controlar ganhos e custos de corridas (Uber/99)</li>
+          <li className="text-primary font-medium">Testar saúde da bateria com gráfico ECG</li>
+          <li className="text-primary font-medium">Detectar consumo parasita de bateria</li>
         </ul>
         
         <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
@@ -262,6 +274,125 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <h4 className="font-semibold text-foreground">⚠️ Atenção ao limpar códigos</h4>
           <p className="text-sm text-muted-foreground">
             Não limpe códigos sem resolver o problema! A luz de "check engine" vai voltar.
+          </p>
+        </div>
+      </ManualSection>
+
+      {/* 5.5 Diagnóstico de Bateria - NOVA SEÇÃO */}
+      <ManualSection title="Diagnóstico de Bateria" number="5.5">
+        <div className="p-3 bg-primary/10 rounded-lg border border-primary/30 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <HeartPulse className="h-5 w-5 text-primary" />
+            <h4 className="font-semibold text-foreground">Novo! Teste de Bateria Profissional</h4>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Análise completa da saúde da bateria com gráfico estilo ECG (eletrocardiograma), 
+            igual aos usados em hospitais. Veja a tensão durante a partida em tempo real!
+          </p>
+        </div>
+
+        {/* Teste de Partida */}
+        <div className="flex items-start gap-3 mb-3">
+          <Key className="h-5 w-5 text-primary mt-0.5" />
+          <div>
+            <h4 className="font-semibold">Teste de Partida (Cranking)</h4>
+            <p className="text-sm text-muted-foreground">
+              Monitora a tensão durante a partida do motor. Captura: tensão de repouso, 
+              queda mínima durante cranking, velocidade de recuperação e tensão do alternador.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 bg-muted/20 rounded-lg mb-3">
+          <h4 className="font-semibold mb-2">O que o gráfico ECG mostra:</h4>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li><strong>Tensão de Repouso:</strong> Voltagem antes da partida (ideal: 12.4V+)</li>
+            <li><strong>Queda de Cranking:</strong> Mínimo durante partida (normal: acima de 9.6V)</li>
+            <li><strong>Recuperação:</strong> Velocidade que a tensão volta ao normal</li>
+            <li><strong>Alternador:</strong> Com motor ligado (ideal: 13.5V-14.5V)</li>
+          </ul>
+        </div>
+
+        <div className="p-3 bg-muted/20 rounded-lg mb-3">
+          <h4 className="font-semibold mb-2">Estados da Bateria:</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500" />
+              <span><strong>Excelente:</strong> Bateria em ótimo estado</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-500" />
+              <span><strong>Boa:</strong> Funcionando bem</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-yellow-500" />
+              <span><strong>Atenção:</strong> Sinais de desgaste</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500" />
+              <span><strong>Substituir:</strong> Bateria comprometida</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Teste de Consumo Parasita */}
+        <div className="flex items-start gap-3 mb-3">
+          <TrendingDown className="h-5 w-5 text-orange-500 mt-0.5" />
+          <div>
+            <h4 className="font-semibold">Teste de Consumo Parasita</h4>
+            <p className="text-sm text-muted-foreground">
+              Descubra se algo está drenando sua bateria com o carro desligado. 
+              O teste monitora a queda de tensão por 10, 30 ou 60 minutos.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 bg-muted/20 rounded-lg mb-3">
+          <h4 className="font-semibold mb-2 flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Durações do Teste:
+          </h4>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <div><span className="font-mono text-primary">10 min</span> - Teste rápido, menos preciso</div>
+            <div><span className="font-mono text-primary">30 min</span> - Recomendado, boa precisão</div>
+            <div><span className="font-mono text-primary">60 min</span> - Mais preciso, detecta drenos pequenos</div>
+          </div>
+        </div>
+
+        <div className="p-3 bg-muted/20 rounded-lg mb-3">
+          <h4 className="font-semibold mb-2">Interpretação do Consumo Parasita:</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500" />
+              <span><strong>&lt; 50mA:</strong> Normal, bateria dura semanas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-yellow-500" />
+              <span><strong>50-85mA:</strong> Atenção, algo pode estar ligado</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500" />
+              <span><strong>&gt; 85mA:</strong> Crítico, há dreno significativo</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 mb-3">
+          <History className="h-5 w-5 text-green-500 mt-0.5" />
+          <div>
+            <h4 className="font-semibold">Histórico de Testes</h4>
+            <p className="text-sm text-muted-foreground">
+              Todos os testes são salvos automaticamente. Acompanhe a evolução da bateria 
+              ao longo do tempo e receba alertas de degradação.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+          <h4 className="font-semibold text-foreground mb-1">💡 Causas Comuns de Dreno</h4>
+          <p className="text-sm text-muted-foreground">
+            Luz de porta mal fechada, rádio com memória defeituosa, alarme mal instalado, 
+            módulo em curto, carregador na tomada 12V, ou relé travado.
           </p>
         </div>
       </ManualSection>
@@ -524,6 +655,8 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
             <div>• "O que significa P0300?"</div>
             <div>• "Quando trocar o óleo?"</div>
             <div>• "Como foi o dia de trabalho?"</div>
+            <div>• "A bateria está boa?"</div>
+            <div>• "Tem consumo parasita?"</div>
           </div>
         </div>
         
@@ -536,6 +669,7 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
             <li>• Velocidade acima do limite</li>
             <li>• Bateria fraca</li>
             <li>• Resultado de abastecimento</li>
+            <li>• Resultado de teste de bateria</li>
           </ul>
         </div>
       </ManualSection>
@@ -578,6 +712,23 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <ManualCard
             title="O que é o badge vermelho no botão?"
             description="Indica diagnósticos aguardando sincronização com a nuvem (feitos offline). Quando reconectar à internet, sincronizam automaticamente."
+          />
+          {/* NOVOS FAQs de Bateria */}
+          <ManualCard
+            title="Como funciona o teste de bateria?"
+            description="O teste monitora a tensão durante a partida, capturando a queda de voltagem e recuperação. Resultado em gráfico ECG com análise automática do estado da bateria e alternador."
+          />
+          <ManualCard
+            title="O que é consumo parasita?"
+            description="Dreno de bateria com carro desligado. Pode ser luz interna, rádio defeituoso, alarme mal instalado ou módulo em curto. O teste monitora por até 60 minutos."
+          />
+          <ManualCard
+            title="Quanto tempo leva o teste de bateria?"
+            description="Teste de partida é instantâneo. Teste de consumo parasita pode levar 10, 30 ou 60 minutos. Quanto mais tempo, mais preciso."
+          />
+          <ManualCard
+            title="O que significa 'tensão de cranking'?"
+            description="Voltagem mínima durante a partida. Bateria saudável não cai abaixo de 9.6V. Se cair muito, bateria pode estar fraca ou velha."
           />
         </div>
       </ManualSection>
@@ -648,6 +799,27 @@ export const UserManual = forwardRef<HTMLDivElement>((_, ref) => {
           <div className="p-2 bg-muted/20 rounded">
             <span className="font-mono font-bold text-primary">Open Loop</span>
             <p className="text-muted-foreground">Valores fixos (motor frio/WOT)</p>
+          </div>
+          {/* NOVOS termos de Bateria */}
+          <div className="p-2 bg-primary/10 rounded border border-primary/20">
+            <span className="font-mono font-bold text-primary">Cranking</span>
+            <p className="text-muted-foreground">Tensão durante a partida</p>
+          </div>
+          <div className="p-2 bg-primary/10 rounded border border-primary/20">
+            <span className="font-mono font-bold text-primary">Parasita</span>
+            <p className="text-muted-foreground">Dreno de bateria parada</p>
+          </div>
+          <div className="p-2 bg-primary/10 rounded border border-primary/20">
+            <span className="font-mono font-bold text-primary">Alternador</span>
+            <p className="text-muted-foreground">Carrega bateria com motor ligado</p>
+          </div>
+          <div className="p-2 bg-primary/10 rounded border border-primary/20">
+            <span className="font-mono font-bold text-primary">mV/min</span>
+            <p className="text-muted-foreground">Taxa de queda de tensão</p>
+          </div>
+          <div className="p-2 bg-primary/10 rounded border border-primary/20">
+            <span className="font-mono font-bold text-primary">ECG Bateria</span>
+            <p className="text-muted-foreground">Gráfico de tensão na partida</p>
           </div>
         </div>
       </ManualSection>

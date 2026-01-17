@@ -46,6 +46,14 @@ const searchableItems: SearchableItem[] = [
     keywords: ["dtc", "código", "erro", "diagnóstico", "check engine", "luz", "scan", "limpar"],
     content: "Códigos DTC, tipos de códigos P C B U, como fazer scan, limpar códigos de erro",
   },
+  // NOVA SEÇÃO: Diagnóstico de Bateria
+  {
+    id: "diagnostico-bateria",
+    title: "Diagnóstico de Bateria",
+    type: "section",
+    keywords: ["bateria", "alternador", "cranking", "partida", "parasita", "dreno", "consumo", "ecg", "voltagem", "tensão", "carregar", "descarregar", "fraca", "teste"],
+    content: "Teste de saúde da bateria com gráfico ECG, teste de partida cranking, consumo parasita, alternador, histórico de testes, dreno de bateria",
+  },
   {
     id: "catalogo-veiculos",
     title: "Catálogo de Veículos",
@@ -209,6 +217,49 @@ const searchableItems: SearchableItem[] = [
     keywords: ["badge", "vermelho", "pendente", "offline", "sincronização"],
     content: "Indica diagnósticos aguardando sincronização com a nuvem quando você estava offline.",
   },
+  // NOVOS FAQs de Bateria
+  {
+    id: "faq-25",
+    title: "Como funciona o teste de bateria?",
+    type: "faq",
+    keywords: ["bateria", "teste", "ecg", "partida", "cranking", "alternador"],
+    content: "O teste monitora a tensão durante a partida, capturando queda de voltagem e recuperação. Resultado em gráfico ECG.",
+  },
+  {
+    id: "faq-26",
+    title: "O que é consumo parasita?",
+    type: "faq",
+    keywords: ["parasita", "dreno", "consumo", "desligado", "parada"],
+    content: "Consumo parasita é quando algo drena a bateria com o carro desligado. Pode ser luz interna, rádio defeituoso ou módulo em curto.",
+  },
+  {
+    id: "faq-27",
+    title: "Quanto tempo leva o teste de bateria?",
+    type: "faq",
+    keywords: ["tempo", "duração", "bateria", "teste", "minutos"],
+    content: "Teste de partida é instantâneo. Teste de consumo parasita pode levar 10, 30 ou 60 minutos.",
+  },
+  {
+    id: "faq-28",
+    title: "O Jarvis fala o resultado do teste de bateria?",
+    type: "faq",
+    keywords: ["jarvis", "bateria", "resultado", "fala", "anuncia"],
+    content: "Sim! Ao final de qualquer teste, o Jarvis anuncia verbalmente o diagnóstico completo.",
+  },
+  {
+    id: "faq-29",
+    title: "Posso fazer o teste de bateria com o motor ligado?",
+    type: "faq",
+    keywords: ["motor", "ligado", "desligado", "teste", "bateria"],
+    content: "O teste de partida precisa ser feito durante a partida. O teste de consumo parasita deve ser com motor desligado.",
+  },
+  {
+    id: "faq-30",
+    title: "O que significa 'tensão de cranking' no gráfico?",
+    type: "faq",
+    keywords: ["cranking", "tensão", "voltagem", "partida", "mínima"],
+    content: "É a voltagem mínima durante a partida. Bateria saudável não cai abaixo de 9.6V.",
+  },
 
   // Glossary
   {
@@ -308,6 +359,42 @@ const searchableItems: SearchableItem[] = [
     type: "glossary",
     keywords: ["pid 03", "fuel system", "status", "closed loop"],
     content: "Parâmetro OBD-II que indica status do sistema de combustível",
+  },
+  // NOVOS termos de Bateria
+  {
+    id: "glossario-cranking",
+    title: "Cranking Voltage",
+    type: "glossary",
+    keywords: ["cranking", "partida", "tensão", "voltagem", "bateria"],
+    content: "Tensão da bateria durante a partida do motor. Uma bateria saudável não deve cair abaixo de 9.6V",
+  },
+  {
+    id: "glossario-parasita",
+    title: "Consumo Parasita",
+    type: "glossary",
+    keywords: ["parasita", "dreno", "consumo", "bateria", "desligado"],
+    content: "Dreno de corrente elétrica que ocorre com o veículo desligado. Normal até 50mA",
+  },
+  {
+    id: "glossario-alternador",
+    title: "Alternador",
+    type: "glossary",
+    keywords: ["alternador", "carregar", "bateria", "gerador"],
+    content: "Componente que carrega a bateria quando o motor está funcionando. Deve manter tensão entre 13.5V e 14.5V",
+  },
+  {
+    id: "glossario-mvmin",
+    title: "mV/min",
+    type: "glossary",
+    keywords: ["mv", "min", "milivolts", "taxa", "queda"],
+    content: "Milivolts por minuto - Unidade que mede a velocidade de queda de tensão da bateria parada",
+  },
+  {
+    id: "glossario-ecgbateria",
+    title: "ECG de Bateria",
+    type: "glossary",
+    keywords: ["ecg", "bateria", "gráfico", "partida", "eletrocardiograma"],
+    content: "Gráfico visual estilo eletrocardiograma que mostra o comportamento da tensão durante a partida",
   },
 ];
 

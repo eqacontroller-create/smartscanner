@@ -58,6 +58,11 @@ import {
   Settings,
   FileText,
   CircleDot,
+  HeartPulse,
+  Clock,
+  TrendingDown,
+  Power,
+  Target,
 } from "lucide-react";
 
 export default function Help() {
@@ -112,19 +117,39 @@ export default function Help() {
           </div>
         </div>
 
-        {/* Benefícios - Seção Comercial */}
-        <div className="bg-gradient-to-br from-primary/5 via-primary/3 to-transparent rounded-2xl border border-primary/20 p-5 mb-6">
-          <div className="text-center mb-5">
+        {/* Benefícios - Seção Comercial MELHORADA */}
+        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl border border-primary/20 p-5 mb-6 relative overflow-hidden">
+          {/* Background decorativo */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
+          
+          <div className="text-center mb-5 relative">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3">
               <Sparkles className="h-4 w-4" />
               Por que usar nosso app?
             </div>
-            <h2 className="text-lg font-bold text-foreground">
+            <h2 className="text-xl font-bold text-foreground">
               Diagnóstico Profissional no seu Bolso
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
               Tudo que você precisa para cuidar do seu veículo
             </p>
+          </div>
+
+          {/* Estatísticas de Impacto */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="text-center p-3 bg-background/60 rounded-xl border border-border">
+              <div className="text-2xl font-bold text-primary">8+</div>
+              <div className="text-xs text-muted-foreground">Módulos ECU</div>
+            </div>
+            <div className="text-center p-3 bg-background/60 rounded-xl border border-border">
+              <div className="text-2xl font-bold text-primary">30s</div>
+              <div className="text-xs text-muted-foreground">Diagnóstico</div>
+            </div>
+            <div className="text-center p-3 bg-background/60 rounded-xl border border-border">
+              <div className="text-2xl font-bold text-primary">100%</div>
+              <div className="text-xs text-muted-foreground">Gratuito</div>
+            </div>
           </div>
 
           {/* Grid de Benefícios */}
@@ -147,9 +172,9 @@ export default function Help() {
               highlight
             />
             <BenefitCard 
-              icon={Smartphone} 
-              title="Super Prático" 
-              description="Diagnóstico completo só com celular. Sem ferramentas caras."
+              icon={HeartPulse} 
+              title="Teste de Bateria ECG" 
+              description="Análise profissional da bateria com gráfico estilo eletrocardiograma."
             />
             <BenefitCard 
               icon={Droplets} 
@@ -157,9 +182,9 @@ export default function Help() {
               description="Analise qualidade do combustível e precisão das bombas de postos."
             />
             <BenefitCard 
-              icon={Cloud} 
-              title="Sincronização" 
-              description="Seus dados seguros na nuvem. Acesse de qualquer dispositivo."
+              icon={TrendingDown} 
+              title="Consumo Parasita" 
+              description="Descubra o que está drenando sua bateria com o carro desligado."
             />
           </div>
 
@@ -193,6 +218,14 @@ export default function Help() {
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
                 <span>Controle financeiro para motoristas</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+                <span className="font-medium text-foreground">Teste de Saúde da Bateria (ECG)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+                <span className="font-medium text-foreground">Detector de Consumo Parasita</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
@@ -474,7 +507,151 @@ export default function Help() {
           />
         </HelpSection>
 
-        {/* Catálogo de Veículos - NOVA SEÇÃO */}
+        {/* NOVA SEÇÃO: Diagnóstico de Bateria */}
+        <HelpSection id="diagnostico-bateria" title="Diagnóstico de Bateria" icon={HeartPulse}>
+          <HelpCard
+            title="O que é o Teste de Bateria?"
+            description="Uma análise profissional da saúde da bateria que monitora a tensão durante a partida do motor. O resultado é mostrado em um gráfico estilo ECG (eletrocardiograma), igual aos usados em hospitais!"
+            icon={HeartPulse}
+            variant="info"
+          />
+
+          <div className="p-4 bg-gradient-to-r from-red-500/10 to-green-500/10 rounded-lg border border-border">
+            <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+              <HeartPulse className="h-4 w-4 text-primary" />
+              O que o gráfico ECG mostra:
+            </h4>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p><strong>Tensão de Repouso:</strong> Voltagem da bateria antes da partida (ideal: 12.4V+)</p>
+              <p><strong>Queda de Cranking:</strong> Quanto a tensão cai durante a partida (normal: não abaixo de 9.6V)</p>
+              <p><strong>Recuperação:</strong> Velocidade que a tensão volta ao normal após partida</p>
+              <p><strong>Tensão do Alternador:</strong> Com motor ligado, deve ficar entre 13.5V-14.5V</p>
+            </div>
+          </div>
+
+          <StepByStep
+            steps={[
+              {
+                title: "Conecte o OBD-II",
+                description: "Certifique-se de que o adaptador está conectado e o app está recebendo dados. A bateria deve estar em repouso (motor desligado).",
+                icon: Bluetooth,
+              },
+              {
+                title: "Acesse o Teste de Bateria",
+                description: "Na aba 'Mecânico', procure pelo card 'Saúde da Bateria' e clique em 'Iniciar Teste de Partida'.",
+                icon: HeartPulse,
+              },
+              {
+                title: "Dê a partida no motor",
+                description: "Quando o app pedir, dê a partida normalmente. O sistema vai capturar a tensão durante todo o processo.",
+                icon: Key,
+              },
+              {
+                title: "Veja o diagnóstico",
+                description: "O app mostra o gráfico ECG com análise da bateria e alternador. Cores indicam a saúde: verde (boa), amarelo (atenção), vermelho (substituir).",
+                icon: CheckCircle,
+              },
+            ]}
+          />
+
+          <div className="p-4 bg-muted/30 rounded-lg border border-border">
+            <h4 className="font-medium text-foreground mb-3">Estados da Bateria:</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-foreground font-medium">Excelente</span>
+                <span className="text-muted-foreground">- Bateria em ótimo estado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span className="text-foreground font-medium">Boa</span>
+                <span className="text-muted-foreground">- Funcionando bem, continue monitorando</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                <span className="text-foreground font-medium">Atenção</span>
+                <span className="text-muted-foreground">- Sinais de desgaste, considere substituir</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-foreground font-medium">Substituir</span>
+                <span className="text-muted-foreground">- Bateria comprometida, troque em breve</span>
+              </div>
+            </div>
+          </div>
+
+          <HelpCard
+            title="Teste de Consumo Parasita"
+            description="Descubra se algo está drenando sua bateria com o carro desligado! O teste monitora a queda de tensão por 10, 30 ou 60 minutos e calcula a corrente parasita estimada."
+            icon={TrendingDown}
+            variant="info"
+          />
+
+          <div className="p-4 bg-muted/30 rounded-lg border border-border">
+            <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              Durações do Teste Parasita:
+            </h4>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-primary">10 min</span>
+                <span>- Teste rápido, menos preciso</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-primary">30 min</span>
+                <span>- Recomendado, boa precisão</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-primary">60 min</span>
+                <span>- Mais preciso, detecta drenos pequenos</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-muted/30 rounded-lg border border-border">
+            <h4 className="font-medium text-foreground mb-3">Interpretação do Consumo Parasita:</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-foreground font-medium">&lt; 50mA</span>
+                <span className="text-muted-foreground">- Normal, bateria dura semanas parada</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                <span className="text-foreground font-medium">50-85mA</span>
+                <span className="text-muted-foreground">- Atenção, algo pode estar ligado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-foreground font-medium">&gt; 85mA</span>
+                <span className="text-muted-foreground">- Crítico, há um dreno significativo</span>
+              </div>
+            </div>
+          </div>
+
+          <HelpCard
+            title="Histórico de Testes"
+            description="Todos os testes são salvos automaticamente. Você pode acompanhar a evolução da bateria ao longo do tempo, ver tendências e receber alertas de degradação antes que a bateria te deixe na mão."
+            icon={History}
+            variant="success"
+          />
+
+          <HelpCard
+            title="Causas Comuns de Dreno Parasita"
+            description="Luz de porta mal fechada, rádio com memória defeituosa, alarme mal instalado, módulo em curto, carregador esquecido na tomada 12V, ou relé travado."
+            icon={Zap}
+            variant="warning"
+          />
+
+          <HelpCard
+            title="Jarvis Narra os Resultados"
+            description="Ao final do teste, o Jarvis anuncia verbalmente o diagnóstico completo: estado da bateria, alternador, consumo parasita e recomendações. Útil se você estiver com as mãos ocupadas!"
+            icon={Bot}
+            variant="default"
+          />
+        </HelpSection>
+
+        {/* Catálogo de Veículos */}
         <HelpSection id="catalogo-veiculos" title="Catálogo de Veículos" icon={Car}>
           <HelpCard
             title="Base de Dados Premium"
@@ -523,7 +700,7 @@ export default function Help() {
           />
         </HelpSection>
 
-        {/* Mecânico Visual - NOVA SEÇÃO */}
+        {/* Mecânico Visual */}
         <HelpSection id="mecanico-visual" title="Mecânico Visual (IA)" icon={Eye}>
           <HelpCard
             title="Diagnóstico por Foto ou Vídeo"
@@ -600,7 +777,7 @@ export default function Help() {
           />
         </HelpSection>
 
-        {/* Controle Financeiro - NOVA SEÇÃO */}
+        {/* Controle Financeiro */}
         <HelpSection id="controle-financeiro" title="Controle Financeiro (Uber/99)" icon={PiggyBank}>
           <HelpCard
             title="Feito para Motoristas de App"
@@ -791,62 +968,28 @@ export default function Help() {
               },
               {
                 title: "Dirija normalmente",
-                description: "Dirija por 5 km (configurável). O sistema monitora os sensores Fuel Trim e O2 em tempo real durante o trajeto.",
+                description: "Dirija por 5 km (configurável). O sistema coleta dados de Fuel Trim automaticamente durante o percurso.",
                 icon: Car,
               },
               {
-                title: "Veja o resultado forense",
-                description: "Após a distância, o sistema mostra o diagnóstico forense com estado, confiança, evidências técnicas e recomendação.",
+                title: "Veja o resultado",
+                description: "Ao completar a distância, o diagnóstico forense aparece. O Jarvis também anuncia verbalmente o resultado.",
                 icon: CheckCircle,
               },
             ]}
           />
 
-          {/* NOVO: Análise Forense Inteligente */}
-          <HelpCard
-            title="Análise Forense de Combustível (Fuel State Machine)"
-            description="O sistema usa uma Máquina de Estados inteligente que diferencia troca de combustível Flex (normal) de adulteração (problema). Antes de iniciar, você informa o contexto do abastecimento."
-            icon={Brain}
-            variant="info"
-          />
-
-          <HelpCard
-            title="Contexto de Troca (Veículos Flex)"
-            description="Se você trocou de combustível (ex: de gasolina para etanol), é NORMAL o STFT subir bastante. O sistema identifica isso e mostra 'ECU Adaptando' com barra de progresso, ao invés de alertar adulteração."
-            icon={RefreshCw}
-            variant="success"
-          >
-            <div className="text-xs space-y-1 mt-2">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-blue-500" />
-                <span>Gas→Etanol: STFT sobe (etanol tem menos energia)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-blue-500" />
-                <span>Etanol→Gas: STFT desce (gasolina tem mais energia)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-gray-400" />
-                <span>Mesmo combustível: Comparação direta</span>
-              </div>
-            </div>
-          </HelpCard>
-
-          {/* NOVO: Monitor de Sensor O2 */}
+          {/* Monitor de Sensor O2 */}
           <HelpCard
             title="Monitor de Sensor O2 (Sonda Lambda)"
-            description="Em tempo real, o gráfico mostra a voltagem do sensor O2 oscilando. A sonda deve alternar entre mistura 'pobre' (<0.45V) e 'rica' (>0.45V). Se ficar travada em um valor, indica problema mecânico."
+            description="Em tempo real, você vê a voltagem do sensor de oxigênio oscilando no gráfico. Uma sonda saudável alterna rapidamente entre valores baixos e altos. Se ficar 'travada', indica problema."
             icon={CircleDot}
             variant="default"
           >
             <div className="text-xs space-y-1 mt-2">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-cyan-500" />
-                <span>0.0 - 0.45V: Mistura pobre (menos combustível)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-green-500" />
-                <span>0.45V: Estequiométrico (ideal)</span>
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span>0 - 0.45V: Mistura pobre (mais ar)</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-orange-500" />
@@ -855,7 +998,7 @@ export default function Help() {
             </div>
           </HelpCard>
 
-          {/* NOVO: Estados do Diagnóstico */}
+          {/* Estados do Diagnóstico */}
           <HelpCard
             title="Estados do Diagnóstico Forense"
             description="O resultado final mostra um de cinco estados, cada um com cor e recomendação específica baseada nas evidências coletadas."
@@ -921,7 +1064,7 @@ export default function Help() {
             </div>
           </HelpCard>
 
-          {/* NOVO: Proteção de Motor Frio (Closed Loop) */}
+          {/* Proteção de Motor Frio (Closed Loop) */}
           <HelpCard
             title="Proteção de Motor Frio (Closed Loop)"
             description="O sistema só coleta dados de Fuel Trim quando o motor está em 'Closed Loop' (aquecido). Se o motor ainda está frio, você verá o aviso 'Aguardando Aquecimento' com ícone de termômetro pulsando."
@@ -944,7 +1087,7 @@ export default function Help() {
             </div>
           </HelpCard>
 
-          {/* NOVO: Estados do Sistema de Combustível (PID 03) */}
+          {/* Estados do Sistema de Combustível (PID 03) */}
           <HelpCard
             title="Estados do Sistema de Combustível (PID 03)"
             description="Durante o monitoramento, o sistema mostra o estado atual da ECU. Isso ajuda a entender quando os dados são confiáveis para análise."
@@ -971,7 +1114,7 @@ export default function Help() {
             </div>
           </HelpCard>
 
-          {/* NOVO: Modo Offline */}
+          {/* Modo Offline */}
           <HelpCard
             title="Modo Offline"
             description="Sem internet? Os diagnósticos de abastecimento são salvos localmente no dispositivo e sincronizados automaticamente quando a conexão retornar. Um indicador mostra quantos diagnósticos estão pendentes."
@@ -1132,6 +1275,37 @@ export default function Help() {
               question="O que é o badge vermelho no botão de abastecimento?"
               answer="O badge indica quantos diagnósticos estão aguardando sincronização com a nuvem. Isso acontece quando você fez um teste offline. Quando reconectar à internet, os dados serão enviados automaticamente e o badge desaparece."
             />
+            {/* NOVOS FAQs de Bateria */}
+            <FAQItem
+              id="faq-25"
+              question="Como funciona o teste de bateria?"
+              answer="O teste monitora a tensão da bateria durante a partida do motor, capturando a queda de voltagem (cranking) e a recuperação. O resultado é mostrado em um gráfico estilo ECG com análise automática do estado da bateria e alternador."
+            />
+            <FAQItem
+              id="faq-26"
+              question="O que é consumo parasita?"
+              answer="Consumo parasita é quando algo drena a bateria com o carro desligado. Pode ser uma luz interna, rádio com defeito, alarme mal instalado ou módulo em curto. O teste monitora a queda de tensão por até 60 minutos para detectar isso."
+            />
+            <FAQItem
+              id="faq-27"
+              question="Quanto tempo leva o teste de bateria?"
+              answer="O teste de partida (cranking) é instantâneo - você só precisa dar a partida. Já o teste de consumo parasita pode levar 10, 30 ou 60 minutos, dependendo da precisão desejada. Quanto mais tempo, mais preciso o resultado."
+            />
+            <FAQItem
+              id="faq-28"
+              question="O Jarvis fala o resultado do teste de bateria?"
+              answer="Sim! Ao final de qualquer teste (partida ou parasita), o Jarvis anuncia verbalmente o diagnóstico completo: estado da bateria, alternador, consumo parasita estimado e recomendações."
+            />
+            <FAQItem
+              id="faq-29"
+              question="Posso fazer o teste de bateria com o motor ligado?"
+              answer="O teste de partida (cranking) precisa ser feito durante a partida - ou seja, motor desligado antes. Já o teste de consumo parasita deve ser feito com motor desligado e chave removida por pelo menos 10 minutos antes."
+            />
+            <FAQItem
+              id="faq-30"
+              question="O que significa 'tensão de cranking' no gráfico?"
+              answer="É a voltagem mínima que a bateria atinge durante a partida. Uma bateria saudável não deve cair abaixo de 9.6V. Se cair muito, a bateria pode estar fraca ou com capacidade reduzida pelo frio ou idade."
+            />
           </div>
         </HelpSection>
 
@@ -1242,6 +1416,32 @@ export default function Help() {
               term="PID 03"
               definition="Parâmetro OBD-II que indica o status do sistema de combustível (Open Loop ou Closed Loop)."
               analogy="É um semáforo que diz quando os dados do motor são confiáveis para análise."
+            />
+            {/* NOVOS termos de Bateria */}
+            <GlossaryItem
+              term="Cranking Voltage"
+              definition="Tensão da bateria durante a partida do motor. Uma bateria saudável não deve cair abaixo de 9.6V."
+              analogy="É como medir a força de um atleta ao dar um sprint - se cansar muito rápido, está fraco."
+            />
+            <GlossaryItem
+              term="Consumo Parasita"
+              definition="Dreno de corrente elétrica que ocorre com o veículo desligado. Normal até 50mA, acima disso há algo ligado."
+              analogy="É como uma torneira pingando - parece pouco, mas vai esvaziando o tanque aos poucos."
+            />
+            <GlossaryItem
+              term="Alternador"
+              definition="Componente que carrega a bateria quando o motor está funcionando. Deve manter tensão entre 13.5V e 14.5V."
+              analogy="É o 'gerador de energia' do carro - recarrega a bateria enquanto você dirige."
+            />
+            <GlossaryItem
+              term="mV/min"
+              definition="Milivolts por minuto - Unidade que mede a velocidade de queda de tensão da bateria parada."
+              analogy="É como medir quantos metros o nível de um tanque cai por hora - quanto mais rápido, pior."
+            />
+            <GlossaryItem
+              term="ECG de Bateria"
+              definition="Gráfico visual estilo eletrocardiograma que mostra o comportamento da tensão durante a partida."
+              analogy="É como o exame de coração que médicos fazem - mostra a 'saúde cardíaca' da bateria."
             />
           </div>
         </HelpSection>
