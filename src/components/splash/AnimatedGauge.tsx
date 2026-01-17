@@ -118,8 +118,8 @@ export function AnimatedGauge({ phase }: AnimatedGaugeProps) {
   };
 
   return (
-    <div className="relative w-64 h-64 md:w-80 md:h-80">
-      <svg viewBox="0 0 200 200" className="w-full h-full">
+    <div className="relative w-64 h-64 md:w-80 md:h-80" style={{ willChange: 'transform' }}>
+      <svg viewBox="0 0 200 200" className="w-full h-full" style={{ transform: 'translateZ(0)' }}>
         <defs>
           {/* Gradiente de fundo premium */}
           <radialGradient id="gaugeGradientPremium" cx="50%" cy="50%" r="50%">
@@ -135,20 +135,10 @@ export function AnimatedGauge({ phase }: AnimatedGaugeProps) {
             <stop offset="100%" stopColor="hsl(217 33% 25%)" />
           </linearGradient>
           
-          {/* Efeito de glow suave */}
+          {/* OPTIMIZED: Lighter glow filter - reduced blur */}
           <filter id="glowSoft">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+            <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
             <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          
-          {/* Efeito de glow forte */}
-          <filter id="glowStrong">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
               <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
@@ -296,63 +286,54 @@ export function AnimatedGauge({ phase }: AnimatedGaugeProps) {
           strokeWidth="1"
         />
         
-        {/* Agulha com movimento fluido */}
+        {/* OPTIMIZED: Needle with GPU acceleration, simpler glow */}
         <g
           style={{
             transform: `rotate(${needleAngle}deg)`,
             transformOrigin: '100px 100px',
             transition: phase === 'ready' ? 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' : 'none',
+            willChange: 'transform',
           }}
         >
-          {/* Sombra da agulha */}
+          {/* Shadow - simplified */}
           <line
             x1="100"
             y1="100"
             x2="100"
-            y2="32"
-            stroke="hsl(0 0% 0% / 0.4)"
-            strokeWidth="5"
-            strokeLinecap="round"
-            transform="translate(2, 2)"
-          />
-          
-          {/* Base da agulha */}
-          <line
-            x1="100"
-            y1="100"
-            x2="100"
-            y2="32"
-            stroke="hsl(0 84% 40%)"
+            y2="34"
+            stroke="hsl(0 0% 0% / 0.3)"
             strokeWidth="4"
             strokeLinecap="round"
+            transform="translate(1.5, 1.5)"
           />
           
-          {/* Agulha principal com glow */}
+          {/* Base */}
           <line
             x1="100"
             y1="100"
             x2="100"
-            y2="33"
-            stroke="hsl(0 84% 55%)"
-            strokeWidth="3"
+            y2="34"
+            stroke="hsl(0 84% 45%)"
+            strokeWidth="3.5"
             strokeLinecap="round"
-            filter="url(#glowStrong)"
           />
           
-          {/* Ponta luminosa */}
+          {/* Main needle - CSS filter instead of SVG */}
+          <line
+            x1="100"
+            y1="100"
+            x2="100"
+            y2="35"
+            stroke="hsl(0 84% 55%)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            style={{ filter: 'drop-shadow(0 0 3px hsl(0 84% 55%))' }}
+          />
+          
+          {/* Tip */}
           <polygon
-            points="100,28 96,42 104,42"
+            points="100,30 97,40 103,40"
             fill="hsl(0 84% 55%)"
-            filter="url(#glowSoft)"
-          />
-          
-          {/* Brilho na ponta */}
-          <circle
-            cx="100"
-            cy="32"
-            r="3"
-            fill="hsl(0 84% 70%)"
-            opacity="0.8"
           />
         </g>
         

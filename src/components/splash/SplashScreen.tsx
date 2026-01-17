@@ -11,17 +11,16 @@ interface SplashScreenProps {
   theme?: SplashTheme;
 }
 
-// Gerar partículas estilo aurora boreal - agora aceita hue da marca
+// OPTIMIZED: Generate fewer aurora particles with simpler properties
 function generateAuroraParticles(count: number, baseHue: number) {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
     y: Math.random() * 100,
-    size: Math.random() * 4 + 2,
-    hue: baseHue + Math.random() * 40 - 20, // Variação em torno do hue da marca
-    delay: Math.random() * 3,
-    duration: 4 + Math.random() * 4,
-    amplitude: 15 + Math.random() * 20,
+    size: Math.random() * 3 + 2, // Smaller: 2-5px
+    hue: baseHue + Math.random() * 30 - 15,
+    delay: Math.random() * 2,
+    duration: 5 + Math.random() * 3, // Slower, smoother
   }));
 }
 
@@ -32,9 +31,9 @@ export const SplashScreen = memo(function SplashScreen({
 }: SplashScreenProps) {
   const hasPlayedSound = useRef(false);
   
-  // Gerar partículas baseadas no hue da marca
+  // OPTIMIZED: Fewer particles (12-16 instead of 25-35)
   const particles = useMemo(() => {
-    const count = theme.premium ? 35 : 25; // Mais partículas para marcas premium
+    const count = theme.premium ? 14 : 10;
     return generateAuroraParticles(count, theme.colors.particleHue);
   }, [theme.colors.particleHue, theme.premium]);
   
@@ -111,7 +110,7 @@ export const SplashScreen = memo(function SplashScreen({
         />
       )}
       
-      {/* Partículas Aurora Boreal com cor da marca */}
+      {/* OPTIMIZED Aurora particles - GPU accelerated, simpler styles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {!isIgnition && particles.map((p) => (
           <div
@@ -122,11 +121,12 @@ export const SplashScreen = memo(function SplashScreen({
               height: p.size,
               left: `${p.x}%`,
               top: `${p.y}%`,
-              background: `radial-gradient(circle, hsl(${p.hue} 70% 55% / 0.6) 0%, transparent 70%)`,
-              boxShadow: `0 0 ${p.size * 2}px hsl(${p.hue} 70% 50% / 0.4)`,
-              animation: `aurora-float ${p.duration}s ease-in-out infinite`,
+              background: `hsl(${p.hue} 60% 50% / 0.5)`,
+              boxShadow: `0 0 ${p.size}px hsl(${p.hue} 60% 50% / 0.3)`,
+              animation: `aurora-optimized ${p.duration}s ease-in-out infinite`,
               animationDelay: `${p.delay}s`,
-              '--amplitude': `${p.amplitude}px`,
+              willChange: 'transform, opacity',
+              transform: 'translateZ(0)',
             } as React.CSSProperties}
           />
         ))}
@@ -149,23 +149,7 @@ export const SplashScreen = memo(function SplashScreen({
         }}
       />
       
-      {/* Segundo glow para marcas premium */}
-      {theme.premium && (
-        <div 
-          className={`absolute w-[600px] h-[600px] rounded-full transition-all duration-1200 ${
-            isIgnition ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
-          }`}
-          style={{
-            background: `
-              radial-gradient(circle, 
-                ${glowColor.replace(')', ' / 0.05)')} 0%, 
-                transparent 60%
-              )
-            `,
-            filter: 'blur(60px)',
-          }}
-        />
-      )}
+      {/* REMOVED: Second glow for premium brands - causes performance issues */}
       
       {/* Logo animado da marca - esconde durante exiting (FlyingLogo assume) */}
       <div 
@@ -309,23 +293,15 @@ export const SplashScreen = memo(function SplashScreen({
         )}
       </div>
       
-      {/* Estilos de animação inline */}
+      {/* OPTIMIZED: Simpler aurora animation - fewer keyframes, GPU accelerated */}
       <style>{`
-        @keyframes aurora-float {
+        @keyframes aurora-optimized {
           0%, 100% {
-            transform: translate(0, 0) scale(1);
-            opacity: 0.6;
-          }
-          25% {
-            transform: translate(var(--amplitude, 15px), calc(var(--amplitude, 15px) * -0.5)) scale(1.1);
-            opacity: 0.8;
-          }
-          50% {
-            transform: translate(calc(var(--amplitude, 15px) * 0.5), var(--amplitude, 15px)) scale(0.9);
+            transform: translate3d(0, 0, 0) scale(1);
             opacity: 0.5;
           }
-          75% {
-            transform: translate(calc(var(--amplitude, 15px) * -0.5), calc(var(--amplitude, 15px) * 0.3)) scale(1.05);
+          50% {
+            transform: translate3d(15px, -10px, 0) scale(1.05);
             opacity: 0.7;
           }
         }

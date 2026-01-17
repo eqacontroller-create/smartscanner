@@ -17,13 +17,11 @@ interface Particle {
   size: number;
   delay: number;
   duration: number;
-  opacity: number;
 }
 
 /**
  * Logo que "voa" da splash screen para o header durante a transição
- * Usa position fixed para animar entre as duas posições
- * Inclui efeito de partículas/faíscas que seguem o logo
+ * OTIMIZADO: Reduzido partículas, GPU acceleration, CSS simples
  */
 export const FlyingLogo = memo(function FlyingLogo({ 
   phase, 
@@ -33,16 +31,15 @@ export const FlyingLogo = memo(function FlyingLogo({
   const [hasFlown, setHasFlown] = useState(false);
   const isExiting = phase === 'exiting';
   
-  // Generate particles for trail effect
+  // Generate FEWER particles for trail effect (8 instead of 20)
   const particles = useMemo<Particle[]>(() => {
-    return Array.from({ length: 20 }, (_, i) => ({
+    return Array.from({ length: 8 }, (_, i) => ({
       id: i,
-      offsetX: (Math.random() - 0.5) * 80, // Random X spread
-      offsetY: (Math.random() - 0.5) * 40, // Random Y spread
-      size: Math.random() * 6 + 2, // 2-8px
-      delay: Math.random() * 0.3, // 0-300ms delay
-      duration: 0.4 + Math.random() * 0.3, // 400-700ms duration
-      opacity: 0.6 + Math.random() * 0.4, // 60-100% opacity
+      offsetX: (Math.random() - 0.5) * 60,
+      offsetY: (Math.random() - 0.5) * 30,
+      size: Math.random() * 4 + 2, // 2-6px (smaller)
+      delay: i * 0.04, // Sequential delay
+      duration: 0.5 + Math.random() * 0.2,
     }));
   }, []);
   
@@ -51,7 +48,7 @@ export const FlyingLogo = memo(function FlyingLogo({
     if (isExiting) {
       const timer = setTimeout(() => {
         setHasFlown(true);
-      }, 700); // Match animation duration
+      }, 700);
       return () => clearTimeout(timer);
     }
   }, [isExiting]);
@@ -61,94 +58,69 @@ export const FlyingLogo = memo(function FlyingLogo({
     return null;
   }
   
-  // Calculate target position (header area - top left corner)
+  // Calculate target position (header area)
   const targetLeft = '1rem';
   const targetTop = '0.75rem';
   const targetScale = 0.35;
   
   return (
     <>
-      {/* Particle trail - only visible during exit */}
+      {/* Optimized particle trail - GPU accelerated, fewer elements */}
       {isExiting && (
         <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
           {particles.map((particle) => (
             <div
               key={particle.id}
-              className="absolute rounded-full animate-particle-trail"
+              className="absolute rounded-full gpu-accelerated"
               style={{
-                // Start from center, animate to top-left
                 left: '50%',
                 top: '45%',
                 width: particle.size,
                 height: particle.size,
                 backgroundColor: glowColor,
-                boxShadow: `0 0 ${particle.size * 2}px ${glowColor}, 0 0 ${particle.size * 4}px ${glowColor}`,
+                boxShadow: `0 0 ${particle.size}px ${glowColor}`,
                 opacity: 0,
+                willChange: 'transform, opacity',
+                transform: 'translateZ(0)',
                 '--particle-offset-x': `${particle.offsetX}px`,
                 '--particle-offset-y': `${particle.offsetY}px`,
-                '--particle-end-x': `calc(-50% + 1rem + 48px + ${particle.offsetX * 0.3}px)`,
-                '--particle-end-y': `calc(-45% + 0.75rem + 24px + ${particle.offsetY * 0.3}px)`,
+                '--particle-end-x': `calc(-50% + 1rem + 48px)`,
+                '--particle-end-y': `calc(-45% + 0.75rem + 24px)`,
+                animation: `particle-trail-optimized ${particle.duration}s ease-out forwards`,
                 animationDelay: `${particle.delay}s`,
-                animationDuration: `${particle.duration}s`,
               } as React.CSSProperties}
             />
-          ))}
-          
-          {/* Sparkle bursts along the path */}
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div
-              key={`sparkle-${i}`}
-              className="absolute animate-sparkle-burst"
-              style={{
-                left: `calc(50% - ${i * 10}%)`,
-                top: `calc(45% - ${i * 8}%)`,
-                width: 4,
-                height: 4,
-                animationDelay: `${i * 0.1}s`,
-              }}
-            >
-              {/* 4-point star sparkle */}
-              <svg viewBox="0 0 20 20" className="w-5 h-5 -translate-x-1/2 -translate-y-1/2">
-                <path
-                  d="M10 0 L10 20 M0 10 L20 10 M3 3 L17 17 M17 3 L3 17"
-                  stroke={glowColor}
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  fill="none"
-                  style={{
-                    filter: `drop-shadow(0 0 4px ${glowColor})`,
-                  }}
-                />
-              </svg>
-            </div>
           ))}
         </div>
       )}
       
-      {/* Main flying logo */}
+      {/* Main flying logo - GPU accelerated */}
       <div
         className={cn(
-          "fixed z-[10000] pointer-events-none transition-all duration-700 ease-out",
-          isExiting && "!duration-700"
+          "fixed z-[10000] pointer-events-none gpu-accelerated",
+          isExiting && "flying-logo-exit"
         )}
         style={{
           left: isExiting ? targetLeft : '50%',
           top: isExiting ? targetTop : '45%',
           transform: isExiting 
-            ? `translate(0, 0) scale(${targetScale})` 
-            : 'translate(-50%, -50%) scale(1)',
+            ? `translate3d(0, 0, 0) scale(${targetScale})` 
+            : 'translate3d(-50%, -50%, 0) scale(1)',
           opacity: isExiting ? 0 : 1,
           transformOrigin: 'top left',
+          willChange: 'transform, opacity',
+          transition: 'transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease-out',
         }}
       >
-        {/* Glow trail behind logo during flight */}
+        {/* Simple glow trail - CSS only, no heavy filters */}
         {isExiting && (
           <div
-            className="absolute inset-0 animate-logo-trail-glow"
+            className="absolute inset-0 gpu-accelerated"
             style={{
-              background: `radial-gradient(ellipse at center, ${glowColor}40 0%, transparent 70%)`,
-              filter: `blur(20px)`,
-              transform: 'scale(3)',
+              background: `radial-gradient(ellipse at center, ${glowColor}30 0%, transparent 60%)`,
+              transform: 'scale(2.5) translateZ(0)',
+              opacity: 0.6,
+              animation: 'logo-glow-fade 0.7s ease-out forwards',
             }}
           />
         )}
@@ -159,6 +131,31 @@ export const FlyingLogo = memo(function FlyingLogo({
           glowColor={glowColor}
         />
       </div>
+      
+      {/* Inline optimized keyframes */}
+      <style>{`
+        .gpu-accelerated {
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          perspective: 1000px;
+        }
+        
+        @keyframes particle-trail-optimized {
+          0% {
+            opacity: 0.9;
+            transform: translate3d(var(--particle-offset-x), var(--particle-offset-y), 0) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate3d(var(--particle-end-x), var(--particle-end-y), 0) scale(0);
+          }
+        }
+        
+        @keyframes logo-glow-fade {
+          0% { opacity: 0.6; }
+          100% { opacity: 0; }
+        }
+      `}</style>
     </>
   );
 });

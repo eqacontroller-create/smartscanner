@@ -18,20 +18,11 @@ export const VWLogo = memo(function VWLogo({
       viewBox="0 0 100 100" 
       className={cn("w-20 h-20", className)}
       aria-label="Volkswagen logo"
+      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
     >
-      <defs>
-        <filter id="vw-glow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feFlood floodColor={glowColor} floodOpacity="0.6" />
-          <feComposite in2="blur" operator="in" />
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+      {/* OPTIMIZED: Removed SVG filter, using CSS */}
       
-      {/* Círculo externo */}
+      {/* Outer circle - CSS filter */}
       <circle 
         cx={50} 
         cy={50} 
@@ -45,11 +36,12 @@ export const VWLogo = memo(function VWLogo({
           isReady && 'animate-[logo-pulse_2s_ease-in-out_infinite]'
         )}
         style={{
-          filter: isReady ? 'url(#vw-glow)' : 'none',
+          filter: isReady ? `drop-shadow(0 0 5px ${glowColor})` : 'none',
+          willChange: 'transform, opacity',
         }}
       />
       
-      {/* VW Letters */}
+      {/* VW Letters - CSS filter */}
       <g 
         className={cn(
           'transition-all duration-700',
@@ -57,8 +49,9 @@ export const VWLogo = memo(function VWLogo({
           isReady && 'animate-[logo-pulse_2s_ease-in-out_infinite]'
         )}
         style={{
-          filter: isReady ? 'url(#vw-glow)' : 'none',
+          filter: isReady ? `drop-shadow(0 0 4px ${glowColor})` : 'none',
           transitionDelay: '200ms',
+          willChange: 'transform, opacity',
         }}
       >
         {/* V */}

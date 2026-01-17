@@ -19,24 +19,16 @@ export const BMWLogo = memo(function BMWLogo({
       viewBox="0 0 100 100" 
       className={cn("w-20 h-20", className)}
       aria-label="BMW logo"
+      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
     >
+      {/* OPTIMIZED: CSS filter instead of SVG */}
       <defs>
-        <filter id="bmw-glow">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feFlood floodColor={glowColor} floodOpacity="0.5" />
-          <feComposite in2="blur" operator="in" />
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        
         <clipPath id="bmw-clip">
           <circle cx="50" cy="50" r="42" />
         </clipPath>
       </defs>
       
-      {/* Círculo externo escuro */}
+      {/* Outer circle - CSS filter */}
       <circle 
         cx={50} 
         cy={50} 
@@ -49,11 +41,11 @@ export const BMWLogo = memo(function BMWLogo({
           isActive ? 'opacity-100' : 'opacity-0'
         )}
         style={{
-          filter: isReady ? 'url(#bmw-glow)' : 'none',
+          filter: isReady ? `drop-shadow(0 0 4px ${glowColor})` : 'none',
         }}
       />
       
-      {/* Quadrantes que giram */}
+      {/* Quadrants - GPU accelerated */}
       <g 
         clipPath="url(#bmw-clip)"
         className={cn(
@@ -63,6 +55,7 @@ export const BMWLogo = memo(function BMWLogo({
         )}
         style={{ 
           transformOrigin: '50px 50px',
+          willChange: 'transform',
         }}
       >
         {/* Quadrante superior-direito - Azul */}
