@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSyncedRides } from '@/hooks/useSyncedRides';
 import { useSyncedProfile, VehicleInfo } from '@/hooks/useSyncedProfile';
 import { useVehicleBenefits } from '@/hooks/useVehicleBenefits';
+import { useVehicleHealth } from '@/hooks/useVehicleHealth';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import { defaultJarvisSettings } from '@/types/jarvisSettings';
 
@@ -77,6 +78,12 @@ export function useVehicleSession({
     },
   });
 
+  // Hook de saúde unificada do veículo
+  const vehicleHealth = useVehicleHealth({
+    userId: user?.id,
+    vin: obd.detectedVehicle?.vin || syncedProfile.profile.vehicle.vin,
+  });
+
   // Atualizar tema quando veículo for detectado
   useEffect(() => {
     if (obd.detectedVehicle?.vin) {
@@ -125,6 +132,9 @@ export function useVehicleSession({
     
     // Benefícios
     vehicleBenefits,
+    
+    // Saúde unificada do veículo
+    vehicleHealth,
     
     // Helpers
     isReady: obd.status === 'ready',

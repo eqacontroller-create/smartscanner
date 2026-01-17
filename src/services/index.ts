@@ -10,6 +10,7 @@ export { ProfileService } from './supabase/ProfileService';
 export { RidesService } from './supabase/RidesService';
 export { VehicleService } from './supabase/VehicleService';
 export { ScanHistoryService } from './supabase/ScanHistoryService';
+export { VehicleHealthService } from './supabase/VehicleHealthService';
 
 // AI Services
 export { JarvisService } from './ai/JarvisService';

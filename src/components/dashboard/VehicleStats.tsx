@@ -1,4 +1,4 @@
-import { Gauge, Thermometer, Battery, Fuel, Zap } from 'lucide-react';
+import { Gauge, Thermometer, Battery, Fuel, Zap, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   SemanticStatus, 
@@ -8,6 +8,10 @@ import {
   getEngineLoadStatus,
   getSpeedStatus 
 } from '@/components/dashboard/SemanticStatus';
+import type { BatteryHealthStatus, FuelHealthStatus } from '@/types/vehicleHealth';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface VehicleStatsProps {
   speed: number | null;
@@ -16,15 +20,39 @@ interface VehicleStatsProps {
   fuelLevel?: number | null;
   engineLoad?: number | null;
   isReading: boolean;
+  // Health overrides from diagnostics
+  batteryHealthOverride?: BatteryHealthStatus;
+  fuelHealthOverride?: FuelHealthStatus;
 }
 
-export function VehicleStats({ speed, temperature, voltage, fuelLevel, engineLoad, isReading }: VehicleStatsProps) {
+export function VehicleStats({ 
+  speed, 
+  temperature, 
+  voltage, 
+  fuelLevel, 
+  engineLoad, 
+  isReading,
+  batteryHealthOverride,
+  fuelHealthOverride,
+}: VehicleStatsProps) {
   // Status semânticos para modo didático
   const tempStatus = getTemperatureStatus(isReading ? temperature : null);
-  const voltStatus = getVoltageStatus(isReading ? voltage : null);
-  const fuelStatus = getFuelStatus(isReading ? (fuelLevel ?? null) : null);
-  const loadStatus = getEngineLoadStatus(isReading ? (engineLoad ?? null) : null);
   const speedStatus = getSpeedStatus(isReading ? speed : null);
+  const loadStatus = getEngineLoadStatus(isReading ? (engineLoad ?? null) : null);
+  
+  // Status de voltagem - pode ser overriden por diagnóstico de bateria
+  const realTimeVoltStatus = getVoltageStatus(isReading ? voltage : null);
+  const hasBatteryOverride = batteryHealthOverride && batteryHealthOverride.level !== 'unknown' && batteryHealthOverride.level === 'critical';
+  const voltStatus = hasBatteryOverride 
+    ? { level: 'critical' as const, text: batteryHealthOverride.message }
+    : realTimeVoltStatus;
+  
+  // Status de combustível - pode ser overriden por diagnóstico de adulteração
+  const realTimeFuelStatus = getFuelStatus(isReading ? (fuelLevel ?? null) : null);
+  const hasFuelOverride = fuelHealthOverride && fuelHealthOverride.level !== 'unknown' && fuelHealthOverride.level === 'critical';
+  const fuelStatus = hasFuelOverride
+    ? { level: 'critical' as const, text: fuelHealthOverride.message }
+    : realTimeFuelStatus;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -70,27 +98,75 @@ export function VehicleStats({ speed, temperature, voltage, fuelLevel, engineLoa
           showValue={isReading && temperature !== null}
         />
 
-        {/* Bateria/Voltagem */}
-        <SemanticStatus
-          label="Bateria"
-          value={isReading ? voltage : null}
-          unit="V"
-          status={voltStatus.level}
-          statusText={voltStatus.text}
-          icon={<Battery className="h-4 w-4" />}
-          showValue={isReading && voltage !== null}
-        />
+        {/* Bateria/Voltagem - Com Override de Diagnóstico */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative">
+                <SemanticStatus
+                  label="Bateria"
+                  value={isReading ? voltage : null}
+                  unit="V"
+                  status={voltStatus.level}
+                  statusText={voltStatus.text}
+                  icon={<Battery className="h-4 w-4" />}
+                  showValue={isReading && voltage !== null}
+                />
+                {hasBatteryOverride && (
+                  <div className="absolute -top-1 -right-1">
+                    <AlertTriangle className="h-4 w-4 text-destructive animate-pulse" />
+                  </div>
+                )}
+              </div>
+            </TooltipTrigger>
+            {hasBatteryOverride && batteryHealthOverride.lastTestDate && (
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">
+                  ⚠️ Baseado no teste de bateria de {format(batteryHealthOverride.lastTestDate, "dd/MM/yyyy", { locale: ptBR })}.
+                  {batteryHealthOverride.percent !== null && (
+                    <span className="block mt-1 font-bold text-destructive">
+                      Saúde: {batteryHealthOverride.percent}%
+                    </span>
+                  )}
+                </p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
 
-        {/* Combustível */}
-        <SemanticStatus
-          label="Combustível"
-          value={isReading ? (fuelLevel ?? null) : null}
-          unit="%"
-          status={fuelStatus.level}
-          statusText={fuelStatus.text}
-          icon={<Fuel className="h-4 w-4" />}
-          showValue={isReading && fuelLevel !== null && fuelLevel !== undefined}
-        />
+        {/* Combustível - Com Override de Diagnóstico */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative">
+                <SemanticStatus
+                  label="Combustível"
+                  value={isReading ? (fuelLevel ?? null) : null}
+                  unit="%"
+                  status={fuelStatus.level}
+                  statusText={fuelStatus.text}
+                  icon={<Fuel className="h-4 w-4" />}
+                  showValue={isReading && fuelLevel !== null && fuelLevel !== undefined}
+                />
+                {hasFuelOverride && (
+                  <div className="absolute -top-1 -right-1">
+                    <AlertTriangle className="h-4 w-4 text-destructive animate-pulse" />
+                  </div>
+                )}
+              </div>
+            </TooltipTrigger>
+            {hasFuelOverride && fuelHealthOverride.lastRefuelDate && (
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">
+                  ⚠️ Detectado no abastecimento de {format(fuelHealthOverride.lastRefuelDate, "dd/MM/yyyy", { locale: ptBR })}.
+                  <span className="block mt-1 font-bold text-destructive">
+                    {fuelHealthOverride.message}
+                  </span>
+                </p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Carga do Motor */}
         <SemanticStatus
