@@ -561,17 +561,27 @@ export function useRefuelMonitor({
     readFuelSystemStatusRef.current = readFuelSystemStatus;
   }, [readSTFT, readLTFT, readFuelLevel, readSpeed, readO2Sensor, readFuelSystemStatus]);
   
+  // CONSTANTE: Delay de sincronização para aguardar polling pausar
+  const POLLING_SYNC_DELAY_MS = 600;
+  
   // Iniciar modo abastecimento (fluxo completo)
   const startRefuelMode = useCallback(async () => {
-    const levelBefore = await readFuelLevel();
+    logger.debug('[Refuel] startRefuelMode - Iniciando modo abastecimento');
     
-    logger.debug('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
-    
-    // Definir fluxo como abastecimento
+    // PASSO 1: Definir modo PRIMEIRO para acionar pausa do polling no Index.tsx
     setFlowType('refuel');
     flowTypeRef.current = 'refuel';
-    
     setMode('waiting');
+    
+    // PASSO 2: Aguardar polling do dashboard pausar
+    // O useEffect no Index.tsx reage à mudança de mode e chama stopPolling()
+    logger.debug('[Refuel] Aguardando polling pausar...');
+    await new Promise(r => setTimeout(r, POLLING_SYNC_DELAY_MS));
+    
+    // PASSO 3: Agora é seguro ler do OBD (sem conflito com polling)
+    const levelBefore = await readFuelLevel();
+    logger.debug('[Refuel] startRefuelMode - Nível ANTES de abastecer:', levelBefore);
+    
     setCurrentRefuel({
       fuelLevelBefore: levelBefore,
     });
@@ -618,12 +628,13 @@ export function useRefuelMonitor({
       return;
     }
     
-    // Definir fluxo como teste rápido
+    // PASSO 1: Definir modo PRIMEIRO para acionar pausa do polling no Index.tsx
+    // IMPORTANTE: Isso deve acontecer ANTES de qualquer leitura OBD
     setFlowType('quick-test');
     flowTypeRef.current = 'quick-test';
-    
-    // Definir modo como waiting-quick (sem necessidade de dados)
     setMode('waiting-quick');
+    
+    // Preparar estado inicial (sem leituras OBD ainda)
     setCurrentRefuel({
       id: crypto.randomUUID(),
       timestamp: Date.now(),
@@ -641,7 +652,6 @@ export function useRefuelMonitor({
     setAnomalyActive(false);
     setAnomalyDuration(0);
     stftSamplesRef.current = [];
-    initialLTFTRef.current = await readLTFT();
     anomalyStartRef.current = null;
     
     // Limpar settings congelados
@@ -659,6 +669,15 @@ export function useRefuelMonitor({
     anomalyRecoveryAnnouncedRef.current = false;
     announcedMilestonesRef.current.clear();
     readFailureCountRef.current = 0;
+    
+    // PASSO 2: Aguardar polling do dashboard pausar
+    // O useEffect no Index.tsx reage à mudança de mode e chama stopPolling()
+    logger.debug('[Refuel] Aguardando polling pausar antes de ler LTFT...');
+    await new Promise(r => setTimeout(r, POLLING_SYNC_DELAY_MS));
+    
+    // PASSO 3: Agora é seguro ler LTFT inicial (sem conflito com polling)
+    initialLTFTRef.current = await readLTFT();
+    logger.debug('[Refuel] LTFT inicial lido após pausa do polling:', initialLTFTRef.current);
     
     // Usar speak diretamente (não speakRef) para garantir versão mais recente
     logger.debug('[Refuel] Anunciando início do teste rápido com voz configurada');
@@ -1045,49 +1064,64 @@ export function useRefuelMonitor({
   
   // CORREÇÃO: Loop de PRÉ-LEITURA durante waiting (lê velocidade + Fuel Trim antes de andar)
   // Isso resolve o dead lock: polling pausado → velocidade congelada → refuel não funciona
+  // CORREÇÃO v2: Delay inicial de 1s para garantir que polling está completamente pausado
   useEffect(() => {
     const isWaiting = mode === 'waiting' || mode === 'waiting-quick';
     if (!isWaiting || !isConnected) return;
     
-    logger.debug('[Refuel] Iniciando loop de pré-leitura (velocidade + Fuel Trim)');
+    logger.debug('[Refuel] Preparando loop de pré-leitura (aguardando polling pausar)');
     
     // Resetar velocidade interna ao entrar no modo waiting
     internalSpeedRef.current = 0;
     setInternalSpeed(0);
     
-    const preReadInterval = setInterval(async () => {
-      logger.debug('[Refuel] Pre-read tick - isConnected:', isConnectedRef.current);
+    // Ref para guardar o interval (para cleanup correto)
+    let preReadInterval: NodeJS.Timeout | null = null;
+    
+    // CORREÇÃO: Delay inicial de 1 segundo para garantir que:
+    // 1. O Index.tsx já executou stopPolling()
+    // 2. Qualquer leitura pendente do polling terminou
+    // 3. O barramento Bluetooth está livre
+    const startupDelay = setTimeout(() => {
+      logger.debug('[Refuel] Iniciando loop de pré-leitura (velocidade + Fuel Trim)');
       
-      if (!isConnectedRef.current) {
-        logger.debug('[Refuel] Pre-read - desconectado, pulando');
-        return;
-      }
-      
-      // 1. Ler velocidade diretamente do OBD
-      const obdSpeed = await readSpeedRef.current();
-      if (obdSpeed !== null) {
-        internalSpeedRef.current = obdSpeed;
-        setInternalSpeed(obdSpeed);
-        logger.debug('[Refuel] Pre-read - velocidade OBD:', obdSpeed);
-      }
-      
-      // 2. Ler Fuel Trim (para mostrar valores antes de andar)
-      const stft = await readSTFTRef.current();
-      const ltft = await readLTFTRef.current();
-      
-      if (stft !== null) {
-        setCurrentSTFT(stft);
-        logger.debug('[Refuel] Pre-read - STFT:', stft);
-      }
-      if (ltft !== null) {
-        setCurrentLTFT(ltft);
-        logger.debug('[Refuel] Pre-read - LTFT:', ltft);
-      }
-    }, 2000); // A cada 2 segundos
+      preReadInterval = setInterval(async () => {
+        logger.debug('[Refuel] Pre-read tick - isConnected:', isConnectedRef.current);
+        
+        if (!isConnectedRef.current) {
+          logger.debug('[Refuel] Pre-read - desconectado, pulando');
+          return;
+        }
+        
+        // 1. Ler velocidade diretamente do OBD
+        const obdSpeed = await readSpeedRef.current();
+        if (obdSpeed !== null) {
+          internalSpeedRef.current = obdSpeed;
+          setInternalSpeed(obdSpeed);
+          logger.debug('[Refuel] Pre-read - velocidade OBD:', obdSpeed);
+        }
+        
+        // 2. Ler Fuel Trim (para mostrar valores antes de andar)
+        const stft = await readSTFTRef.current();
+        const ltft = await readLTFTRef.current();
+        
+        if (stft !== null) {
+          setCurrentSTFT(stft);
+          logger.debug('[Refuel] Pre-read - STFT:', stft);
+        }
+        if (ltft !== null) {
+          setCurrentLTFT(ltft);
+          logger.debug('[Refuel] Pre-read - LTFT:', ltft);
+        }
+      }, 2000); // A cada 2 segundos após o delay inicial
+    }, 1000); // Aguardar 1 segundo antes de iniciar pré-leitura
     
     return () => {
       logger.debug('[Refuel] Cleanup loop de pré-leitura');
-      clearInterval(preReadInterval);
+      clearTimeout(startupDelay);
+      if (preReadInterval) {
+        clearInterval(preReadInterval);
+      }
     };
   }, [mode, isConnected]);
   
