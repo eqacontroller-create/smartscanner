@@ -165,7 +165,9 @@ export function RefuelResult({
         {hasForensicData && forensicResult!.state === 'adapting' && forensicResult!.adaptationProgress && (
           <AdaptationProgress 
             progress={forensicResult!.adaptationProgress}
-            fuelContext={fuelContext || 'unknown'}
+            context={fuelContext || 'unknown'}
+            stftCurrent={forensicResult!.stftAverage}
+            ltftDelta={forensicResult!.ltftDelta}
           />
         )}
         
