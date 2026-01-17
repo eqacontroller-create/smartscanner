@@ -19,9 +19,9 @@ export function AnimatedGauge({ phase }: AnimatedGaugeProps) {
       setNeedleAngle(-135);
       setActiveLeds([]);
     } else if (phase === 'boot') {
-      // Animação suave com bezier curves
+      // Animação suave e majestosa com bezier curves
       let startTime: number | null = null;
-      const totalDuration = 1200; // ms
+      const totalDuration = 2800; // ms - mais devagar para presença
       
       const animate = (timestamp: number) => {
         if (!startTime) startTime = timestamp;

@@ -30,9 +30,9 @@ export const SplashScreen = memo(function SplashScreen({ phase, onSkip }: Splash
   useEffect(() => {
     if (phase === 'boot' && !hasPlayedSound.current) {
       hasPlayedSound.current = true;
-      // Sincronizado com a animação visual
+      // Sincronizado com a animação visual - volume mais alto para presença
       setTimeout(() => {
-        playIgnitionSound(0.25);
+        playIgnitionSound(0.55);
       }, 50);
     }
     
