@@ -931,12 +931,52 @@ export default function Help() {
             ]}
           />
 
+          {/* Ilustração: Fluxo de Corrida */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Car className="h-4 w-4 text-primary" />
+                Fluxo de uma Corrida
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/help/financial-ride-flow.png" 
+                alt="Fluxo mostrando: início da corrida, durante viagem, fim da corrida e lucro calculado"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>O sistema detecta automaticamente início e fim de corrida, calcula custos e mostra o lucro real.</p>
+            </div>
+          </div>
+
           <HelpCard
             title="Histórico do Dia (Fechamento de Caixa)"
             description="No final do dia, veja um resumo completo: total de corridas, quilômetros rodados, custo total e lucro líquido. Ótimo para controle financeiro."
             icon={History}
             variant="success"
           />
+
+          {/* Ilustração: Resumo Diário */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Exemplo de Fechamento do Dia
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/help/financial-daily-summary.png" 
+                alt="Dashboard mostrando resumo diário: corridas, km, custos, receita e lucro"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Veja todas as métricas do dia: quantidade de corridas, quilometragem, custos e lucro líquido em cards coloridos.</p>
+            </div>
+          </div>
 
           <HelpCard
             title="Recuperação de Corridas"
@@ -1021,6 +1061,26 @@ export default function Help() {
             </div>
           </div>
 
+          {/* Ilustração: Estados do Botão de Voz */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Mic className="h-4 w-4 text-primary" />
+                Estados do Botão de Voz
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/help/jarvis-voice-states.png" 
+                alt="Estados do botão Jarvis: Inativo, Ouvindo, Processando e Falando"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>Inativo (cinza), Ouvindo (azul pulsando), Processando (loading) e Falando (ondas verdes).</p>
+            </div>
+          </div>
+
           <HelpCard
             title="Ativar e Desativar"
             description="Use o botão do microfone para falar com o Jarvis. Nas configurações, você pode ativar a 'Escuta Contínua' e definir uma 'Palavra de Ativação' como 'Jarvis'."
@@ -1034,6 +1094,26 @@ export default function Help() {
             icon={Bell}
             variant="default"
           />
+
+          {/* Ilustração: Tipos de Alertas */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <div className="p-3 bg-muted/30 border-b border-border">
+              <h4 className="font-medium text-foreground text-sm flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" />
+                Tipos de Alertas Automáticos
+              </h4>
+            </div>
+            <div className="p-2">
+              <img 
+                src="/help/jarvis-alerts-types.png" 
+                alt="Cards de alertas: Temperatura Alta, Bateria Baixa, RPM Alto, Manutenção e Velocidade"
+                className="w-full rounded-lg"
+              />
+            </div>
+            <div className="p-3 bg-muted/20 text-xs text-muted-foreground">
+              <p>O Jarvis monitora e alerta verbalmente sobre condições críticas do veículo em tempo real.</p>
+            </div>
+          </div>
 
           <HelpCard
             title="Integração com Diagnóstico Visual"
