@@ -149,6 +149,10 @@ export function useRefuelMonitor({
   const closedLoopAnnouncedRef = useRef(false);
   const lastFuelSystemCheckRef = useRef(0);
   
+  // CORREÇÃO v2: Debounce para Open Loop (evitar pausas por acelerações curtas)
+  const openLoopStartRef = useRef<number | null>(null);
+  const OPEN_LOOP_DEBOUNCE_MS = 3000; // Só pausar se Open Loop persistir 3+ segundos
+  
   // Refs para monitoramento (evitar re-renders e memory leaks)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startOdometerRef = useRef(0);
@@ -1263,32 +1267,46 @@ export function useRefuelMonitor({
           const inClosedLoop = isClosedLoop(status);
           setIsClosedLoopActive(inClosedLoop);
           
-          // Detectar mudança de estado para anunciar
-          if (isClosedLoopRef.current !== inClosedLoop) {
-            if (!inClosedLoop) {
-              // Entrou em Open Loop - pausar coleta
+          // CORREÇÃO v2: Debounce para Open Loop
+          if (!inClosedLoop) {
+            // Iniciar contador de debounce se ainda não iniciado
+            if (!openLoopStartRef.current) {
+              openLoopStartRef.current = now;
+            }
+            
+            const openLoopDuration = now - openLoopStartRef.current;
+            
+            // Só anunciar pausa se Open Loop persistir por 3+ segundos
+            // E apenas para motor frio (não para aceleração normal)
+            if (openLoopDuration >= OPEN_LOOP_DEBOUNCE_MS) {
               if (status === 'open_loop_cold' && !closedLoopAnnouncedRef.current) {
                 speakRef.current('Aguardando aquecimento do motor. A análise será retomada quando atingir temperatura ideal.');
                 closedLoopAnnouncedRef.current = true;
-              } else if (status === 'open_loop_load' && !closedLoopAnnouncedRef.current) {
-                speakRef.current('Aceleração detectada. Análise pausada temporariamente.');
-                closedLoopAnnouncedRef.current = true;
               }
-            } else {
-              // Voltou ao Closed Loop - retomar coleta
-              if (closedLoopAnnouncedRef.current) {
-                speakRef.current('Motor aquecido. Retomando análise de combustível.');
-                closedLoopAnnouncedRef.current = false;
+              // CORREÇÃO v2: Para open_loop_load, NÃO anunciar (é normal durante direção)
+              // Apenas logar e pular Fuel Trim silenciosamente
+              if (status === 'open_loop_load') {
+                logger.debug('[Refuel] Open Loop (aceleração) persistente - pulando Fuel Trim silenciosamente');
               }
             }
-            isClosedLoopRef.current = inClosedLoop;
+            
+            // Flag para pular Fuel Trim (sempre que em Open Loop)
+            skipFuelTrimRead = true;
+            logger.debug('[Refuel] Open Loop detectado:', status, 
+              `(${(openLoopDuration / 1000).toFixed(1)}s) - pulando leitura de Fuel Trim`);
+            
+          } else {
+            // Voltou ao Closed Loop - resetar debounce
+            openLoopStartRef.current = null;
+            
+            // Anunciar retomada se tínhamos pausado por motor frio
+            if (closedLoopAnnouncedRef.current) {
+              speakRef.current('Motor aquecido. Retomando análise de combustível.');
+              closedLoopAnnouncedRef.current = false;
+            }
           }
           
-          // CORREÇÃO: Flag para pular Fuel Trim, NÃO return prematuro
-          if (!inClosedLoop) {
-            logger.debug('[Refuel] Open Loop detectado:', status, '- pulando leitura de Fuel Trim');
-            skipFuelTrimRead = true;
-          }
+          isClosedLoopRef.current = inClosedLoop;
         }
       } else {
         // Se não verificou PID 03 neste ciclo, usar estado anterior do ref

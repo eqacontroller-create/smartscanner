@@ -251,17 +251,35 @@ export const FUEL_CONTEXT_LABELS: Record<FuelChangeContext, string> = {
 
 /**
  * Limiares padrão para análise
+ * CORREÇÃO v2: Thresholds ajustados para maior precisão e consistência
  */
 export const DEFAULT_FUEL_THRESHOLDS: FuelAnalysisThresholds = {
-  sameFuelMaxTrim: 12,
-  sameFuelWarningTrim: 8,
-  fuelSwitchExpectedTrim: 25,
-  fuelSwitchMaxTrim: 35,
-  o2LeanThreshold: 0.2,
-  o2RichThreshold: 0.8,
-  o2FrozenDuration: 5,
-  ltftMinDelta: 3,
-  ltftMaxAdaptation: 25,
-  minAnalysisDistance: 2,
-  recommendedDistance: 5,
+  sameFuelMaxTrim: 15,           // Era 12 - aumentar tolerância para variações normais
+  sameFuelWarningTrim: 10,       // Era 8 - margem maior antes de alertar
+  fuelSwitchExpectedTrim: 25,    // Manter
+  fuelSwitchMaxTrim: 40,         // Era 35 - Flex pode variar mais
+  o2LeanThreshold: 0.2,          // Manter
+  o2RichThreshold: 0.8,          // Manter
+  o2FrozenDuration: 10,          // Era 5 - dobrar tolerância para sensor travado
+  ltftMinDelta: 5,               // Era 3 - exigir mudança maior para considerar adaptação
+  ltftMaxAdaptation: 25,         // Manter
+  minAnalysisDistance: 3,        // Era 2 - mais dados para análise
+  recommendedDistance: 7,        // Era 5 - distância ideal para alta confiança
+};
+
+/**
+ * Configurações para warm-up de amostras
+ * Ignora primeiras leituras que podem ter ruído
+ */
+export const SAMPLE_WARMUP_CONFIG = {
+  /** Número de amostras iniciais a descartar */
+  discardFirstSamples: 3,
+  /** Mínimo de amostras para média móvel confiável */
+  minSamplesForAverage: 10,
+  /** Amostras recentes para média móvel (rolling window) */
+  rollingWindowSize: 15,
+  /** Mínimo de amostras STFT para confiança alta */
+  minSTFTForHighConfidence: 20,
+  /** Mínimo de leituras O2 antes de diagnosticar problema mecânico */
+  minO2ForMechanicalDiagnosis: 10,
 };
