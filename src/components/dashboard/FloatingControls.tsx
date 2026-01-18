@@ -4,11 +4,11 @@ import { RideRecoveryDialog } from '@/components/financial/RideRecoveryDialog';
 import { RefuelButton } from '@/components/refuel/RefuelButton';
 import { RefuelModal } from '@/components/refuel/RefuelModal';
 import { RefuelFlowSelector } from '@/components/refuel/RefuelFlowSelector';
-import { FuelQualityMonitor } from '@/components/refuel/FuelQualityMonitor';
 import { RefuelResult } from '@/components/refuel/RefuelResult';
 import { RefuelSettingsSheet } from '@/components/refuel/RefuelSettingsSheet';
 import { Button } from '@/components/ui/button';
-import { X, Fuel, Activity } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { X, Fuel, Activity, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
@@ -153,7 +153,44 @@ export function FloatingControls(props: FloatingControlsProps) {
 
       {(props.refuelMode === 'monitoring' || props.refuelMode === 'analyzing') && (
         <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
-          <FuelQualityMonitor mode={props.refuelMode} distanceMonitored={props.distanceMonitored} currentSTFT={props.currentSTFT} currentLTFT={props.currentLTFT} anomalyActive={props.anomalyActive} anomalyDuration={props.anomalyDuration} fuelTrimHistory={props.fuelTrimHistory} settings={props.refuelSettings} frozenSettings={props.frozenSettings} isSyncing={props.isSyncing} flowType={props.refuelFlowType} fuelSystemStatus={props.fuelSystemStatus} isClosedLoopActive={props.isClosedLoopActive} />
+          <div className={cn(
+            'rounded-xl border-2 p-3 backdrop-blur-sm',
+            props.anomalyActive 
+              ? 'bg-destructive/10 border-destructive/50' 
+              : 'bg-primary/5 border-primary/30'
+          )}>
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'p-2 rounded-full',
+                props.anomalyActive ? 'bg-destructive/20' : 'bg-primary/20'
+              )}>
+                <FlaskConical className={cn(
+                  'h-5 w-5',
+                  props.anomalyActive ? 'text-destructive' : 'text-primary'
+                )} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  'text-sm font-medium',
+                  props.anomalyActive ? 'text-destructive' : 'text-primary'
+                )}>
+                  {props.refuelFlowType === 'quick-test' ? 'Teste Rápido' : 'Monitorando Combustível'}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Progress 
+                    value={Math.min((props.distanceMonitored / props.refuelSettings.monitoringDistance) * 100, 100)} 
+                    className="h-1.5 flex-1" 
+                  />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {props.distanceMonitored.toFixed(1)} / {props.refuelSettings.monitoringDistance} km
+                  </span>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={props.cancelRefuel} className="h-8 w-8 flex-shrink-0">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
       
