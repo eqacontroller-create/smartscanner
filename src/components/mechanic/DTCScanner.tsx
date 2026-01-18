@@ -29,6 +29,7 @@ import { generateVoiceAlert, getDTCSeverity } from '@/lib/dtcNotifications';
 import { generateDTCReportPDF, downloadPDF, type ScanAuditData } from '@/services/report/DTCScanReportService';
 import { useToast } from '@/hooks/use-toast';
 import { useOBD } from '@/hooks/useOBD';
+import { scanFeedback } from '@/lib/hapticFeedback';
 
 type ScanState = 'idle' | 'scanning' | 'clearing' | 'clear' | 'errors';
 
@@ -532,6 +533,8 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
 
       if (allDTCs.length > 0) {
         addLog(`⚠️ ${module.shortName}: ${allDTCs.length} DTC(s): ${allDTCs.map(d => d.code).join(', ')}`);
+        // Haptic feedback: DTC encontrado
+        scanFeedback('dtcFound');
       } else {
         addLog(`✅ ${module.shortName}: Sem códigos`);
       }
@@ -799,6 +802,8 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
             description: `${verifyResult.confirmed.length} erro(s) confirmado(s), ${discardedCount} ruído(s) eliminado(s)`,
             duration: 5000,
           });
+          // Haptic feedback: Double Check confirmou remoção de ruídos
+          scanFeedback('doubleCheck');
         }
         
         uniqueDTCs = verifyResult.confirmed;
@@ -895,12 +900,16 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         addLog('✅ Nenhum código de erro encontrado');
         updateStep('process', 'done');
         setScanState('clear');
+        // Haptic feedback: Scan completo sem erros!
+        scanFeedback('noDtcs');
       } else {
         const uniqueModules = new Set(uniqueDTCs.map(d => d.module?.id)).size;
         addLog(`⚠️ Total: ${uniqueDTCs.length} DTC(s) em ${uniqueModules} módulo(s)`);
         updateStep('process', 'done');
         setDtcs(uniqueDTCs);
         setScanState('errors');
+        // Haptic feedback: Scan completo com erros
+        scanFeedback('warning');
       }
     } catch (error) {
       addLog(`❌ Erro no scan: ${error}`);
