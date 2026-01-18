@@ -1,19 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Download, HelpCircle, MoreVertical, Volume2, Moon, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Car, Download, HelpCircle, Volume2, Moon, Settings, User, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { StatusIndicator } from '@/components/dashboard/StatusIndicator';
-import { SyncStatus } from '@/components/dashboard/SyncStatus';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
 import { JarvisVoiceButton } from '@/components/dashboard/JarvisVoiceButton';
-import { ProfileAvatar } from '@/components/profile';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { VehicleProfile, DetectedVehicle } from '@/lib/vehicleProfiles';
 import type { ConnectionStatus } from '@/contexts/OBDContext';
 
@@ -98,30 +97,61 @@ function AppHeaderComponent({
             </div>
           </div>
           
-          {/* Ações - Layout simplificado */}
+          {/* Ações - Layout limpo: Avatar(menu) + Jarvis + Status */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Avatar sempre visível */}
-            {onOpenProfile && (
-              <ProfileAvatar
-                avatarUrl={userProfile?.avatarUrl}
-                displayName={userProfile?.displayName}
-                email={userProfile?.email}
-                size="sm"
-                onClick={onOpenProfile}
-              />
-            )}
-            
-            {/* Sync status compacto */}
-            <SyncStatus synced={syncStatus.synced} lastSyncedAt={syncStatus.loading ? null : new Date()} />
-            
-            {/* Menu dropdown com todas as opções */}
+            {/* Avatar como trigger do menu principal */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
+                <button className="focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-full transition-all hover:opacity-80">
+                  <Avatar className="h-8 w-8 border-2 border-primary/20 hover:border-primary/50 transition-colors cursor-pointer">
+                    {userProfile?.avatarUrl ? (
+                      <AvatarImage src={userProfile.avatarUrl} alt={userProfile.displayName || 'Usuário'} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                      {userProfile?.displayName?.charAt(0)?.toUpperCase() || 
+                       userProfile?.email?.charAt(0)?.toUpperCase() || 
+                       <User className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[180px] bg-popover z-50">
+              <DropdownMenuContent align="end" className="min-w-[200px] bg-popover z-50">
+                {/* Status de Sincronização */}
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs font-normal text-muted-foreground py-2">
+                  {syncStatus.loading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      <span>Sincronizando...</span>
+                    </>
+                  ) : syncStatus.synced ? (
+                    <>
+                      <Cloud className="h-3.5 w-3.5 text-green-500" />
+                      <span>Dados sincronizados</span>
+                    </>
+                  ) : (
+                    <>
+                      <CloudOff className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Offline - dados locais</span>
+                    </>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {/* Meu Perfil */}
+                {onOpenProfile && (
+                  <DropdownMenuItem onClick={onOpenProfile}>
+                    <User className="h-4 w-4 mr-2" />
+                    Meu Perfil
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuItem onClick={onOpenSettings}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configurações
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
                 <DropdownMenuItem asChild>
                   <Link to="/instalar" className="flex items-center gap-2">
                     <Download className="h-4 w-4" />
@@ -134,11 +164,9 @@ function AppHeaderComponent({
                     Central de Ajuda
                   </Link>
                 </DropdownMenuItem>
+                
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onOpenSettings}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configurações
-                </DropdownMenuItem>
+                
                 <DropdownMenuItem 
                   onClick={onTestAudio} 
                   disabled={!isJarvisSupported || isSpeaking}
@@ -146,14 +174,12 @@ function AppHeaderComponent({
                   <Volume2 className="h-4 w-4 mr-2" />
                   Testar Áudio
                 </DropdownMenuItem>
+                
                 {isWakeLockActive && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem disabled className="text-blue-400">
-                      <Moon className="h-4 w-4 mr-2" />
-                      Modo Insônia ativo
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem disabled className="text-blue-400">
+                    <Moon className="h-4 w-4 mr-2" />
+                    Modo Insônia ativo
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
