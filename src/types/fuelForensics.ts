@@ -178,6 +178,9 @@ export interface FuelDiagnosticResult {
   // Recomendação
   recommendation: string;
   
+  // Detecção automática de tipo de combustível
+  fuelTypeDetection?: FuelTypeDetection;
+  
   // Timestamp
   analyzedAt: number;
 }
@@ -249,6 +252,55 @@ export const FUEL_CONTEXT_LABELS: Record<FuelChangeContext, string> = {
   gas_to_ethanol: 'Gasolina → Etanol',
   ethanol_to_gas: 'Etanol → Gasolina',
   unknown: 'Não sei',
+};
+
+/**
+ * Tipo de combustível inferido pelo padrão de LTFT
+ * Baseado no comportamento da ECU de veículos Flex
+ */
+export type InferredFuelType = 
+  | 'gasoline'      // LTFT < +5% - Gasolina pura ou predominante
+  | 'gasoline_e27'  // LTFT +5% a +12% - Gasolina brasileira (E27)
+  | 'ethanol_mix'   // LTFT +12% a +20% - Mistura Etanol/Gasolina
+  | 'ethanol_pure'  // LTFT > +20% - Etanol predominante
+  | 'unknown';      // Dados insuficientes
+
+/**
+ * Resultado da detecção de combustível
+ */
+export interface FuelTypeDetection {
+  inferredType: InferredFuelType;
+  confidence: 'low' | 'medium' | 'high';
+  estimatedEthanolPercent: number; // 0-100%
+  ltftValue: number;
+  reason: string;
+}
+
+/**
+ * Labels para exibição do tipo de combustível
+ */
+export const INFERRED_FUEL_LABELS: Record<InferredFuelType, string> = {
+  gasoline: 'Gasolina Pura',
+  gasoline_e27: 'Gasolina (E27)',
+  ethanol_mix: 'Mistura Flex',
+  ethanol_pure: 'Etanol',
+  unknown: 'Analisando...',
+};
+
+export const INFERRED_FUEL_COLORS: Record<InferredFuelType, string> = {
+  gasoline: 'text-amber-500',
+  gasoline_e27: 'text-orange-500', 
+  ethanol_mix: 'text-green-500',
+  ethanol_pure: 'text-emerald-500',
+  unknown: 'text-muted-foreground',
+};
+
+export const INFERRED_FUEL_BG_COLORS: Record<InferredFuelType, string> = {
+  gasoline: 'bg-amber-500/10',
+  gasoline_e27: 'bg-orange-500/10', 
+  ethanol_mix: 'bg-green-500/10',
+  ethanol_pure: 'bg-emerald-500/10',
+  unknown: 'bg-muted',
 };
 
 /**

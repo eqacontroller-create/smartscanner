@@ -23,6 +23,7 @@ import { RefuelMode, RefuelFlowType, RefuelSettings, FuelTrimSample } from '@/ty
 import { FuelTrimChart } from './FuelTrimChart';
 import { FuelGauge } from './FuelGauge';
 import { O2SensorMonitor } from './O2SensorMonitor';
+import { FuelTypeIndicator } from './FuelTypeIndicator';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -35,9 +36,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { O2SensorReading, FuelSystemStatus } from '@/types/fuelForensics';
 import { FUEL_SYSTEM_LABELS } from '@/types/fuelForensics';
+import { detectFuelType } from '@/services/fuel/FuelStateMachine';
 
 interface FuelMonitoringDashboardProps {
   mode: RefuelMode;
@@ -82,6 +84,13 @@ export function FuelMonitoringDashboard({
   const isQuickTest = flowType === 'quick-test';
   const activeSettings = frozenSettings || settings;
   const progress = (distanceMonitored / activeSettings.monitoringDistance) * 100;
+  
+  // Detectar tipo de combustível em tempo real
+  const fuelTypeDetection = useMemo(() => {
+    if (currentLTFT === null) return null;
+    const stftSamples = fuelTrimHistory.map(s => s.stft);
+    return detectFuelType(currentLTFT, stftSamples);
+  }, [currentLTFT, fuelTrimHistory]);
   
   // Detectar se configurações mudaram durante monitoramento
   const settingsChanged = frozenSettings && 
@@ -299,6 +308,17 @@ export function FuelMonitoringDashboard({
             }}
           />
         </div>
+        
+        {/* Indicador de tipo de combustível detectado */}
+        {fuelTypeDetection && fuelTypeDetection.inferredType !== 'unknown' && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
+              <Fuel className="h-3.5 w-3.5" />
+              Combustível Detectado
+            </div>
+            <FuelTypeIndicator detection={fuelTypeDetection} showPercentage />
+          </div>
+        )}
         
         {/* Alerta de anomalia */}
         {anomalyActive && (

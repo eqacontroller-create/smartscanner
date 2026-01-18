@@ -11,6 +11,8 @@ import type {
   FuelAdaptationProgress,
   O2SensorReading,
   FuelAnalysisThresholds,
+  FuelTypeDetection,
+  InferredFuelType,
 } from '@/types/fuelForensics';
 import { DEFAULT_FUEL_THRESHOLDS, SAMPLE_WARMUP_CONFIG } from '@/types/fuelForensics';
 
@@ -308,6 +310,87 @@ export function analyzeTrend(
 }
 
 /**
+ * Detecta o tipo de combustível atual baseado no padrão de LTFT
+ * 
+ * Lógica:
+ * - LTFT < +5%: Gasolina pura (ou E10 internacional)
+ * - LTFT +5% a +12%: Gasolina brasileira E27
+ * - LTFT +12% a +20%: Mistura Flex (usuário alterna combustíveis)
+ * - LTFT > +20%: Etanol predominante (E85+)
+ * 
+ * @param ltftCurrent - Valor atual do LTFT
+ * @param stftSamples - Amostras de STFT para validação
+ * @returns Detecção do tipo de combustível com confiança
+ */
+export function detectFuelType(
+  ltftCurrent: number | null,
+  stftSamples: number[] = []
+): FuelTypeDetection {
+  // Dados insuficientes
+  if (ltftCurrent === null) {
+    return {
+      inferredType: 'unknown',
+      confidence: 'low',
+      estimatedEthanolPercent: 0,
+      ltftValue: 0,
+      reason: 'Aguardando leitura do LTFT...',
+    };
+  }
+  
+  // Calcular estabilidade do STFT para confiança
+  const stftAverage = stftSamples.length > 0 
+    ? calculateRollingAverage(stftSamples)
+    : 0;
+  const stftStable = Math.abs(stftAverage) < 10;
+  
+  // Thresholds de detecção (calibrados para veículos brasileiros)
+  const GASOLINE_PURE_MAX = 5;    // LTFT até +5%
+  const GASOLINE_E27_MAX = 12;    // LTFT +5% a +12%
+  const ETHANOL_MIX_MAX = 20;     // LTFT +12% a +20%
+  // > +20% = Etanol puro
+  
+  let inferredType: InferredFuelType;
+  let estimatedEthanolPercent: number;
+  let reason: string;
+  
+  if (ltftCurrent < GASOLINE_PURE_MAX) {
+    inferredType = 'gasoline';
+    estimatedEthanolPercent = Math.max(0, ltftCurrent * 2); // ~0-10%
+    reason = 'LTFT baixo indica gasolina pura ou E10.';
+  } else if (ltftCurrent < GASOLINE_E27_MAX) {
+    inferredType = 'gasoline_e27';
+    estimatedEthanolPercent = 20 + (ltftCurrent - 5) * 1.5; // ~20-30%
+    reason = 'LTFT moderado típico de gasolina brasileira (E27).';
+  } else if (ltftCurrent < ETHANOL_MIX_MAX) {
+    inferredType = 'ethanol_mix';
+    estimatedEthanolPercent = 40 + (ltftCurrent - 12) * 3; // ~40-65%
+    reason = 'LTFT indica mistura Flex, alternando combustíveis.';
+  } else {
+    inferredType = 'ethanol_pure';
+    estimatedEthanolPercent = Math.min(100, 70 + (ltftCurrent - 20) * 1.5); // ~70-100%
+    reason = 'LTFT alto indica etanol predominante no tanque.';
+  }
+  
+  // Ajustar confiança
+  let confidence: 'low' | 'medium' | 'high';
+  if (stftSamples.length < 5 || !stftStable) {
+    confidence = 'low';
+  } else if (stftSamples.length < 15) {
+    confidence = 'medium';
+  } else {
+    confidence = 'high';
+  }
+  
+  return {
+    inferredType,
+    confidence,
+    estimatedEthanolPercent: Math.round(estimatedEthanolPercent),
+    ltftValue: ltftCurrent,
+    reason,
+  };
+}
+
+/**
  * Calcula confiança baseada em múltiplos fatores
  * CORREÇÃO v2: Sistema de pontuação mais preciso
  */
@@ -501,6 +584,9 @@ export function evaluateFuelState(
       break;
   }
   
+  // NOVO: Detectar tipo de combustível via LTFT
+  const fuelTypeDetection = detectFuelType(ltftCurrent, data.stftSamples);
+  
   return {
     ...baseResult,
     state,
@@ -511,6 +597,7 @@ export function evaluateFuelState(
     anomalyType,
     anomalyDetails,
     recommendation,
+    fuelTypeDetection,
   } as FuelDiagnosticResult;
 }
 

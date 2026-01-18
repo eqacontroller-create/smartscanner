@@ -18,7 +18,6 @@ import {
   Brain,
   Wrench,
   Activity,
-  ThermometerSun,
   Zap
 } from 'lucide-react';
 import { RefuelEntry, RefuelFlowType } from '@/types/refuelTypes';
@@ -26,6 +25,7 @@ import { formatCurrency } from '@/types/tripSettings';
 import { cn } from '@/lib/utils';
 import { TankLevelCheck } from './TankLevelCheck';
 import { AdaptationProgress } from './AdaptationProgress';
+import { FuelTypeIndicator } from './FuelTypeIndicator';
 import type { FuelDiagnosticResult, FuelChangeContext } from '@/types/fuelForensics';
 import { 
   FUEL_STATE_LABELS, 
@@ -158,6 +158,19 @@ export function RefuelResult({
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Fuel className="h-4 w-4" />
             <span>{FUEL_CONTEXT_LABELS[fuelContext]}</span>
+          </div>
+        )}
+        
+        {/* Tipo de combustível detectado */}
+        {hasForensicData && forensicResult!.fuelTypeDetection && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground uppercase text-center">
+              Combustível Detectado
+            </div>
+            <FuelTypeIndicator 
+              detection={forensicResult!.fuelTypeDetection} 
+              showPercentage 
+            />
           </div>
         )}
         
