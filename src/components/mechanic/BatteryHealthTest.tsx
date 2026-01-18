@@ -28,7 +28,6 @@ import {
   XCircle,
   Activity,
   Info,
-  Save,
   Power,
   History,
 } from 'lucide-react';
@@ -55,6 +54,12 @@ import { ParasiticDrawTest } from './ParasiticDrawTest';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { hapticFeedback } from '@/lib/hapticFeedback';
+import { useOBD } from '@/hooks/useOBD';
+
+// ============= MUTEX CONSTANTS =============
+const MUTEX_OWNER = 'battery-health-test';
+const MUTEX_PRIORITY = 2 as const; // Baixa prioridade (testes manuais)
+const MUTEX_TIMEOUT_MS = 60000; // 60s para teste completo
 
 // ============= TYPES =============
 
@@ -104,6 +109,10 @@ export function BatteryHealthTest({
   onSpeak,
   vehicleInfo,
 }: BatteryHealthTestProps) {
+  // === MUTEX GLOBAL ===
+  const { acquireOBDLock, releaseOBDLock, isOBDBusy, obdLockOwner } = useOBD();
+  const hasLockRef = useRef(false);
+  
   // Test state
   const [phase, setPhase] = useState<TestPhase>('idle');
   const [statusMessage, setStatusMessage] = useState(PHASE_INSTRUCTIONS.idle);
@@ -126,12 +135,17 @@ export function BatteryHealthTest({
   // Abort controller for cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // Cleanup on unmount
+  // Cleanup on unmount - liberar lock se necessário
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      // Liberar mutex ao desmontar
+      if (hasLockRef.current) {
+        releaseOBDLock(MUTEX_OWNER);
+        hasLockRef.current = false;
+      }
     };
-  }, []);
+  }, [releaseOBDLock]);
   
   // Update instruction when phase changes
   useEffect(() => {
@@ -187,6 +201,25 @@ export function BatteryHealthTest({
       setPhase('error');
       return;
     }
+    
+    // === ADQUIRIR MUTEX GLOBAL ===
+    addLog('[BATTERY] 🔒 Aguardando acesso exclusivo ao barramento...');
+    setStatusMessage('Aguardando acesso ao barramento...');
+    
+    const hasLock = await acquireOBDLock(MUTEX_OWNER, MUTEX_PRIORITY, MUTEX_TIMEOUT_MS);
+    
+    if (!hasLock) {
+      addLog('[BATTERY] ❌ Não foi possível obter acesso exclusivo');
+      toast.error('Barramento ocupado', {
+        description: `Em uso por: ${obdLockOwner || 'outro componente'}`,
+      });
+      setError(`Barramento ocupado por: ${obdLockOwner || 'outro componente'}`);
+      setPhase('error');
+      return;
+    }
+    
+    hasLockRef.current = true;
+    addLog('[BATTERY] 🔓 Acesso exclusivo obtido');
     
     // Stop polling if active
     if (isPolling) {
@@ -260,8 +293,13 @@ export function BatteryHealthTest({
       setError(message);
       setPhase('error');
       addLog(`[BATTERY] Erro: ${message}`);
+    } finally {
+      // === LIBERAR MUTEX ===
+      releaseOBDLock(MUTEX_OWNER);
+      hasLockRef.current = false;
+      addLog('[BATTERY] 🔓 Barramento liberado');
     }
-  }, [isConnected, isPolling, stopPolling, sendCommand, addLog, onSpeak]);
+  }, [isConnected, isPolling, stopPolling, sendCommand, addLog, onSpeak, acquireOBDLock, releaseOBDLock, obdLockOwner]);
   
   // Cancel test handler
   const handleCancel = useCallback(() => {
@@ -269,7 +307,13 @@ export function BatteryHealthTest({
     setPhase('idle');
     setStatusMessage(PHASE_INSTRUCTIONS.idle);
     addLog('[BATTERY] Teste cancelado pelo usuário');
-  }, [addLog]);
+    // === LIBERAR MUTEX ===
+    if (hasLockRef.current) {
+      releaseOBDLock(MUTEX_OWNER);
+      hasLockRef.current = false;
+      addLog('[BATTERY] 🔓 Barramento liberado (cancelamento)');
+    }
+  }, [addLog, releaseOBDLock]);
   
   // Reset for new test
   const handleReset = useCallback(() => {
