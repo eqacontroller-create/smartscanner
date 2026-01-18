@@ -166,14 +166,15 @@ export const VehicleHealthService = {
   },
 
   /**
-   * Busca DTCs do último scan
+   * Busca DTCs do último scan (filtro explícito por user_id)
    */
   async getActiveDTCs(userId: string, vin?: string | null): Promise<DTCHealthStatus> {
     try {
-      // Primeiro, buscar o último scan
+      // Primeiro, buscar o último scan (filtrado por user_id)
       let scanQuery = supabase
         .from('dtc_scans')
         .select('id, scan_date, total_dtcs')
+        .eq('user_id', userId)
         .order('scan_date', { ascending: false })
         .limit(1);
       

@@ -103,9 +103,11 @@ export const ScanHistoryService = {
   },
 
   /**
-   * Busca histórico de scans por VIN
+   * Busca histórico de scans por VIN (filtro explícito por user_id)
    */
-  async getByVIN(vin: string): Promise<ScanHistoryEntry[]> {
+  async getByVIN(userId: string, vin: string): Promise<ScanHistoryEntry[]> {
+    if (!userId) return [];
+    
     try {
       const { data: scans, error } = await supabase
         .from('dtc_scans')
@@ -126,6 +128,7 @@ export const ScanHistoryService = {
             module_name
           )
         `)
+        .eq('user_id', userId)
         .eq('vin', vin)
         .order('scan_date', { ascending: false })
         .limit(20);
@@ -143,9 +146,11 @@ export const ScanHistoryService = {
   },
 
   /**
-   * Busca scans recentes
+   * Busca scans recentes (filtro explícito por user_id)
    */
-  async getRecent(limit = 10): Promise<ScanHistoryEntry[]> {
+  async getRecent(userId: string, limit = 10): Promise<ScanHistoryEntry[]> {
+    if (!userId) return [];
+    
     try {
       const { data: scans, error } = await supabase
         .from('dtc_scans')
@@ -166,6 +171,7 @@ export const ScanHistoryService = {
             module_name
           )
         `)
+        .eq('user_id', userId)
         .order('scan_date', { ascending: false })
         .limit(limit);
 

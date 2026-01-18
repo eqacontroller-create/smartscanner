@@ -847,55 +847,57 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         }
         
         // === NOVO: Comparar com scan anterior e notificar ===
-        const previousScans = await ScanHistoryService.getRecent(2);
+        if (userId) {
+          const previousScans = await ScanHistoryService.getRecent(userId, 2);
         
-        if (previousScans.length >= 2) {
-          const currentScan = previousScans[0];
-          const previousScan = previousScans[1];
-          
-          const comparison = ScanHistoryService.compareScanResults(previousScan, currentScan);
-          setScanComparison(comparison);
-          
-          // Notificar sobre novos erros
-          if (comparison.new.length > 0) {
-            const hasCritical = comparison.new.some(code => getDTCSeverity(code) === 'critical');
+          if (previousScans.length >= 2) {
+            const currentScan = previousScans[0];
+            const previousScan = previousScans[1];
             
-            toast({
-              title: `⚠️ ${comparison.new.length} Novo(s) Erro(s) Detectado(s)!`,
-              description: comparison.new.slice(0, 5).join(', ') + (comparison.new.length > 5 ? ` +${comparison.new.length - 5}` : ''),
-              variant: hasCritical ? 'destructive' : 'default',
-              duration: 10000,
-            });
+            const comparison = ScanHistoryService.compareScanResults(previousScan, currentScan);
+            setScanComparison(comparison);
             
-            // Alerta de voz via Jarvis
-            if (onSpeakAlert) {
-              const voiceMessage = generateVoiceAlert(comparison.new, []);
-              if (voiceMessage) {
-                onSpeakAlert(voiceMessage);
+            // Notificar sobre novos erros
+            if (comparison.new.length > 0) {
+              const hasCritical = comparison.new.some(code => getDTCSeverity(code) === 'critical');
+              
+              toast({
+                title: `⚠️ ${comparison.new.length} Novo(s) Erro(s) Detectado(s)!`,
+                description: comparison.new.slice(0, 5).join(', ') + (comparison.new.length > 5 ? ` +${comparison.new.length - 5}` : ''),
+                variant: hasCritical ? 'destructive' : 'default',
+                duration: 10000,
+              });
+              
+              // Alerta de voz via Jarvis
+              if (onSpeakAlert) {
+                const voiceMessage = generateVoiceAlert(comparison.new, []);
+                if (voiceMessage) {
+                  onSpeakAlert(voiceMessage);
+                }
               }
+              
+              addLog(`🔔 Comparação: +${comparison.new.length} novo(s), -${comparison.resolved.length} resolvido(s)`);
             }
             
-            addLog(`🔔 Comparação: +${comparison.new.length} novo(s), -${comparison.resolved.length} resolvido(s)`);
-          }
-          
-          // Notificar sobre erros resolvidos (separado para não sobrescrever)
-          if (comparison.resolved.length > 0 && comparison.new.length === 0) {
-            toast({
-              title: `✅ ${comparison.resolved.length} Erro(s) Resolvido(s)!`,
-              description: comparison.resolved.slice(0, 5).join(', '),
-              duration: 8000,
-            });
-            
-            // Alerta de voz positivo
-            if (onSpeakAlert) {
-              const voiceMessage = generateVoiceAlert([], comparison.resolved);
-              if (voiceMessage) {
-                onSpeakAlert(voiceMessage);
+            // Notificar sobre erros resolvidos (separado para não sobrescrever)
+            if (comparison.resolved.length > 0 && comparison.new.length === 0) {
+              toast({
+                title: `✅ ${comparison.resolved.length} Erro(s) Resolvido(s)!`,
+                description: comparison.resolved.slice(0, 5).join(', '),
+                duration: 8000,
+              });
+              
+              // Alerta de voz positivo
+              if (onSpeakAlert) {
+                const voiceMessage = generateVoiceAlert([], comparison.resolved);
+                if (voiceMessage) {
+                  onSpeakAlert(voiceMessage);
+                }
               }
             }
+          } else {
+            setScanComparison(null);
           }
-        } else {
-          setScanComparison(null);
         }
       } catch (e) {
         addLog('⚠️ Erro ao salvar histórico');
