@@ -50,41 +50,58 @@ export function calculateRollingAverage(samples: number[]): number {
 /**
  * Avalia o estado do combustível quando usuário manteve o MESMO combustível
  * Aqui, qualquer desvio significativo indica problema (adulteração ou mecânico)
- * CORREÇÃO v2: Usa média móvel e exige mais leituras O2 para diagnóstico mecânico
+ * CORREÇÃO v3: Análise de Trim Absoluto - detecta quando ECU já se adaptou
  */
 export function evaluateSameFuel(
   data: FuelMonitoringData,
   thresholds: FuelAnalysisThresholds = DEFAULT_FUEL_THRESHOLDS
-): FuelState {
+): { state: FuelState; ltftMemoryWarning: boolean } {
   // CORREÇÃO: Usar média móvel em vez de média simples
   const stftAverage = calculateRollingAverage(data.stftSamples);
-  const totalTrim = Math.abs(stftAverage) + Math.abs(data.ltftDelta);
+  const ltftCurrent = data.ltftCurrent ?? 0;
   
-  // Se correção total > limite, algo mudou na química do combustível
-  if (totalTrim > thresholds.sameFuelMaxTrim) {
+  // CORREÇÃO v3: Total Trim = STFT + valor ABSOLUTO do LTFT atual
+  // Se LTFT está alto, indica adaptação prévia a combustível diferente
+  const totalTrimAbs = Math.abs(stftAverage) + Math.abs(ltftCurrent);
+  
+  // NOVA REGRA: Verificar memória do LTFT
+  // Se |LTFT| > 15% e usuário disse "mesmo combustível", algo está errado
+  // A ECU já se adaptou ao combustível diferente
+  const ltftMemoryThreshold = 15; // 15% é o limite para combustível "diferente"
+  const isLTFTMemoryHigh = Math.abs(ltftCurrent) > ltftMemoryThreshold;
+  
+  // Caso especial: STFT estável mas LTFT memorizado alto
+  // A ECU já se adaptou ao combustível diferente - STFT voltou a zero mas LTFT indica histórico
+  if (isLTFTMemoryHigh && Math.abs(stftAverage) < 5) {
+    // Retorna 'suspicious' com flag especial para UI
+    return { state: 'suspicious', ltftMemoryWarning: true };
+  }
+  
+  // Se Total Trim absoluto > limite máximo (considera LTFT memorizado + STFT atual)
+  if (totalTrimAbs > thresholds.sameFuelMaxTrim + ltftMemoryThreshold) {
     // CORREÇÃO: Exigir mais leituras O2 antes de diagnosticar problema mecânico
     if (data.o2Readings.length >= SAMPLE_WARMUP_CONFIG.minO2ForMechanicalDiagnosis) {
       const isO2Frozen = checkO2Frozen(data.o2Readings, thresholds.o2FrozenDuration);
       
       if (isO2Frozen) {
         // O2 travado por muito tempo = problema mecânico (sonda, vazamento)
-        return 'mechanical';
+        return { state: 'mechanical', ltftMemoryWarning: false };
       }
       
       // O2 oscilando normalmente mas STFT alto = combustível adulterado
-      return 'contaminated';
+      return { state: 'contaminated', ltftMemoryWarning: isLTFTMemoryHigh };
     }
     
     // Sem dados suficientes de O2, assumir suspeito (não mecânico)
-    return 'suspicious';
+    return { state: 'suspicious', ltftMemoryWarning: isLTFTMemoryHigh };
   }
   
-  // Verificar se está no limiar de atenção
-  if (totalTrim > thresholds.sameFuelWarningTrim) {
-    return 'suspicious';
+  // Verificar se está no limiar de atenção (considerando LTFT memorizado)
+  if (totalTrimAbs > thresholds.sameFuelWarningTrim + 10) {
+    return { state: 'suspicious', ltftMemoryWarning: isLTFTMemoryHigh };
   }
   
-  return 'stable';
+  return { state: 'stable', ltftMemoryWarning: false };
 }
 
 /**
@@ -382,29 +399,21 @@ export function evaluateFuelState(
   
   // CORREÇÃO: Usar média móvel
   const rollingAverage = calculateRollingAverage(data.stftSamples);
+  const ltftCurrent = data.ltftCurrent ?? 0;
   
-  // Base do resultado
-  const baseResult: Partial<FuelDiagnosticResult> = {
-    stftAverage: rollingAverage, // Usar média móvel
-    ltftDelta: data.ltftDelta,
-    o2Average: data.o2Average,
-    distanceMonitored: data.distanceMonitored,
-    userContext: context,
-    analyzedAt,
-    evidence: {
-      stftOutOfRange: Math.abs(rollingAverage) > thresholds.sameFuelWarningTrim,
-      ltftNotAdapting: context !== 'same_fuel' && Math.abs(data.ltftDelta) < thresholds.ltftMinDelta,
-      o2SensorFrozen: !o2Validation.isValid,
-      o2FrozenDuration: o2Validation.frozenDuration,
-    },
-  };
+  // CORREÇÃO v3: Detectar LTFT memorizado alto
+  const ltftMemoryThreshold = 15;
+  const isLTFTMemoryHigh = Math.abs(ltftCurrent) > ltftMemoryThreshold;
   
   let state: FuelState;
   let adaptationProgress: FuelAdaptationProgress | undefined;
+  let ltftMemoryWarning = false;
   
   // Escolher algoritmo baseado no contexto
   if (context === 'same_fuel') {
-    state = evaluateSameFuel(data, thresholds);
+    const sameFuelResult = evaluateSameFuel(data, thresholds);
+    state = sameFuelResult.state;
+    ltftMemoryWarning = sameFuelResult.ltftMemoryWarning;
   } else if (context === 'gas_to_ethanol' || context === 'ethanol_to_gas') {
     const result = evaluateFuelSwitch(data, context, thresholds);
     state = result.state;
@@ -427,6 +436,24 @@ export function evaluateFuelState(
     }
   }
   
+  // Base do resultado (movido para depois de determinar state para usar ltftMemoryWarning)
+  const baseResult: Partial<FuelDiagnosticResult> = {
+    stftAverage: rollingAverage, // Usar média móvel
+    ltftDelta: data.ltftDelta,
+    o2Average: data.o2Average,
+    distanceMonitored: data.distanceMonitored,
+    userContext: context,
+    analyzedAt,
+    evidence: {
+      stftOutOfRange: Math.abs(rollingAverage) > thresholds.sameFuelWarningTrim,
+      ltftNotAdapting: context !== 'same_fuel' && Math.abs(data.ltftDelta) < thresholds.ltftMinDelta,
+      o2SensorFrozen: !o2Validation.isValid,
+      o2FrozenDuration: o2Validation.frozenDuration,
+      ltftMemoryHigh: ltftMemoryWarning || isLTFTMemoryHigh,
+      ltftMemoryValue: ltftCurrent,
+    },
+  };
+  
   // CORREÇÃO v2: Usar novo sistema de confiança baseado em múltiplos fatores
   const { confidence, score, details } = calculateConfidence(data, thresholds);
   
@@ -446,7 +473,12 @@ export function evaluateFuelState(
       anomalyDetails = `STFT alto (${rollingAverage.toFixed(1)}%) sem adaptação do LTFT. Pode indicar problema mecânico como vazamento de vácuo ou injetor obstruído.`;
     }
   } else if (state === 'suspicious') {
-    anomalyDetails = `Valores fora do esperado. STFT: ${rollingAverage.toFixed(1)}%, LTFT delta: ${data.ltftDelta.toFixed(1)}%. Continuando monitoramento.`;
+    // CORREÇÃO v3: Mensagem especial quando LTFT memorizado alto
+    if (ltftMemoryWarning && Math.abs(rollingAverage) < 5) {
+      anomalyDetails = `Atenção: A memória da injeção (LTFT: ${ltftCurrent > 0 ? '+' : ''}${ltftCurrent.toFixed(1)}%) indica que o combustível é diferente do informado, mesmo que o motor esteja estável agora.`;
+    } else {
+      anomalyDetails = `Valores fora do esperado. STFT: ${rollingAverage.toFixed(1)}%, LTFT: ${ltftCurrent.toFixed(1)}%. Continuando monitoramento.`;
+    }
   }
   
   // Gerar recomendação
