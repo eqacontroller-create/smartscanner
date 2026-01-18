@@ -77,6 +77,42 @@ const OBD_LOCATIONS: Record<CarBrand, OBDLocation> = {
     diagramPosition: { x: 25, y: 65 },
     tips: ['Sem tampa na maioria dos modelos'],
   },
+  peugeot: {
+    position: 'Abaixo do volante, lado esquerdo',
+    description: 'Sob o painel, próximo à alavanca de abertura do capô.',
+    diagramPosition: { x: 25, y: 65 },
+    tips: ['Pode ter tampa plástica', 'Modelos 208/308: olhe à esquerda dos pedais'],
+  },
+  citroen: {
+    position: 'Abaixo do volante, centro-esquerda',
+    description: 'Sob o painel central, pode ter tampa decorativa.',
+    diagramPosition: { x: 35, y: 65 },
+    tips: ['Tampa geralmente encaixada', 'C3/C4: próximo aos pedais'],
+  },
+  mitsubishi: {
+    position: 'Abaixo do volante, lado esquerdo',
+    description: 'Padrão japonês, geralmente sem tampa.',
+    diagramPosition: { x: 28, y: 65 },
+    tips: ['Fácil acesso', 'ASX/Outlander: posição padrão'],
+  },
+  bmw: {
+    position: 'Abaixo do volante, lado esquerdo inferior',
+    description: 'Na parte inferior do painel, pode ter tampa.',
+    diagramPosition: { x: 22, y: 70 },
+    tips: ['Tampa pode ter trava', 'Série 3/X1: olhe bem embaixo'],
+  },
+  mercedes: {
+    position: 'Abaixo do volante, lado esquerdo',
+    description: 'Posição padrão alemã, pode ter tampa protetora.',
+    diagramPosition: { x: 20, y: 68 },
+    tips: ['Tampa de alta qualidade', 'Classe A/C: próximo aos pedais'],
+  },
+  audi: {
+    position: 'Abaixo do volante, lado esquerdo inferior',
+    description: 'Similar ao VW, posição bem escondida.',
+    diagramPosition: { x: 22, y: 70 },
+    tips: ['Tampa integrada ao acabamento', 'A3/A4: pode precisar de lanterna'],
+  },
   generic: {
     position: 'Geralmente abaixo do volante',
     description: 'A porta OBD-II fica a no máximo 60cm do volante, geralmente sob o painel.',

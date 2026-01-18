@@ -14,6 +14,12 @@ export type CarBrand =
   | 'renault' 
   | 'nissan' 
   | 'jeep' 
+  | 'peugeot'
+  | 'citroen'
+  | 'mitsubishi'
+  | 'bmw'
+  | 'mercedes'
+  | 'audi'
   | 'generic';
 
 interface BrandOption {
@@ -22,18 +28,25 @@ interface BrandOption {
   color: string;
 }
 
+// Ordenado por popularidade no Brasil
 const BRANDS: BrandOption[] = [
   { id: 'volkswagen', name: 'Volkswagen', color: '#00437A' },
-  { id: 'ford', name: 'Ford', color: '#003478' },
-  { id: 'chevrolet', name: 'Chevrolet', color: '#D4AF37' },
-  { id: 'honda', name: 'Honda', color: '#CC0000' },
   { id: 'fiat', name: 'Fiat', color: '#8B0000' },
+  { id: 'chevrolet', name: 'Chevrolet', color: '#D4AF37' },
+  { id: 'ford', name: 'Ford', color: '#003478' },
+  { id: 'honda', name: 'Honda', color: '#CC0000' },
   { id: 'toyota', name: 'Toyota', color: '#EB0A1E' },
   { id: 'hyundai', name: 'Hyundai', color: '#002C5F' },
-  { id: 'kia', name: 'Kia', color: '#05141F' },
   { id: 'renault', name: 'Renault', color: '#FFCC00' },
-  { id: 'nissan', name: 'Nissan', color: '#C71444' },
   { id: 'jeep', name: 'Jeep', color: '#2E5435' },
+  { id: 'nissan', name: 'Nissan', color: '#C71444' },
+  { id: 'kia', name: 'Kia', color: '#05141F' },
+  { id: 'peugeot', name: 'Peugeot', color: '#1A365D' },
+  { id: 'citroen', name: 'Citroën', color: '#C41E3A' },
+  { id: 'mitsubishi', name: 'Mitsubishi', color: '#E60012' },
+  { id: 'bmw', name: 'BMW', color: '#0066B1' },
+  { id: 'mercedes', name: 'Mercedes', color: '#333333' },
+  { id: 'audi', name: 'Audi', color: '#2E2E2E' },
   { id: 'generic', name: 'Outra', color: '#666666' },
 ];
 
@@ -52,7 +65,7 @@ export function BrandSelector({ selectedBrand, onSelectBrand }: BrandSelectorPro
         </p>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {BRANDS.map((brand) => (
           <button
             key={brand.id}
