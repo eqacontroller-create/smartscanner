@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Download, HelpCircle, Volume2, Moon, Settings, User, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { Car, Download, HelpCircle, Volume2, Moon, Sun, Settings, User, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,12 @@ function AppHeaderComponent({
   onToggleListening,
   onOpenProfile,
 }: AppHeaderProps) {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const toggleTheme = () => {
+    setTheme(isDark ? 'light' : 'dark');
+  };
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 safe-area-top">
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
@@ -173,6 +180,23 @@ function AppHeaderComponent({
                 >
                   <Volume2 className="h-4 w-4 mr-2" />
                   Testar Áudio
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {/* Toggle Tema */}
+                <DropdownMenuItem onClick={toggleTheme}>
+                  {isDark ? (
+                    <>
+                      <Sun className="h-4 w-4 mr-2" />
+                      Tema Claro
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="h-4 w-4 mr-2" />
+                      Tema Escuro
+                    </>
+                  )}
                 </DropdownMenuItem>
                 
                 {isWakeLockActive && (
