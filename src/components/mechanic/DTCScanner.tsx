@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw, Car, Trash2, BatteryWarning, FileText, Download } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Car, Trash2, BatteryWarning, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,8 +28,15 @@ import { ScanHistoryService } from '@/services/supabase/ScanHistoryService';
 import { generateVoiceAlert, getDTCSeverity } from '@/lib/dtcNotifications';
 import { generateDTCReportPDF, downloadPDF, type ScanAuditData } from '@/services/report/DTCScanReportService';
 import { useToast } from '@/hooks/use-toast';
+import { useOBD } from '@/hooks/useOBD';
 
 type ScanState = 'idle' | 'scanning' | 'clearing' | 'clear' | 'errors';
+
+// Constantes do mutex para acesso exclusivo ao barramento Bluetooth
+const MUTEX_OWNER_SCAN = 'dtc-scanner-scan';
+const MUTEX_OWNER_CLEAR = 'dtc-scanner-clear';
+const MUTEX_PRIORITY = 2 as const; // Baixa prioridade (testes manuais)
+const MUTEX_TIMEOUT_MS = 120000; // 120s para scans longos
 
 interface DTCScannerProps {
   sendCommand: (command: string, timeout?: number) => Promise<string>;
@@ -60,6 +67,11 @@ const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
 
 export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling, onSpeakAlert }: DTCScannerProps) {
   const { toast } = useToast();
+  
+  // === MUTEX GLOBAL ===
+  const { acquireOBDLock, releaseOBDLock, isOBDBusy, obdLockOwner } = useOBD();
+  const hasLockRef = useRef(false);
+  
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [dtcs, setDtcs] = useState<ParsedDTC[]>([]);
   const [selectedDTC, setSelectedDTC] = useState<ParsedDTC | null>(null);
@@ -82,11 +94,18 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Cleanup: liberar lock se componente desmontar
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      // Liberar lock ao desmontar
+      if (hasLockRef.current) {
+        releaseOBDLock(MUTEX_OWNER_SCAN);
+        releaseOBDLock(MUTEX_OWNER_CLEAR);
+        hasLockRef.current = false;
+      }
     };
-  }, []);
+  }, [releaseOBDLock]);
 
   const updateStep = (stepId: string, status: ScanStep['status']) => {
     setScanSteps(prev => prev.map(s => s.id === stepId ? { ...s, status } : s));
@@ -169,6 +188,23 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   // Limpar códigos de erro (OBD-II Modo 04 + UDS 14)
   const handleClearDTCs = async () => {
     if (!isConnected) return;
+    
+    // === ADQUIRIR MUTEX GLOBAL ===
+    addLog('🔒 Aguardando acesso exclusivo ao barramento...');
+    const hasLock = await acquireOBDLock(MUTEX_OWNER_CLEAR, MUTEX_PRIORITY, 30000);
+    
+    if (!hasLock) {
+      addLog('❌ Não foi possível obter acesso exclusivo ao barramento');
+      toast({
+        title: "Barramento ocupado",
+        description: `O barramento está sendo usado por: ${obdLockOwner || 'outro componente'}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    hasLockRef.current = true;
+    addLog('🔓 Acesso exclusivo obtido para limpeza');
     
     setIsClearing(true);
     addLog('🗑️ Iniciando limpeza de códigos de erro...');
@@ -289,6 +325,10 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       });
     } finally {
       setIsClearing(false);
+      // === LIBERAR MUTEX ===
+      releaseOBDLock(MUTEX_OWNER_CLEAR);
+      hasLockRef.current = false;
+      addLog('🔓 Barramento liberado');
     }
   };
 
@@ -506,6 +546,25 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
   const handleScan = async () => {
     if (!isConnected) return;
 
+    // === ADQUIRIR MUTEX GLOBAL ===
+    addLog('🔒 Aguardando acesso exclusivo ao barramento...');
+    setCurrentModule('Aguardando barramento...');
+    
+    const hasLock = await acquireOBDLock(MUTEX_OWNER_SCAN, MUTEX_PRIORITY, MUTEX_TIMEOUT_MS);
+    
+    if (!hasLock) {
+      addLog('❌ Não foi possível obter acesso exclusivo ao barramento');
+      toast({
+        title: "Barramento ocupado",
+        description: `O barramento está sendo usado por: ${obdLockOwner || 'outro componente'}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    hasLockRef.current = true;
+    addLog('🔓 Acesso exclusivo obtido para scan');
+
     // Reset states
     const hasExistingVIN = detectedVIN !== null;
     setScanSteps(createInitialSteps(hasExistingVIN));
@@ -538,12 +597,12 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       await delay(200);
       updateStep('bluetooth', 'done');
 
-      // Step 2: Parar polling
+      // Step 2: Parar polling (já temos o lock, então polling deve ter sido pausado)
       updateStep('pause', 'running');
       if (isPolling) {
         addLog('⏸️ Pausando leitura de dados...');
         stopPolling();
-        await delay(1000);
+        await delay(500);
       }
       updateStep('pause', 'done');
 
@@ -852,6 +911,10 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
         timerRef.current = null;
       }
       setCurrentModule('');
+      // === LIBERAR MUTEX ===
+      releaseOBDLock(MUTEX_OWNER_SCAN);
+      hasLockRef.current = false;
+      addLog('🔓 Barramento liberado');
     }
   };
 
