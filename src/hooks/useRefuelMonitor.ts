@@ -1219,13 +1219,20 @@ export function useRefuelMonitor({
       // ========== 0. LER VELOCIDADE DIRETAMENTE DO OBD ==========
       // CORREÇÃO: Polling do dashboard está pausado, então lemos velocidade nós mesmos
       const obdSpeed = await readSpeedRef.current();
+      
+      // CORREÇÃO v3: Usar velocidade OBD quando disponível (incluindo 0 = parado)
+      // Só usa fallback speedRef.current se leitura OBD falhar (null)
+      let currentSpeed = 0;
+      
       if (obdSpeed !== null) {
+        // Leitura OBD bem-sucedida - usar valor (pode ser 0 = carro parado)
+        currentSpeed = obdSpeed;
         internalSpeedRef.current = obdSpeed;
         setInternalSpeed(obdSpeed);
+      } else {
+        // Leitura OBD falhou - usar valor externo como fallback
+        currentSpeed = speedRef.current;
       }
-      
-      // Usar velocidade interna (lida do OBD) como fonte primária
-      const currentSpeed = internalSpeedRef.current > 0 ? internalSpeedRef.current : speedRef.current;
       
       // ========== 1. CALCULAR DISTÂNCIA (TIMESTAMP-BASED) ==========
       // CORREÇÃO v2: Só acumula distância quando velocidade >= 3 km/h
