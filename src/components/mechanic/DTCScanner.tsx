@@ -46,6 +46,7 @@ interface DTCScannerProps {
   stopPolling: () => void;
   isPolling: boolean;
   onSpeakAlert?: (message: string) => void;
+  userId?: string;
 }
 
 const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
@@ -66,7 +67,7 @@ const createInitialSteps = (hasVIN: boolean): ScanStep[] => [
   { id: 'process', label: 'Processando resultados', status: 'pending' },
 ];
 
-export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling, onSpeakAlert }: DTCScannerProps) {
+export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPolling, onSpeakAlert, userId }: DTCScannerProps) {
   const { toast } = useToast();
   
   // === MUTEX GLOBAL ===
@@ -835,11 +836,15 @@ export function DTCScanner({ sendCommand, isConnected, addLog, stopPolling, isPo
       const scanDuration = Date.now() - scanStartTime;
       const modulesCount = KNOWN_ECU_MODULES.length + alternativeModules.length;
       
-      // Salvar resultado no histórico
+      // Salvar resultado no histórico (apenas se usuário estiver logado)
       try {
-        await ScanHistoryService.saveScanResult(uniqueDTCs, detectedVIN, modulesCount, scanDuration);
-        addLog('💾 Scan salvo no histórico');
-        setHistoryKey(prev => prev + 1); // Atualizar histórico
+        if (userId) {
+          await ScanHistoryService.saveScanResult(uniqueDTCs, detectedVIN, modulesCount, scanDuration, userId);
+          addLog('💾 Scan salvo no histórico');
+          setHistoryKey(prev => prev + 1); // Atualizar histórico
+        } else {
+          addLog('⚠️ Scan não salvo (usuário não autenticado)');
+        }
         
         // === NOVO: Comparar com scan anterior e notificar ===
         const previousScans = await ScanHistoryService.getRecent(2);

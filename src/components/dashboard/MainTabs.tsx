@@ -175,7 +175,7 @@ export function MainTabs(props: MainTabsProps) {
 
       <TabsContent value="mecanica" className="mt-4 sm:mt-6">
         <Suspense fallback={<TabSkeleton />}>
-          <MechanicTab sendCommand={props.sendRawCommand} isConnected={isConnected} isPolling={props.isPolling} addLog={props.addLog} stopPolling={props.onStopPolling} logs={props.logs} themeVehicle={props.themeVehicle} currentProfile={props.currentProfile} vehicleBenefits={props.vehicleBenefits} maintenanceSchedule={props.maintenanceSchedule} currentMileage={jarvisSettings.currentMileage} speak={props.speak} isSpeaking={props.isSpeaking} aiModeEnabled={jarvisSettings.aiModeEnabled} vehicleContext={props.vehicleContext} />
+          <MechanicTab sendCommand={props.sendRawCommand} isConnected={isConnected} isPolling={props.isPolling} addLog={props.addLog} stopPolling={props.onStopPolling} logs={props.logs} themeVehicle={props.themeVehicle} currentProfile={props.currentProfile} vehicleBenefits={props.vehicleBenefits} maintenanceSchedule={props.maintenanceSchedule} currentMileage={jarvisSettings.currentMileage} speak={props.speak} isSpeaking={props.isSpeaking} aiModeEnabled={jarvisSettings.aiModeEnabled} vehicleContext={props.vehicleContext} userId={props.userId} />
         </Suspense>
       </TabsContent>
 

@@ -37,6 +37,7 @@ interface MechanicTabProps {
   isSpeaking: boolean;
   aiModeEnabled: boolean;
   vehicleContext?: VehicleContextForVision;
+  userId?: string;
 }
 
 export function MechanicTab({
@@ -55,6 +56,7 @@ export function MechanicTab({
   isSpeaking,
   aiModeEnabled,
   vehicleContext,
+  userId,
 }: MechanicTabProps) {
   return (
     <div className="space-y-4 sm:space-y-6 tab-content-enter">
@@ -118,6 +120,7 @@ export function MechanicTab({
                 stopPolling={stopPolling}
                 isPolling={isPolling}
                 onSpeakAlert={aiModeEnabled ? speak : undefined}
+                userId={userId}
               />
             </Suspense>
           </div>
