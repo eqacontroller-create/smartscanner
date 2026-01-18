@@ -312,11 +312,14 @@ export function analyzeTrend(
 /**
  * Detecta o tipo de combustível atual baseado no padrão de LTFT
  * 
+ * ATUALIZADO para Gasolina E30 (padrão Brasil desde Ago/2025)
+ * 
  * Lógica:
- * - LTFT < +5%: Gasolina pura (ou E10 internacional)
- * - LTFT +5% a +12%: Gasolina brasileira E27
- * - LTFT +12% a +20%: Mistura Flex (usuário alterna combustíveis)
- * - LTFT > +20%: Etanol predominante (E85+)
+ * - LTFT < +3%: Gasolina importada/pura (sem etanol)
+ * - LTFT +3% a +8%: Gasolina E27 (anterior a Ago/2025)
+ * - LTFT +8% a +14%: Gasolina E30 (padrão Brasil desde Ago/2025)
+ * - LTFT +14% a +22%: Mistura Flex (usuário alterna combustíveis)
+ * - LTFT > +22%: Etanol predominante (E85+)
  * 
  * @param ltftCurrent - Valor atual do LTFT
  * @param stftSamples - Amostras de STFT para validação
@@ -343,11 +346,12 @@ export function detectFuelType(
     : 0;
   const stftStable = Math.abs(stftAverage) < 10;
   
-  // Thresholds de detecção (calibrados para veículos brasileiros)
-  const GASOLINE_PURE_MAX = 5;    // LTFT até +5%
-  const GASOLINE_E27_MAX = 12;    // LTFT +5% a +12%
-  const ETHANOL_MIX_MAX = 20;     // LTFT +12% a +20%
-  // > +20% = Etanol puro
+  // Thresholds de detecção (calibrados para E30 Brasil desde Ago/2025)
+  const GASOLINE_PURE_MAX = 3;     // < 3% - Gasolina sem etanol (importada)
+  const GASOLINE_E27_MAX = 8;      // 3-8% - E27 (gasolina antiga)
+  const GASOLINE_E30_MAX = 14;     // 8-14% - E30 (padrão atual Brasil)
+  const ETHANOL_MIX_MAX = 22;      // 14-22% - Mistura Flex
+  // > 22% = Etanol puro
   
   let inferredType: InferredFuelType;
   let estimatedEthanolPercent: number;
@@ -355,19 +359,23 @@ export function detectFuelType(
   
   if (ltftCurrent < GASOLINE_PURE_MAX) {
     inferredType = 'gasoline';
-    estimatedEthanolPercent = Math.max(0, ltftCurrent * 2); // ~0-10%
-    reason = 'LTFT baixo indica gasolina pura ou E10.';
+    estimatedEthanolPercent = Math.max(0, ltftCurrent * 3); // ~0-9%
+    reason = 'LTFT muito baixo indica gasolina importada sem etanol.';
   } else if (ltftCurrent < GASOLINE_E27_MAX) {
     inferredType = 'gasoline_e27';
-    estimatedEthanolPercent = 20 + (ltftCurrent - 5) * 1.5; // ~20-30%
-    reason = 'LTFT moderado típico de gasolina brasileira (E27).';
+    estimatedEthanolPercent = 20 + (ltftCurrent - 3) * 2; // ~20-30%
+    reason = 'LTFT indica gasolina E27 (anterior a Ago/2025).';
+  } else if (ltftCurrent < GASOLINE_E30_MAX) {
+    inferredType = 'gasoline_e30';
+    estimatedEthanolPercent = 30; // Fixo em 30% (padrão legal)
+    reason = 'LTFT típico de gasolina E30, padrão brasileiro atual.';
   } else if (ltftCurrent < ETHANOL_MIX_MAX) {
     inferredType = 'ethanol_mix';
-    estimatedEthanolPercent = 40 + (ltftCurrent - 12) * 3; // ~40-65%
+    estimatedEthanolPercent = 40 + (ltftCurrent - 14) * 4; // ~40-72%
     reason = 'LTFT indica mistura Flex, alternando combustíveis.';
   } else {
     inferredType = 'ethanol_pure';
-    estimatedEthanolPercent = Math.min(100, 70 + (ltftCurrent - 20) * 1.5); // ~70-100%
+    estimatedEthanolPercent = Math.min(100, 75 + (ltftCurrent - 22) * 2); // ~75-100%
     reason = 'LTFT alto indica etanol predominante no tanque.';
   }
   

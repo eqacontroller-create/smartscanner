@@ -37,6 +37,8 @@ export function FuelTypeIndicator({
         return <Fuel className="h-4 w-4" />;
       case 'gasoline_e27': 
         return <Fuel className="h-4 w-4" />;
+      case 'gasoline_e30': 
+        return <Fuel className="h-4 w-4" />;
       case 'ethanol_mix': 
         return <FlaskConical className="h-4 w-4" />;
       case 'ethanol_pure': 
@@ -49,7 +51,8 @@ export function FuelTypeIndicator({
   const getBorderColor = () => {
     switch (detection.inferredType) {
       case 'gasoline': return 'border-amber-500/50';
-      case 'gasoline_e27': return 'border-orange-500/50';
+      case 'gasoline_e27': return 'border-orange-400/50';
+      case 'gasoline_e30': return 'border-lime-500/50';
       case 'ethanol_mix': return 'border-green-500/50';
       case 'ethanol_pure': return 'border-emerald-500/50';
       default: return 'border-muted';

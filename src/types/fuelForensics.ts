@@ -257,12 +257,14 @@ export const FUEL_CONTEXT_LABELS: Record<FuelChangeContext, string> = {
 /**
  * Tipo de combustível inferido pelo padrão de LTFT
  * Baseado no comportamento da ECU de veículos Flex
+ * ATUALIZADO: Suporte à Gasolina E30 (padrão Brasil desde Ago/2025)
  */
 export type InferredFuelType = 
-  | 'gasoline'      // LTFT < +5% - Gasolina pura ou predominante
-  | 'gasoline_e27'  // LTFT +5% a +12% - Gasolina brasileira (E27)
-  | 'ethanol_mix'   // LTFT +12% a +20% - Mistura Etanol/Gasolina
-  | 'ethanol_pure'  // LTFT > +20% - Etanol predominante
+  | 'gasoline'      // LTFT < +3% - Gasolina importada/pura (sem etanol)
+  | 'gasoline_e27'  // LTFT +3% a +8% - Gasolina E27 (anterior a Ago/2025)
+  | 'gasoline_e30'  // LTFT +8% a +14% - Gasolina E30 (padrão Brasil desde Ago/2025)
+  | 'ethanol_mix'   // LTFT +14% a +22% - Mistura Flex
+  | 'ethanol_pure'  // LTFT > +22% - Etanol predominante
   | 'unknown';      // Dados insuficientes
 
 /**
@@ -280,8 +282,9 @@ export interface FuelTypeDetection {
  * Labels para exibição do tipo de combustível
  */
 export const INFERRED_FUEL_LABELS: Record<InferredFuelType, string> = {
-  gasoline: 'Gasolina Pura',
-  gasoline_e27: 'Gasolina (E27)',
+  gasoline: 'Gasolina Importada',
+  gasoline_e27: 'Gasolina E27 (antiga)',
+  gasoline_e30: 'Gasolina E30 (atual)',
   ethanol_mix: 'Mistura Flex',
   ethanol_pure: 'Etanol',
   unknown: 'Analisando...',
@@ -289,7 +292,8 @@ export const INFERRED_FUEL_LABELS: Record<InferredFuelType, string> = {
 
 export const INFERRED_FUEL_COLORS: Record<InferredFuelType, string> = {
   gasoline: 'text-amber-500',
-  gasoline_e27: 'text-orange-500', 
+  gasoline_e27: 'text-orange-400',
+  gasoline_e30: 'text-lime-500',
   ethanol_mix: 'text-green-500',
   ethanol_pure: 'text-emerald-500',
   unknown: 'text-muted-foreground',
@@ -297,7 +301,8 @@ export const INFERRED_FUEL_COLORS: Record<InferredFuelType, string> = {
 
 export const INFERRED_FUEL_BG_COLORS: Record<InferredFuelType, string> = {
   gasoline: 'bg-amber-500/10',
-  gasoline_e27: 'bg-orange-500/10', 
+  gasoline_e27: 'bg-orange-400/10',
+  gasoline_e30: 'bg-lime-500/10',
   ethanol_mix: 'bg-green-500/10',
   ethanol_pure: 'bg-emerald-500/10',
   unknown: 'bg-muted',

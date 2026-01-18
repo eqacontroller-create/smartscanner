@@ -1,10 +1,14 @@
-// Hook composto que agrupa refuelMonitor + refuelSettings + offlineSync
+// Hook composto que agrupa refuelMonitor + refuelSettings + offlineSync + fuelTypeAlerts
 // Simplifica a passagem de props relacionadas a abastecimento
 // V3: Inclui sincronização offline para quando não há conexão
+// V4: Inclui alertas de voz para mudança de tipo de combustível
 
+import { useMemo } from 'react';
 import { useRefuelMonitor } from '@/hooks/useRefuelMonitor';
 import { useRefuelSettings } from '@/hooks/useRefuelSettings';
 import { useOfflineRefuel, OfflineRefuelEntry } from '@/hooks/useOfflineRefuel';
+import { useFuelTypeAlerts } from '@/hooks/useFuelTypeAlerts';
+import { detectFuelType } from '@/services/fuel/FuelStateMachine';
 import type { RefuelContext } from '@/types/sessionContext';
 
 interface UseRefuelOptions {
@@ -16,6 +20,8 @@ interface UseRefuelOptions {
   userId?: string;
   // AUTO-RECONNECT: Função para tentar reconectar ao Bluetooth
   reconnect?: () => Promise<boolean>;
+  // Configuração de alertas de combustível
+  fuelChangeAlertEnabled?: boolean;
 }
 
 export function useRefuel(options: UseRefuelOptions): RefuelContext {
@@ -31,6 +37,21 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     userId: options.userId,
     settings: refuelSettings.settings,
     reconnect: options.reconnect,
+  });
+
+  // Detectar tipo de combustível em tempo real
+  const fuelTypeDetection = useMemo(() => {
+    if (refuelMonitor.currentLTFT === null) return null;
+    const stftSamples = refuelMonitor.fuelTrimHistory.map(s => s.stft);
+    return detectFuelType(refuelMonitor.currentLTFT, stftSamples);
+  }, [refuelMonitor.currentLTFT, refuelMonitor.fuelTrimHistory]);
+
+  // Alertas de voz quando tipo de combustível muda
+  useFuelTypeAlerts({
+    currentDetection: fuelTypeDetection,
+    speak: options.speak,
+    enabled: options.fuelChangeAlertEnabled !== false && refuelMonitor.mode === 'monitoring',
+    isClosedLoop: refuelMonitor.isClosedLoopActive,
   });
 
   // Função para salvar entrada offline
@@ -60,6 +81,9 @@ export function useRefuel(options: UseRefuelOptions): RefuelContext {
     setFuelContext: refuelMonitor.setFuelContext,
     forensicResult: refuelMonitor.forensicResult,
     monitoringData: refuelMonitor.monitoringData,
+    
+    // Fuel Type Detection (tempo real)
+    fuelTypeDetection,
     
     // O2 Sensor data
     o2Readings: refuelMonitor.o2Readings,
