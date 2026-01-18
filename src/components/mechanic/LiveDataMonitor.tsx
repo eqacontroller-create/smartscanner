@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Activity, Play, Square, Settings2, Gauge, Thermometer, Zap, Circle, Download } from 'lucide-react';
+import { Activity, Play, Square, Settings2, Gauge, Thermometer, Zap, Circle, Download, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,13 @@ import {
 } from '@/components/ui/sheet';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { LIVE_DATA_PIDS, DEFAULT_MONITORING_PIDS, parseLiveDataResponse, getPIDInfo, type LivePID } from '@/services/obd/LiveDataParser';
+import { useOBD } from '@/hooks/useOBD';
+import { toast } from 'sonner';
+
+// ============= MUTEX CONSTANTS =============
+const MUTEX_OWNER = 'live-data-monitor';
+const MUTEX_PRIORITY = 2 as const; // Baixa prioridade (monitoramento manual)
+const MUTEX_TIMEOUT_MS = 30000; // 30s para adquirir lock
 
 interface LiveDataMonitorProps {
   sendCommand: (command: string, timeout?: number) => Promise<string>;
@@ -71,6 +78,10 @@ const getColorForPID = (pid: string): string => {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling, isPolling }: LiveDataMonitorProps) {
+  // === MUTEX GLOBAL ===
+  const { acquireOBDLock, releaseOBDLock, isOBDBusy, obdLockOwner } = useOBD();
+  const hasLockRef = useRef(false);
+  
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [selectedPIDs, setSelectedPIDs] = useState<string[]>(DEFAULT_MONITORING_PIDS);
   const [currentValues, setCurrentValues] = useState<Record<string, number>>({});
@@ -82,6 +93,16 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
   const monitoringRef = useRef(false);
   const recordingRef = useRef(false);
   const startTimeRef = useRef(0);
+  
+  // Cleanup on unmount - liberar lock se necessário
+  useEffect(() => {
+    return () => {
+      if (hasLockRef.current) {
+        releaseOBDLock(MUTEX_OWNER);
+        hasLockRef.current = false;
+      }
+    };
+  }, [releaseOBDLock]);
 
   const readSensorData = useCallback(async () => {
     if (!monitoringRef.current || selectedPIDs.length === 0) return;
@@ -171,6 +192,22 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
   const handleStartMonitoring = async () => {
     if (!isConnected || selectedPIDs.length === 0) return;
     
+    // === ADQUIRIR MUTEX GLOBAL ===
+    addLog('[LIVE] 🔒 Aguardando acesso exclusivo ao barramento...');
+    
+    const hasLock = await acquireOBDLock(MUTEX_OWNER, MUTEX_PRIORITY, MUTEX_TIMEOUT_MS);
+    
+    if (!hasLock) {
+      addLog('[LIVE] ❌ Não foi possível obter acesso exclusivo');
+      toast.error('Barramento ocupado', {
+        description: `Em uso por: ${obdLockOwner || 'outro componente'}`,
+      });
+      return;
+    }
+    
+    hasLockRef.current = true;
+    addLog('[LIVE] 🔓 Acesso exclusivo obtido');
+    
     // Parar polling do painel primeiro para evitar conflitos
     if (isPolling) {
       stopPolling();
@@ -204,6 +241,14 @@ export function LiveDataMonitor({ sendCommand, isConnected, addLog, stopPolling,
     if (isRecording) {
       handleStopRecording();
     }
+    
+    // === LIBERAR MUTEX ===
+    if (hasLockRef.current) {
+      releaseOBDLock(MUTEX_OWNER);
+      hasLockRef.current = false;
+      addLog('[LIVE] 🔓 Barramento liberado');
+    }
+    
     addLog('⏹️ Monitoramento parado');
   };
 
