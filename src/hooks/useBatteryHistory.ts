@@ -29,13 +29,13 @@ export function useBatteryHistory(): UseBatteryHistoryReturn {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Carrega histórico
+  // Carrega histórico (filtrado por user_id)
   const loadTests = useCallback(async () => {
     if (!isAuthenticated || !user) return;
     
     setLoading(true);
     try {
-      const data = await BatteryTestService.getAll(50);
+      const data = await BatteryTestService.getAll(user.id, 50);
       setTests(data);
       
       // Calcular tendência

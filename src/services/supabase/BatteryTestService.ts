@@ -100,12 +100,15 @@ export const BatteryTestService = {
   },
 
   /**
-   * Busca todos os testes do usuário
+   * Busca todos os testes do usuário (filtro explícito por user_id)
    */
-  async getAll(limit = 50): Promise<BatteryTestRecord[]> {
+  async getAll(userId: string, limit = 50): Promise<BatteryTestRecord[]> {
+    if (!userId) return [];
+    
     const { data, error } = await supabase
       .from('battery_tests')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -114,12 +117,15 @@ export const BatteryTestService = {
   },
 
   /**
-   * Busca testes por VIN
+   * Busca testes por VIN (filtro explícito por user_id)
    */
-  async getByVIN(vin: string, limit = 20): Promise<BatteryTestRecord[]> {
+  async getByVIN(userId: string, vin: string, limit = 20): Promise<BatteryTestRecord[]> {
+    if (!userId) return [];
+    
     const { data, error } = await supabase
       .from('battery_tests')
       .select('*')
+      .eq('user_id', userId)
       .eq('vin', vin)
       .order('created_at', { ascending: false })
       .limit(limit);

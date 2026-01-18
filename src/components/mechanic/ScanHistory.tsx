@@ -14,6 +14,7 @@ import {
 import { ScanHistoryService, type ScanHistoryEntry } from '@/services/supabase/ScanHistoryService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ScanHistoryProps {
   currentVIN?: string | null;
@@ -21,20 +22,27 @@ interface ScanHistoryProps {
 }
 
 export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
+  const { user } = useAuth();
   const [history, setHistory] = useState<ScanHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
+    if (!user?.id) {
+      setHistory([]);
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     
     try {
-      logger.log('[ScanHistory] Carregando histórico...', { currentVIN });
+      logger.log('[ScanHistory] Carregando histórico...', { currentVIN, userId: user.id });
       
       const scans = currentVIN 
-        ? await ScanHistoryService.getByVIN(currentVIN)
-        : await ScanHistoryService.getRecent(15);
+        ? await ScanHistoryService.getByVIN(user.id, currentVIN)
+        : await ScanHistoryService.getRecent(user.id, 15);
       
       logger.log('[ScanHistory] Scans carregados:', scans.length);
       setHistory(scans);
@@ -44,7 +52,7 @@ export function ScanHistory({ currentVIN, onRefresh }: ScanHistoryProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [currentVIN]);
+  }, [currentVIN, user?.id]);
 
   useEffect(() => {
     loadHistory();

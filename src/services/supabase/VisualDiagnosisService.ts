@@ -41,12 +41,15 @@ export interface CreateVisualDiagnosis {
 
 export const VisualDiagnosisService = {
   /**
-   * Busca todos os diagnósticos do usuário
+   * Busca todos os diagnósticos do usuário (filtro explícito por user_id)
    */
-  async getAll(limit = 50): Promise<VisualDiagnosis[]> {
+  async getAll(userId: string, limit = 50): Promise<VisualDiagnosis[]> {
+    if (!userId) return [];
+    
     const { data, error } = await supabase
       .from('visual_diagnoses')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -156,12 +159,15 @@ export const VisualDiagnosisService = {
   },
 
   /**
-   * Busca diagnósticos por veículo
+   * Busca diagnósticos por veículo (filtro explícito por user_id)
    */
-  async getByVehicle(brand: string, model?: string): Promise<VisualDiagnosis[]> {
+  async getByVehicle(userId: string, brand: string, model?: string): Promise<VisualDiagnosis[]> {
+    if (!userId) return [];
+    
     let query = supabase
       .from('visual_diagnoses')
       .select('*')
+      .eq('user_id', userId)
       .eq('vehicle_brand', brand);
 
     if (model) {

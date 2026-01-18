@@ -24,13 +24,13 @@ export function useDiagnosisHistory(): UseDiagnosisHistoryReturn {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Carrega histórico ao montar
+  // Carrega histórico ao montar (filtrado por user_id)
   const loadDiagnoses = useCallback(async () => {
     if (!isAuthenticated || !user) return;
     
     setLoading(true);
     try {
-      const data = await VisualDiagnosisService.getAll(50);
+      const data = await VisualDiagnosisService.getAll(user.id, 50);
       setDiagnoses(data);
     } catch (error) {
       logger.error('Erro ao carregar histórico:', error);
