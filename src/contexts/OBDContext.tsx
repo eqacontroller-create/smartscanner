@@ -7,6 +7,8 @@ import {
 } from '@/services/obd/OBDProtocol';
 import { parseOBDResponse, parseVINResponse } from '@/services/obd/OBDParser';
 import { saveSplashBrand } from '@/hooks/useSplashTheme';
+import { obdMutex, type OBDLockPriority, type OBDMutexState } from '@/services/obd/OBDMutexService';
+
 // Destructure constants from protocol
 const { SERVICE, WRITE_CHAR, NOTIFY_CHAR } = BLUETOOTH_UUIDS;
 const { 
@@ -65,6 +67,14 @@ export interface OBDContextType {
   isSupported: boolean;
   hasLastDevice: boolean;
   reconnect: () => Promise<boolean>;
+  
+  // === MUTEX GLOBAL ===
+  acquireOBDLock: (owner: string, priority?: OBDLockPriority, timeout?: number) => Promise<boolean>;
+  releaseOBDLock: (owner: string) => void;
+  isOBDBusy: boolean;
+  obdLockOwner: string | null;
+  obdMutexState: OBDMutexState;
+  sendCommandWithLock: (owner: string, command: string, options?: { priority?: OBDLockPriority; commandTimeout?: number; lockTimeout?: number }) => Promise<string>;
 }
 
 const defaultVehicleData: VehicleData = {
@@ -88,7 +98,17 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isPolling, setIsPolling] = useState(false);
-
+  
+  // === MUTEX STATE ===
+  const [obdMutexState, setOBDMutexState] = useState<OBDMutexState>(obdMutex.getState());
+  
+  // Subscribe to mutex changes
+  useEffect(() => {
+    const unsubscribe = obdMutex.subscribe((state) => {
+      setOBDMutexState(state);
+    });
+    return unsubscribe;
+  }, []);
   // Refs para dados internos (não causam re-render)
   const vehicleDataRef = useRef<VehicleData>(defaultVehicleData);
   const lastUIUpdateRef = useRef<number>(0);
@@ -647,6 +667,55 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
     return sendCommand(command, timeout);
   }, [sendCommand]);
 
+  // === MUTEX FUNCTIONS ===
+  
+  /**
+   * Adquire lock exclusivo do barramento OBD
+   * @param owner Identificador do componente
+   * @param priority 0=Alta, 1=Normal, 2=Baixa (default)
+   * @param timeout Tempo máximo de espera em ms (default: 30s)
+   */
+  const acquireOBDLock = useCallback(async (
+    owner: string, 
+    priority: OBDLockPriority = 2, 
+    timeout: number = 30000
+  ): Promise<boolean> => {
+    return obdMutex.acquire(owner, priority, timeout);
+  }, []);
+
+  /**
+   * Libera lock do barramento OBD
+   * @param owner Identificador do componente (deve ser o mesmo usado no acquire)
+   */
+  const releaseOBDLock = useCallback((owner: string): void => {
+    obdMutex.release(owner);
+  }, []);
+
+  /**
+   * Envia comando OBD com lock automático
+   * Adquire lock, envia comando, libera lock
+   */
+  const sendCommandWithLock = useCallback(async (
+    owner: string,
+    command: string,
+    options?: { priority?: OBDLockPriority; commandTimeout?: number; lockTimeout?: number }
+  ): Promise<string> => {
+    const priority = options?.priority ?? 2;
+    const commandTimeout = options?.commandTimeout ?? 10000;
+    const lockTimeout = options?.lockTimeout ?? 30000;
+
+    const acquired = await obdMutex.acquire(owner, priority, lockTimeout);
+    if (!acquired) {
+      throw new Error(`Timeout aguardando acesso ao barramento OBD (owner: ${owner})`);
+    }
+
+    try {
+      return await sendCommand(command, commandTimeout);
+    } finally {
+      obdMutex.release(owner);
+    }
+  }, [sendCommand]);
+
   const value: OBDContextType = {
     status,
     isPolling,
@@ -663,6 +732,13 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
     isSupported,
     hasLastDevice: !!deviceRef.current,
     reconnect,
+    // === MUTEX ===
+    acquireOBDLock,
+    releaseOBDLock,
+    isOBDBusy: obdMutexState.isLocked,
+    obdLockOwner: obdMutexState.currentOwner,
+    obdMutexState,
+    sendCommandWithLock,
   };
 
   return (
