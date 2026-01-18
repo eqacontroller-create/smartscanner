@@ -130,6 +130,7 @@ export type Database = {
           scan_date: string
           scan_duration_ms: number | null
           total_dtcs: number
+          user_id: string | null
           vehicle_id: string | null
           vin: string | null
         }
@@ -141,6 +142,7 @@ export type Database = {
           scan_date?: string
           scan_duration_ms?: number | null
           total_dtcs?: number
+          user_id?: string | null
           vehicle_id?: string | null
           vin?: string | null
         }
@@ -152,6 +154,7 @@ export type Database = {
           scan_date?: string
           scan_duration_ms?: number | null
           total_dtcs?: number
+          user_id?: string | null
           vehicle_id?: string | null
           vin?: string | null
         }
@@ -534,6 +537,7 @@ export type Database = {
           manufacturer_group: string | null
           model_year: string | null
           updated_at: string
+          user_id: string | null
           vin: string
         }
         Insert: {
@@ -544,6 +548,7 @@ export type Database = {
           manufacturer_group?: string | null
           model_year?: string | null
           updated_at?: string
+          user_id?: string | null
           vin: string
         }
         Update: {
@@ -554,6 +559,7 @@ export type Database = {
           manufacturer_group?: string | null
           model_year?: string | null
           updated_at?: string
+          user_id?: string | null
           vin?: string
         }
         Relationships: []

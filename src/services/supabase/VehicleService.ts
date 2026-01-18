@@ -16,14 +16,20 @@ export interface VehicleData {
 
 export const VehicleService = {
   /**
-   * Busca veículo por VIN
+   * Busca veículo por VIN para um usuário específico
    */
-  async getByVIN(vin: string): Promise<VehicleData | null> {
-    const { data, error } = await supabase
+  async getByVIN(vin: string, userId?: string): Promise<VehicleData | null> {
+    let query = supabase
       .from('vehicles')
       .select('*')
-      .eq('vin', vin)
-      .maybeSingle();
+      .eq('vin', vin);
+
+    // Filtrar por usuário se fornecido
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       console.error('[VehicleService] Error fetching vehicle:', error);
@@ -52,12 +58,20 @@ export const VehicleService = {
   },
 
   /**
-   * Cria novo veículo
+   * Cria novo veículo com user_id obrigatório
    */
-  async create(vehicle: Omit<VehicleData, 'id' | 'created_at' | 'updated_at'>): Promise<string | null> {
+  async create(
+    vehicle: Omit<VehicleData, 'id' | 'created_at' | 'updated_at'>,
+    userId: string
+  ): Promise<string | null> {
+    if (!userId) {
+      console.error('[VehicleService] user_id is required to create vehicle');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
-      .insert(vehicle as any)
+      .insert({ ...vehicle, user_id: userId } as any)
       .select('id')
       .single();
 
@@ -85,34 +99,62 @@ export const VehicleService = {
   },
 
   /**
-   * Obtém ou cria veículo pelo VIN
+   * Obtém ou cria veículo pelo VIN para um usuário específico
    */
-  async getOrCreate(vehicleInfo: {
-    vin: string;
-    manufacturer?: string | null;
-    country?: string | null;
-    modelYear?: string | null;
-    manufacturerGroup?: string | null;
-  }): Promise<string | null> {
+  async getOrCreate(
+    vehicleInfo: {
+      vin: string;
+      manufacturer?: string | null;
+      country?: string | null;
+      modelYear?: string | null;
+      manufacturerGroup?: string | null;
+    },
+    userId: string
+  ): Promise<string | null> {
+    if (!userId) {
+      console.error('[VehicleService] user_id is required');
+      return null;
+    }
+
     try {
-      // Tentar encontrar veículo existente
-      const existing = await this.getByVIN(vehicleInfo.vin);
+      // Tentar encontrar veículo existente para este usuário
+      const existing = await this.getByVIN(vehicleInfo.vin, userId);
       
       if (existing) {
         return existing.id;
       }
 
-      // Criar novo veículo
+      // Criar novo veículo para este usuário
       return await this.create({
         vin: vehicleInfo.vin,
         manufacturer: vehicleInfo.manufacturer,
         country: vehicleInfo.country,
         model_year: vehicleInfo.modelYear,
         manufacturer_group: vehicleInfo.manufacturerGroup,
-      });
+      }, userId);
     } catch (error) {
       console.error('[VehicleService] Error in getOrCreate:', error);
       return null;
     }
+  },
+
+  /**
+   * Lista todos os veículos do usuário
+   */
+  async listByUser(userId: string): Promise<VehicleData[]> {
+    if (!userId) return [];
+
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[VehicleService] Error listing vehicles:', error);
+      return [];
+    }
+
+    return (data || []) as VehicleData[];
   },
 };

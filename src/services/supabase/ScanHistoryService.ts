@@ -34,26 +34,33 @@ export interface VINInfo {
 
 export const ScanHistoryService = {
   /**
-   * Salva resultado do scan
+   * Salva resultado do scan (isolado por usuário)
    */
   async saveScanResult(
     dtcs: ParsedDTC[],
     vinInfo: VINInfo | null,
     modulesScanned: number,
-    scanDurationMs: number
+    scanDurationMs: number,
+    userId: string
   ): Promise<string | null> {
+    if (!userId) {
+      logger.error('[ScanHistoryService] user_id is required to save scan');
+      return null;
+    }
+
     try {
       let vehicleId: string | null = null;
 
-      // Se temos VIN, obter ou criar veículo
+      // Se temos VIN, obter ou criar veículo para este usuário
       if (vinInfo) {
-        vehicleId = await VehicleService.getOrCreate(vinInfo);
+        vehicleId = await VehicleService.getOrCreate(vinInfo, userId);
       }
 
-      // Criar registro do scan
+      // Criar registro do scan com user_id
       const { data: scan, error: scanError } = await supabase
         .from('dtc_scans')
         .insert({
+          user_id: userId,
           vehicle_id: vehicleId,
           vin: vinInfo?.vin || null,
           total_dtcs: dtcs.length,
