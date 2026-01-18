@@ -1,9 +1,12 @@
 // Painel de status de conexão e alertas
 
-import { AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { ConnectionButton } from '@/components/dashboard/ConnectionButton';
 import { VehicleBadge } from '@/components/dashboard/VehicleBadge';
+import { ScannerLocator } from '@/components/onboarding';
 import type { DetectedVehicle } from '@/lib/vehicleProfiles';
 import type { ConnectionStatus } from '@/contexts/OBDContext';
 
@@ -24,7 +27,13 @@ export function ConnectionPanel({
   onConnect, 
   onDisconnect 
 }: ConnectionPanelProps) {
+  const [locatorOpen, setLocatorOpen] = useState(false);
   const isReady = status === 'ready';
+  const isDisconnected = status === 'disconnected';
+
+  const handleLocatorReady = () => {
+    onConnect();
+  };
 
   return (
     <>
@@ -77,14 +86,34 @@ export function ConnectionPanel({
       )}
 
       {/* Connection Button */}
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-3">
         <ConnectionButton 
           status={status} 
           onConnect={onConnect} 
           onDisconnect={onDisconnect} 
           disabled={!isSupported} 
         />
+
+        {/* Help Button - Only show when disconnected */}
+        {isDisconnected && isSupported && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocatorOpen(true)}
+            className="text-muted-foreground hover:text-primary"
+          >
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Precisa de ajuda para conectar?
+          </Button>
+        )}
       </div>
+
+      {/* Scanner Locator Modal */}
+      <ScannerLocator
+        open={locatorOpen}
+        onOpenChange={setLocatorOpen}
+        onReady={handleLocatorReady}
+      />
     </>
   );
 }
