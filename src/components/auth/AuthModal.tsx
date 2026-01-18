@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
+import { RateLimitService, type RateLimitStatus } from '@/services/auth/RateLimitService';
 import { toast } from 'sonner';
-import { Cloud, LogIn, UserPlus, Loader2 } from 'lucide-react';
+import { Cloud, LogIn, UserPlus, Loader2, ShieldAlert, Clock } from 'lucide-react';
 
 interface AuthModalProps {
   open: boolean;
@@ -24,16 +27,84 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rateLimitStatus, setRateLimitStatus] = useState<RateLimitStatus | null>(null);
+  const [countdown, setCountdown] = useState(0);
+
+  // Verificar rate limit quando email muda (debounced)
+  useEffect(() => {
+    if (!email || !email.includes('@')) {
+      setRateLimitStatus(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const status = await RateLimitService.checkLoginBlocked(email);
+      setRateLimitStatus(status);
+      if (status.blocked && status.remainingSeconds) {
+        setCountdown(status.remainingSeconds);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  // Countdown timer quando bloqueado
+  useEffect(() => {
+    if (countdown <= 0) return;
+
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          // Recheck status when timer expires
+          RateLimitService.checkLoginBlocked(email).then(setRateLimitStatus);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [countdown, email]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Verificar bloqueio antes de tentar login
+    const status = await RateLimitService.checkLoginBlocked(email);
+    if (status.blocked) {
+      setRateLimitStatus(status);
+      setCountdown(status.remainingSeconds || 0);
+      toast.error('Conta temporariamente bloqueada', {
+        description: `Aguarde ${RateLimitService.formatRemainingTime(status.remainingSeconds || 0)} para tentar novamente.`,
+      });
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await signIn(email, password);
     
     if (error) {
-      toast.error('Erro ao entrar', { description: error.message });
+      // Registrar tentativa falha
+      await RateLimitService.recordLoginAttempt(email, false);
+      
+      // Atualizar status
+      const newStatus = await RateLimitService.checkLoginBlocked(email);
+      setRateLimitStatus(newStatus);
+      
+      if (newStatus.blocked) {
+        setCountdown(newStatus.remainingSeconds || 0);
+        toast.error('Conta bloqueada por segurança', {
+          description: `Muitas tentativas. Aguarde ${RateLimitService.formatRemainingTime(newStatus.remainingSeconds || 0)}.`,
+        });
+      } else {
+        toast.error('Erro ao entrar', { 
+          description: `${error.message}. Tentativas restantes: ${newStatus.remainingAttempts}` 
+        });
+      }
     } else {
+      // Registrar tentativa bem-sucedida
+      await RateLimitService.recordLoginAttempt(email, true);
       toast.success('Login realizado!', { description: 'Seus dados serão sincronizados.' });
       onOpenChange(false);
     }
@@ -43,6 +114,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validação de senha forte
+    if (password.length < 8) {
+      toast.error('Senha muito curta', { description: 'Mínimo de 8 caracteres.' });
+      return;
+    }
+    
     setLoading(true);
 
     const { error } = await signUp(email, password);
@@ -56,6 +134,11 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
     setLoading(false);
   };
+
+  const isBlocked = rateLimitStatus?.blocked ?? false;
+  const attemptsProgress = rateLimitStatus 
+    ? ((rateLimitStatus.maxAttempts - rateLimitStatus.remainingAttempts) / rateLimitStatus.maxAttempts) * 100 
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,6 +166,36 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
           </TabsList>
 
           <TabsContent value="login" className="space-y-4 mt-4">
+            {/* Alerta de bloqueio */}
+            {isBlocked && (
+              <Alert variant="destructive" className="animate-fade-in">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertDescription className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>
+                    Bloqueado por segurança. Aguarde{' '}
+                    <strong>{RateLimitService.formatRemainingTime(countdown)}</strong>.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Indicador de tentativas */}
+            {rateLimitStatus && !isBlocked && rateLimitStatus.attempts > 0 && (
+              <div className="space-y-1 animate-fade-in">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Tentativas restantes</span>
+                  <span className={rateLimitStatus.remainingAttempts <= 2 ? 'text-destructive font-medium' : ''}>
+                    {rateLimitStatus.remainingAttempts} de {rateLimitStatus.maxAttempts}
+                  </span>
+                </div>
+                <Progress 
+                  value={attemptsProgress} 
+                  className="h-1.5"
+                />
+              </div>
+            )}
+
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
@@ -92,6 +205,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isBlocked}
                   required
                 />
               </div>
@@ -103,16 +217,23 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isBlocked}
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading || isBlocked}
+              >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : isBlocked ? (
+                  <ShieldAlert className="h-4 w-4 mr-2" />
                 ) : (
                   <LogIn className="h-4 w-4 mr-2" />
                 )}
-                Entrar
+                {isBlocked ? 'Aguarde...' : 'Entrar'}
               </Button>
             </form>
           </TabsContent>
@@ -135,12 +256,15 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 <Input
                   id="register-password"
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  minLength={6}
+                  minLength={8}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Use pelo menos 8 caracteres para maior segurança.
+                </p>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
