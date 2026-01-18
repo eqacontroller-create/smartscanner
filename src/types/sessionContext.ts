@@ -6,7 +6,7 @@ import type { DetectedVehicle, VehicleProfile } from '@/lib/vehicleProfiles';
 import type { JarvisSettings } from '@/types/jarvisSettings';
 import type { TripData, TripSettings, TripHistoryEntry, RideStatus, DailySummary, RideEntry } from '@/types/tripSettings';
 import type { RefuelSettings, RefuelEntry, RefuelMode, RefuelFlowType, FuelTrimSample } from '@/types/refuelTypes';
-import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData, O2SensorReading, FuelSystemStatus } from '@/types/fuelForensics';
+import type { FuelChangeContext, FuelDiagnosticResult, FuelMonitoringData, O2SensorReading, FuelSystemStatus, FuelTypeDetection } from '@/types/fuelForensics';
 
 // Interface simplificada para evitar importação circular
 export interface OfflineRefuelEntryBase {
@@ -158,6 +158,9 @@ export interface RefuelContext {
   setFuelContext: (context: FuelChangeContext) => void;
   forensicResult: FuelDiagnosticResult | null;
   monitoringData: FuelMonitoringData | null;
+  
+  // Fuel Type Detection (tempo real via LTFT)
+  fuelTypeDetection: FuelTypeDetection | null;
   
   // O2 Sensor data for real-time monitor
   o2Readings: O2SensorReading[];

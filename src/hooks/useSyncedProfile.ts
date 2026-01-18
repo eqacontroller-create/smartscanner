@@ -110,6 +110,7 @@ function dbToProfile(dbData: ProfileData): SyncedProfile {
       speedAlertEnabled: dbData.speed_alert_enabled !== false,
       lowVoltageAlertEnabled: dbData.low_voltage_alert_enabled !== false,
       maintenanceAlertEnabled: dbData.maintenance_alert_enabled !== false,
+      fuelChangeAlertEnabled: true, // Alertar mudança de tipo de combustível
       shiftLightEnabled: dbData.shift_light_enabled !== false,
       ecoShiftEnabled: true,
       sportShiftEnabled: true,

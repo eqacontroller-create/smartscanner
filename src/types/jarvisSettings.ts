@@ -16,6 +16,7 @@ export interface JarvisSettings {
   currentMileage: number;           // Quilometragem atual (entrada manual)
   nextOilChange: number;            // Próxima troca de óleo (km)
   nextInspection: number;           // Próxima revisão (km)
+  fuelChangeAlertEnabled: boolean;  // Alerta de mudança de tipo de combustível
   
   // Perfil do Motor
   fuelType: FuelType;               // Tipo de combustível
@@ -65,6 +66,7 @@ export const defaultJarvisSettings: JarvisSettings = {
   currentMileage: 0,
   nextOilChange: 15000,
   nextInspection: 30000,
+  fuelChangeAlertEnabled: true,  // Alertar mudança de tipo de combustível
   // Perfil do Motor
   fuelType: 'gasoline',
   redlineRPM: 6500,
