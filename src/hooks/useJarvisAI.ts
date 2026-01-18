@@ -4,6 +4,7 @@ import { useJarvis } from './useJarvis';
 import { JarvisSettings, defaultJarvisSettings } from '@/types/jarvisSettings';
 import { TripData } from '@/types/tripSettings';
 import { JarvisService, VehicleContext, Message } from '@/services/ai/JarvisService';
+import { JarvisCacheService } from '@/services/ai/JarvisCacheService';
 
 interface UseJarvisAIOptions {
   settings?: JarvisSettings;
@@ -113,7 +114,7 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
     }
   }, [speak]);
 
-  // Processar resposta da IA com streaming
+  // Processar resposta da IA com streaming e cache
   const processWithAI = useCallback(async (userMessage: string) => {
     if (isProcessingRef.current || !userMessage.trim()) return;
     
@@ -129,7 +130,40 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
       const newUserMessage: Message = { role: 'user', content: userMessage };
       setConversationHistory(prev => [...prev, newUserMessage]);
       
-      // Usar streaming para resposta mais rápida
+      // 1. VERIFICAR CACHE PRIMEIRO
+      const cachedResult = JarvisCacheService.getCachedResponse(
+        userMessage,
+        vehicleContextRef.current,
+        tripDataRef.current
+      );
+      
+      if (cachedResult) {
+        console.log('[JarvisAI] Resposta do cache:', cachedResult.intent);
+        
+        // Resposta instantânea do cache
+        setLastResponse(cachedResult.response);
+        speak(cachedResult.response);
+        
+        // Adicionar ao histórico
+        const newAssistantMessage: Message = { role: 'assistant', content: cachedResult.response };
+        setConversationHistory(prev => [...prev, newAssistantMessage]);
+        
+        setIsProcessing(false);
+        isProcessingRef.current = false;
+        setIsWakeWordDetected(false);
+        
+        // Cooldown
+        wakeWordCooldownRef.current = true;
+        setTimeout(() => {
+          wakeWordCooldownRef.current = false;
+        }, 2000);
+        
+        return;
+      }
+      
+      // 2. CACHE MISS - Usar streaming para resposta da IA
+      console.log('[JarvisAI] Cache miss, chamando IA...');
+      
       await JarvisService.streamChat(
         {
           message: userMessage,
@@ -154,6 +188,13 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
           if (remaining.length > 0) {
             speak(remaining);
           }
+          
+          // Salvar no cache dinâmico para futuras perguntas similares
+          JarvisCacheService.cacheResponse(
+            userMessage,
+            finalResponse,
+            vehicleContextRef.current
+          );
           
           // Adicionar resposta ao histórico
           const newAssistantMessage: Message = { role: 'assistant', content: finalResponse };
