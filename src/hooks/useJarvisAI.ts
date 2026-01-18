@@ -90,7 +90,30 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
   // Hook de síntese de voz (TTS)
   const { speak, isSpeaking, isSupported: isTTSSupported } = useJarvis({ settings });
 
-  // Processar resposta da IA
+  // Refs para streaming
+  const accumulatedResponseRef = useRef('');
+  const lastSpokenIndexRef = useRef(0);
+
+  // Falar progressivamente por frases
+  const speakSentence = useCallback((fullText: string) => {
+    // Detectar fim de frase (. ! ? :)
+    const sentenceEndPattern = /[.!?:]/g;
+    let lastIndex = lastSpokenIndexRef.current;
+    let match;
+    
+    while ((match = sentenceEndPattern.exec(fullText)) !== null) {
+      if (match.index >= lastIndex) {
+        const sentence = fullText.substring(lastIndex, match.index + 1).trim();
+        if (sentence.length > 3) { // Evitar falar fragmentos muito curtos
+          speak(sentence);
+          lastSpokenIndexRef.current = match.index + 1;
+        }
+        lastIndex = match.index + 1;
+      }
+    }
+  }, [speak]);
+
+  // Processar resposta da IA com streaming
   const processWithAI = useCallback(async (userMessage: string) => {
     if (isProcessingRef.current || !userMessage.trim()) return;
     
@@ -98,47 +121,74 @@ export function useJarvisAI(options: UseJarvisAIOptions): UseJarvisAIReturn {
     setIsProcessing(true);
     setAiError(null);
     setDisplayTranscript(userMessage);
+    accumulatedResponseRef.current = '';
+    lastSpokenIndexRef.current = 0;
     
     try {
       // Adicionar mensagem do usuário ao histórico
       const newUserMessage: Message = { role: 'user', content: userMessage };
       setConversationHistory(prev => [...prev, newUserMessage]);
       
-      // Usar JarvisService em vez de chamada direta
-      const response = await JarvisService.chat({
-        message: userMessage,
-        vehicleContext: vehicleContextRef.current,
-        tripData: tripDataRef.current,
-        conversationHistory: conversationHistory.slice(-6),
-      });
-
-      const aiResponse = response.response;
-      setLastResponse(aiResponse);
-      
-      // Adicionar resposta ao histórico
-      const newAssistantMessage: Message = { role: 'assistant', content: aiResponse };
-      setConversationHistory(prev => [...prev, newAssistantMessage]);
-      
-      // Falar a resposta
-      speak(aiResponse);
+      // Usar streaming para resposta mais rápida
+      await JarvisService.streamChat(
+        {
+          message: userMessage,
+          vehicleContext: vehicleContextRef.current,
+          tripData: tripDataRef.current,
+          conversationHistory: conversationHistory.slice(-4),
+        },
+        // onDelta - cada chunk de texto
+        (chunk: string) => {
+          accumulatedResponseRef.current += chunk;
+          setLastResponse(accumulatedResponseRef.current);
+          
+          // Falar progressivamente por frases
+          speakSentence(accumulatedResponseRef.current);
+        },
+        // onDone
+        () => {
+          const finalResponse = accumulatedResponseRef.current;
+          
+          // Falar texto restante que não terminou em pontuação
+          const remaining = finalResponse.substring(lastSpokenIndexRef.current).trim();
+          if (remaining.length > 0) {
+            speak(remaining);
+          }
+          
+          // Adicionar resposta ao histórico
+          const newAssistantMessage: Message = { role: 'assistant', content: finalResponse };
+          setConversationHistory(prev => [...prev, newAssistantMessage]);
+          
+          setIsProcessing(false);
+          isProcessingRef.current = false;
+          setIsWakeWordDetected(false);
+          
+          // Cooldown para evitar reativação imediata
+          wakeWordCooldownRef.current = true;
+          setTimeout(() => {
+            wakeWordCooldownRef.current = false;
+          }, 2000);
+        },
+        // onError
+        (errorMsg: string) => {
+          console.error('Erro streaming:', errorMsg);
+          setAiError(errorMsg);
+          speak(errorMsg);
+          setIsProcessing(false);
+          isProcessingRef.current = false;
+        }
+      );
       
     } catch (err) {
       console.error('Erro ao processar com IA:', err);
-      const errorMessage = 'Desculpe, houve um erro ao processar sua solicitação.';
+      const errorMessage = 'Desculpe, houve um erro.';
       setAiError(errorMessage);
       speak(errorMessage);
-    } finally {
       setIsProcessing(false);
       isProcessingRef.current = false;
       setIsWakeWordDetected(false);
-      
-      // Cooldown para evitar reativação imediata pela própria fala
-      wakeWordCooldownRef.current = true;
-      setTimeout(() => {
-        wakeWordCooldownRef.current = false;
-      }, 2000);
     }
-  }, [conversationHistory, speak]);
+  }, [conversationHistory, speak, speakSentence]);
 
   // Callback quando reconhecimento detecta fala
   const handleVoiceResult = useCallback((transcript: string) => {

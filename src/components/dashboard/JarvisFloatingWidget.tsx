@@ -55,7 +55,7 @@ export function JarvisFloatingWidget({
 
   const getStatusText = () => {
     if (error) return error;
-    if (isProcessing) return 'Pensando...';
+    if (isProcessing) return 'Processando...';
     if (isSpeaking) return 'Falando...';
     if (isWakeWordDetected) return 'Wake word detectada!';
     if (isContinuousMode && isListening) return `Diga "${wakeWord}"...`;
@@ -65,10 +65,10 @@ export function JarvisFloatingWidget({
   };
 
   const getStatusIcon = () => {
-    if (isProcessing) return <Loader2 className="h-5 w-5 animate-spin" />;
-    if (isSpeaking) return <Volume2 className="h-5 w-5 animate-pulse" />;
+    if (isProcessing) return <Loader2 className="h-5 w-5 animate-spin text-warning" />;
+    if (isSpeaking) return <Volume2 className="h-5 w-5 animate-pulse text-accent" />;
     if (isContinuousMode) return <Radio className="h-5 w-5" />;
-    if (isListening) return <Mic className="h-5 w-5" />;
+    if (isListening) return <Mic className="h-5 w-5 text-primary" />;
     return <Mic className="h-5 w-5" />;
   };
 
@@ -169,8 +169,16 @@ export function JarvisFloatingWidget({
 
         {/* Última interação */}
         <div className="p-3 space-y-2">
+          {/* Indicador de processamento */}
+          {isProcessing && (
+            <div className="bg-warning/10 rounded-lg p-2 border border-warning/20 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-warning" />
+              <p className="text-sm text-warning">Processando resposta...</p>
+            </div>
+          )}
+
           {/* Transcrição em tempo real (modo contínuo) */}
-          {isContinuousMode && isListening && interimTranscript && (
+          {isContinuousMode && isListening && interimTranscript && !isProcessing && (
             <div className="bg-accent/10 rounded-lg p-2 border border-accent/20">
               <p className="text-xs text-muted-foreground mb-1">Ouvindo:</p>
               <p className="text-sm text-foreground italic">{interimTranscript}</p>
@@ -178,7 +186,7 @@ export function JarvisFloatingWidget({
           )}
 
           {/* Transcrição atual (quando escutando ou processando) */}
-          {((isListening && !isContinuousMode) || lastTranscript) && !lastResponse && !interimTranscript && (
+          {((isListening && !isContinuousMode) || lastTranscript) && !lastResponse && !interimTranscript && !isProcessing && (
             <div className={cn(
               "rounded-lg p-2",
               isWakeWordDetected ? "bg-primary/20 border border-primary/30" : "bg-primary/10"
@@ -196,16 +204,22 @@ export function JarvisFloatingWidget({
             </div>
           )}
 
-          {/* Última resposta */}
+          {/* Última resposta (streaming - atualiza em tempo real) */}
           {lastResponse && (
-            <div className="bg-muted rounded-lg p-2">
-              <p className="text-xs text-muted-foreground mb-1">Jarvis:</p>
+            <div className={cn(
+              "bg-muted rounded-lg p-2",
+              isProcessing && "border border-warning/30"
+            )}>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                Jarvis:
+                {isProcessing && <span className="inline-block w-1 h-3 bg-warning animate-pulse ml-1" />}
+              </p>
               <p className="text-sm text-foreground">{lastResponse}</p>
             </div>
           )}
 
           {/* Estado vazio */}
-          {!lastTranscript && !lastResponse && !isListening && !interimTranscript && (
+          {!lastTranscript && !lastResponse && !isListening && !interimTranscript && !isProcessing && (
             <p className="text-xs text-muted-foreground text-center py-2">
               {isContinuousMode 
                 ? `Diga "${wakeWord}" seguido do comando`
