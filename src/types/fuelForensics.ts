@@ -171,6 +171,8 @@ export interface FuelDiagnosticResult {
     ltftNotAdapting: boolean;
     o2SensorFrozen: boolean;
     o2FrozenDuration: number;  // Segundos que O2 ficou travado
+    ltftMemoryHigh: boolean;   // LTFT memorizado está alto (ECU adaptada)
+    ltftMemoryValue: number | null; // Valor atual do LTFT memorizado
   };
   
   // Recomendação

@@ -250,7 +250,8 @@ export function RefuelResult({
             {/* Alertas de evidência */}
             {(forensicResult!.evidence.stftOutOfRange || 
               forensicResult!.evidence.ltftNotAdapting || 
-              forensicResult!.evidence.o2SensorFrozen) && (
+              forensicResult!.evidence.o2SensorFrozen ||
+              forensicResult!.evidence.ltftMemoryHigh) && (
               <div className="flex flex-wrap gap-1">
                 {forensicResult!.evidence.stftOutOfRange && (
                   <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-500/50">
@@ -267,6 +268,29 @@ export function RefuelResult({
                     Sonda O2 travada ({forensicResult!.evidence.o2FrozenDuration.toFixed(0)}s)
                   </Badge>
                 )}
+                {forensicResult!.evidence.ltftMemoryHigh && (
+                  <Badge variant="outline" className="text-xs text-orange-600 border-orange-500/50">
+                    LTFT memorizado alto ({forensicResult!.evidence.ltftMemoryValue?.toFixed(1)}%)
+                  </Badge>
+                )}
+              </div>
+            )}
+            
+            {/* Alerta especial: LTFT memorizado alto */}
+            {forensicResult!.evidence.ltftMemoryHigh && 
+             forensicResult!.state === 'suspicious' && (
+              <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/50 space-y-1">
+                <div className="flex items-center gap-2 text-yellow-600 font-medium text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  Atenção: Memória da Injeção
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  O LTFT está em {forensicResult!.evidence.ltftMemoryValue !== null 
+                    ? `${forensicResult!.evidence.ltftMemoryValue > 0 ? '+' : ''}${forensicResult!.evidence.ltftMemoryValue.toFixed(1)}%` 
+                    : 'valor alto'
+                  }, indicando que o combustível é diferente do informado, 
+                  mesmo que o motor esteja estável agora.
+                </p>
               </div>
             )}
           </div>
