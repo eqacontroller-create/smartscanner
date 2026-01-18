@@ -1,6 +1,7 @@
 // Fuel State Machine - Análise Forense de Combustível
 // Lógica PURA (sem React) para determinar qualidade do combustível
 // com precisão científica, diferenciando troca Flex de adulteração
+// CORREÇÃO v2: Melhor cálculo de confiança, warm-up de samples, tolerância O2
 
 import type {
   FuelState,
@@ -11,28 +12,59 @@ import type {
   O2SensorReading,
   FuelAnalysisThresholds,
 } from '@/types/fuelForensics';
-import { DEFAULT_FUEL_THRESHOLDS } from '@/types/fuelForensics';
+import { DEFAULT_FUEL_THRESHOLDS, SAMPLE_WARMUP_CONFIG } from '@/types/fuelForensics';
+
+/**
+ * Calcula variância de um array de números
+ * Usado para medir estabilidade das leituras
+ */
+export function calculateVariance(samples: number[]): number {
+  if (samples.length < 2) return 0;
+  
+  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+  const squaredDiffs = samples.map(x => Math.pow(x - mean, 2));
+  return squaredDiffs.reduce((a, b) => a + b, 0) / samples.length;
+}
+
+/**
+ * Calcula média móvel das últimas N amostras, descartando primeiras (warm-up)
+ */
+export function calculateRollingAverage(samples: number[]): number {
+  if (samples.length === 0) return 0;
+  
+  const { discardFirstSamples, rollingWindowSize } = SAMPLE_WARMUP_CONFIG;
+  
+  // Descartar primeiras amostras (warm-up)
+  const afterWarmup = samples.slice(discardFirstSamples);
+  
+  if (afterWarmup.length === 0) {
+    // Se ainda não temos amostras suficientes, usar todas
+    return samples.reduce((a, b) => a + b, 0) / samples.length;
+  }
+  
+  // Pegar últimas N amostras para média móvel
+  const recentSamples = afterWarmup.slice(-rollingWindowSize);
+  return recentSamples.reduce((a, b) => a + b, 0) / recentSamples.length;
+}
 
 /**
  * Avalia o estado do combustível quando usuário manteve o MESMO combustível
  * Aqui, qualquer desvio significativo indica problema (adulteração ou mecânico)
+ * CORREÇÃO v2: Usa média móvel e exige mais leituras O2 para diagnóstico mecânico
  */
 export function evaluateSameFuel(
   data: FuelMonitoringData,
   thresholds: FuelAnalysisThresholds = DEFAULT_FUEL_THRESHOLDS
 ): FuelState {
-  const totalTrim = Math.abs(data.stftAverage) + Math.abs(data.ltftDelta);
+  // CORREÇÃO: Usar média móvel em vez de média simples
+  const stftAverage = calculateRollingAverage(data.stftSamples);
+  const totalTrim = Math.abs(stftAverage) + Math.abs(data.ltftDelta);
   
   // Se correção total > limite, algo mudou na química do combustível
   if (totalTrim > thresholds.sameFuelMaxTrim) {
-    // Verificar O2 para diferenciar adulteração de problema mecânico
-    if (data.o2Average !== null) {
-      const isO2Frozen = data.o2Readings.some(r => 
-        (r.isLean || r.isRich) && 
-        data.o2Readings.filter(x => 
-          Math.abs(x.timestamp - r.timestamp) < thresholds.o2FrozenDuration * 1000
-        ).length >= 3
-      );
+    // CORREÇÃO: Exigir mais leituras O2 antes de diagnosticar problema mecânico
+    if (data.o2Readings.length >= SAMPLE_WARMUP_CONFIG.minO2ForMechanicalDiagnosis) {
+      const isO2Frozen = checkO2Frozen(data.o2Readings, thresholds.o2FrozenDuration);
       
       if (isO2Frozen) {
         // O2 travado por muito tempo = problema mecânico (sonda, vazamento)
@@ -43,7 +75,7 @@ export function evaluateSameFuel(
       return 'contaminated';
     }
     
-    // Sem dados de O2, assumir suspeito
+    // Sem dados suficientes de O2, assumir suspeito (não mecânico)
     return 'suspicious';
   }
   
@@ -53,6 +85,54 @@ export function evaluateSameFuel(
   }
   
   return 'stable';
+}
+
+/**
+ * Verifica se sensor O2 está travado em lean ou rich
+ * CORREÇÃO v2: Usa duração real em segundos baseada em timestamps
+ */
+function checkO2Frozen(readings: O2SensorReading[], frozenDurationThreshold: number): boolean {
+  if (readings.length < 5) return false;
+  
+  // Verificar sequência contínua de lean ou rich
+  let currentStreak = 0;
+  let currentType: 'lean' | 'rich' | null = null;
+  let maxStreakDuration = 0;
+  let streakStartTime = 0;
+  
+  for (let i = 0; i < readings.length; i++) {
+    const reading = readings[i];
+    
+    if (reading.isLean) {
+      if (currentType === 'lean') {
+        // Continua streak lean
+        const duration = (reading.timestamp - streakStartTime) / 1000;
+        maxStreakDuration = Math.max(maxStreakDuration, duration);
+      } else {
+        // Nova streak lean
+        currentType = 'lean';
+        streakStartTime = reading.timestamp;
+        currentStreak = 1;
+      }
+    } else if (reading.isRich) {
+      if (currentType === 'rich') {
+        // Continua streak rich
+        const duration = (reading.timestamp - streakStartTime) / 1000;
+        maxStreakDuration = Math.max(maxStreakDuration, duration);
+      } else {
+        // Nova streak rich
+        currentType = 'rich';
+        streakStartTime = reading.timestamp;
+        currentStreak = 1;
+      }
+    } else {
+      // Reset streak
+      currentType = null;
+      currentStreak = 0;
+    }
+  }
+  
+  return maxStreakDuration >= frozenDurationThreshold;
 }
 
 /**
@@ -106,7 +186,7 @@ export function evaluateFuelSwitch(
     return { state: 'suspicious', adaptationProgress };
   }
   
-  // Caso 3: STFT muito alto (> 35%) mesmo para Flex = problema
+  // Caso 3: STFT muito alto (> 40%) mesmo para Flex = problema
   if (Math.abs(data.stftCurrent) > thresholds.fuelSwitchMaxTrim) {
     // LTFT não está absorvendo = pode ser mecânico
     if (!ltftMoving && data.distanceMonitored > thresholds.minAnalysisDistance) {
@@ -129,46 +209,50 @@ export function evaluateFuelSwitch(
 /**
  * Valida análise usando sensor O2 (Sonda Lambda)
  * Retorna true se O2 indica operação normal
+ * CORREÇÃO v2: Usa timestamps reais para calcular duração
  */
 export function validateWithO2Sensor(
   readings: O2SensorReading[],
   thresholds: FuelAnalysisThresholds = DEFAULT_FUEL_THRESHOLDS
 ): { isValid: boolean; frozenDuration: number; frozenType: 'lean' | 'rich' | null } {
-  if (readings.length < 3) {
+  if (readings.length < SAMPLE_WARMUP_CONFIG.minO2ForMechanicalDiagnosis) {
+    // Insuficiente para diagnóstico - assumir válido
     return { isValid: true, frozenDuration: 0, frozenType: null };
   }
   
   // Verificar se O2 está travado em pobre ou rico
-  let leanStreak = 0;
-  let richStreak = 0;
-  let maxLeanStreak = 0;
-  let maxRichStreak = 0;
+  let leanStreakStart: number | null = null;
+  let richStreakStart: number | null = null;
+  let maxLeanDuration = 0;
+  let maxRichDuration = 0;
   
   for (const reading of readings) {
     if (reading.isLean) {
-      leanStreak++;
-      richStreak = 0;
-      maxLeanStreak = Math.max(maxLeanStreak, leanStreak);
+      if (leanStreakStart === null) {
+        leanStreakStart = reading.timestamp;
+      }
+      const duration = (reading.timestamp - leanStreakStart) / 1000;
+      maxLeanDuration = Math.max(maxLeanDuration, duration);
+      richStreakStart = null; // Reset rich streak
     } else if (reading.isRich) {
-      richStreak++;
-      leanStreak = 0;
-      maxRichStreak = Math.max(maxRichStreak, richStreak);
+      if (richStreakStart === null) {
+        richStreakStart = reading.timestamp;
+      }
+      const duration = (reading.timestamp - richStreakStart) / 1000;
+      maxRichDuration = Math.max(maxRichDuration, duration);
+      leanStreakStart = null; // Reset lean streak
     } else {
-      leanStreak = 0;
-      richStreak = 0;
+      leanStreakStart = null;
+      richStreakStart = null;
     }
   }
   
-  // Estimar duração assumindo ~500ms entre leituras
-  const leanDuration = maxLeanStreak * 0.5;
-  const richDuration = maxRichStreak * 0.5;
-  
-  if (leanDuration >= thresholds.o2FrozenDuration) {
-    return { isValid: false, frozenDuration: leanDuration, frozenType: 'lean' };
+  if (maxLeanDuration >= thresholds.o2FrozenDuration) {
+    return { isValid: false, frozenDuration: maxLeanDuration, frozenType: 'lean' };
   }
   
-  if (richDuration >= thresholds.o2FrozenDuration) {
-    return { isValid: false, frozenDuration: richDuration, frozenType: 'rich' };
+  if (maxRichDuration >= thresholds.o2FrozenDuration) {
+    return { isValid: false, frozenDuration: maxRichDuration, frozenType: 'rich' };
   }
   
   return { isValid: true, frozenDuration: 0, frozenType: null };
@@ -207,8 +291,81 @@ export function analyzeTrend(
 }
 
 /**
+ * Calcula confiança baseada em múltiplos fatores
+ * CORREÇÃO v2: Sistema de pontuação mais preciso
+ */
+export function calculateConfidence(
+  data: FuelMonitoringData,
+  thresholds: FuelAnalysisThresholds
+): { confidence: 'low' | 'medium' | 'high'; score: number; details: string[] } {
+  let score = 0;
+  const details: string[] = [];
+  
+  // 1. Distância percorrida (0-30 pontos)
+  if (data.distanceMonitored >= thresholds.recommendedDistance) {
+    score += 30;
+    details.push(`Distância: ${data.distanceMonitored.toFixed(1)}km (ótimo)`);
+  } else if (data.distanceMonitored >= thresholds.minAnalysisDistance) {
+    score += 15;
+    details.push(`Distância: ${data.distanceMonitored.toFixed(1)}km (adequado)`);
+  } else {
+    details.push(`Distância: ${data.distanceMonitored.toFixed(1)}km (insuficiente)`);
+  }
+  
+  // 2. Quantidade de amostras STFT (0-30 pontos)
+  const stftCount = data.stftSamples.length;
+  if (stftCount >= SAMPLE_WARMUP_CONFIG.minSTFTForHighConfidence) {
+    score += 30;
+    details.push(`Amostras STFT: ${stftCount} (ótimo)`);
+  } else if (stftCount >= SAMPLE_WARMUP_CONFIG.minSamplesForAverage) {
+    score += 15;
+    details.push(`Amostras STFT: ${stftCount} (adequado)`);
+  } else {
+    details.push(`Amostras STFT: ${stftCount} (insuficiente)`);
+  }
+  
+  // 3. Leituras O2 (0-20 pontos)
+  const o2Count = data.o2Readings.length;
+  if (o2Count >= SAMPLE_WARMUP_CONFIG.minO2ForMechanicalDiagnosis) {
+    score += 20;
+    details.push(`Leituras O2: ${o2Count} (ótimo)`);
+  } else if (o2Count >= 5) {
+    score += 10;
+    details.push(`Leituras O2: ${o2Count} (básico)`);
+  } else if (o2Count > 0) {
+    score += 5;
+    details.push(`Leituras O2: ${o2Count} (limitado)`);
+  } else {
+    details.push('Sem leituras O2');
+  }
+  
+  // 4. Estabilidade/Consistência STFT (0-20 pontos)
+  if (stftCount >= 5) {
+    const variance = calculateVariance(data.stftSamples);
+    if (variance < 25) { // Desvio padrão < 5%
+      score += 20;
+      details.push(`Variância STFT: ${variance.toFixed(1)} (estável)`);
+    } else if (variance < 100) { // Desvio padrão < 10%
+      score += 10;
+      details.push(`Variância STFT: ${variance.toFixed(1)} (moderado)`);
+    } else {
+      details.push(`Variância STFT: ${variance.toFixed(1)} (instável)`);
+    }
+  }
+  
+  // Mapear score para nível de confiança
+  const confidence: 'low' | 'medium' | 'high' = 
+    score >= 70 ? 'high' : 
+    score >= 40 ? 'medium' : 
+    'low';
+  
+  return { confidence, score, details };
+}
+
+/**
  * Função principal: Avalia estado do combustível
  * Esta é a "Máquina de Estados" que determina o diagnóstico final
+ * CORREÇÃO v2: Usa novo sistema de confiança e média móvel
  */
 export function evaluateFuelState(
   data: FuelMonitoringData,
@@ -223,16 +380,19 @@ export function evaluateFuelState(
   // Analisar tendência
   const { trend, slope } = analyzeTrend(data.stftSamples);
   
+  // CORREÇÃO: Usar média móvel
+  const rollingAverage = calculateRollingAverage(data.stftSamples);
+  
   // Base do resultado
   const baseResult: Partial<FuelDiagnosticResult> = {
-    stftAverage: data.stftAverage,
+    stftAverage: rollingAverage, // Usar média móvel
     ltftDelta: data.ltftDelta,
     o2Average: data.o2Average,
     distanceMonitored: data.distanceMonitored,
     userContext: context,
     analyzedAt,
     evidence: {
-      stftOutOfRange: Math.abs(data.stftAverage) > thresholds.sameFuelWarningTrim,
+      stftOutOfRange: Math.abs(rollingAverage) > thresholds.sameFuelWarningTrim,
       ltftNotAdapting: context !== 'same_fuel' && Math.abs(data.ltftDelta) < thresholds.ltftMinDelta,
       o2SensorFrozen: !o2Validation.isValid,
       o2FrozenDuration: o2Validation.frozenDuration,
@@ -252,7 +412,7 @@ export function evaluateFuelState(
   } else {
     // Contexto desconhecido: usar análise conservadora
     // Se STFT alto mas direção consistente, assumir troca de combustível
-    const absSTFT = Math.abs(data.stftAverage);
+    const absSTFT = Math.abs(rollingAverage);
     if (absSTFT > thresholds.fuelSwitchExpectedTrim) {
       // STFT muito alto
       if (Math.abs(data.ltftDelta) > thresholds.ltftMinDelta) {
@@ -267,15 +427,8 @@ export function evaluateFuelState(
     }
   }
   
-  // Determinar confiança
-  let confidence: 'low' | 'medium' | 'high';
-  if (data.distanceMonitored < thresholds.minAnalysisDistance) {
-    confidence = 'low';
-  } else if (data.distanceMonitored >= thresholds.recommendedDistance && data.stftSamples.length >= 10) {
-    confidence = 'high';
-  } else {
-    confidence = 'medium';
-  }
+  // CORREÇÃO v2: Usar novo sistema de confiança baseado em múltiplos fatores
+  const { confidence, score, details } = calculateConfidence(data, thresholds);
   
   // Gerar detalhes de anomalia
   let anomalyType: 'contamination' | 'mechanical' | 'sensor_fault' | undefined;
@@ -283,17 +436,17 @@ export function evaluateFuelState(
   
   if (state === 'contaminated') {
     anomalyType = 'contamination';
-    anomalyDetails = `STFT médio de ${data.stftAverage.toFixed(1)}% indica combustível fora de especificação. A ECU está compensando excessivamente.`;
+    anomalyDetails = `STFT médio de ${rollingAverage.toFixed(1)}% indica combustível fora de especificação. A ECU está compensando excessivamente.`;
   } else if (state === 'mechanical') {
     if (!o2Validation.isValid) {
       anomalyType = 'sensor_fault';
       anomalyDetails = `Sensor O2 travado em ${o2Validation.frozenType === 'lean' ? 'mistura pobre' : 'mistura rica'} por ${o2Validation.frozenDuration.toFixed(0)}s. Pode indicar problema com sonda lambda ou vazamento de vácuo.`;
     } else {
       anomalyType = 'mechanical';
-      anomalyDetails = `STFT alto (${data.stftAverage.toFixed(1)}%) sem adaptação do LTFT. Pode indicar problema mecânico como vazamento de vácuo ou injetor obstruído.`;
+      anomalyDetails = `STFT alto (${rollingAverage.toFixed(1)}%) sem adaptação do LTFT. Pode indicar problema mecânico como vazamento de vácuo ou injetor obstruído.`;
     }
   } else if (state === 'suspicious') {
-    anomalyDetails = `Valores fora do esperado. STFT: ${data.stftAverage.toFixed(1)}%, LTFT delta: ${data.ltftDelta.toFixed(1)}%. Continuando monitoramento.`;
+    anomalyDetails = `Valores fora do esperado. STFT: ${rollingAverage.toFixed(1)}%, LTFT delta: ${data.ltftDelta.toFixed(1)}%. Continuando monitoramento.`;
   }
   
   // Gerar recomendação
@@ -350,6 +503,7 @@ export function createInitialMonitoringData(): FuelMonitoringData {
 
 /**
  * Adiciona uma amostra aos dados de monitoramento
+ * CORREÇÃO v2: Usa média móvel (rolling average) em vez de média simples
  */
 export function addSample(
   data: FuelMonitoringData,
@@ -358,7 +512,9 @@ export function addSample(
   o2?: O2SensorReading
 ): FuelMonitoringData {
   const newSamples = [...data.stftSamples, stft];
-  const newAverage = newSamples.reduce((a, b) => a + b, 0) / newSamples.length;
+  
+  // CORREÇÃO: Usar média móvel
+  const newAverage = calculateRollingAverage(newSamples);
   
   // Primeira leitura de LTFT define o inicial
   const ltftInitial = data.ltftInitial ?? ltft;
