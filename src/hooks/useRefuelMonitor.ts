@@ -1,9 +1,10 @@
 // Hook para monitoramento de qualidade de combustível
 // Analisa Fuel Trim após abastecimento para detectar adulteração
 // Arquitetura: Loop unificado de 500ms com cálculo preciso baseado em timestamp
-// CORREÇÃO: Sistema de fila de voz, cleanup adequado, mutex OBD, loop unificado
+// CORREÇÃO: Sistema de fila de voz, cleanup adequado, mutex GLOBAL OBD, loop unificado
 // CORREÇÃO v2: Settings congelados durante monitoramento, cálculo de distância corrigido
 // V3: FUEL STATE MACHINE - Análise forense com O2 Sensor e contexto de troca Flex
+// V4: MUTEX GLOBAL - Usa OBDMutexService para coordenação com outros componentes
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import logger from '@/lib/logger';
@@ -30,6 +31,7 @@ import {
   createInitialMonitoringData, 
   addSample 
 } from '@/services/fuel/FuelStateMachine';
+import { obdMutex } from '@/services/obd/OBDMutexService';
 
 // Constantes de timing
 const MONITORING_INTERVAL = 500;         // Loop principal: 500ms para precisão
@@ -156,8 +158,8 @@ export function useRefuelMonitor({
   const distanceRef = useRef(0);
   const isMonitoringActiveRef = useRef(false);
   
-  // CORREÇÃO 4: Mutex para leituras OBD
-  const isReadingOBDRef = useRef(false);
+  // MUTEX GLOBAL: Identificador do componente para lock OBD
+  const MUTEX_OWNER = 'refuel-monitor';
   
   // Refs para timing preciso
   const lastUpdateTimestampRef = useRef<number | null>(null);
@@ -320,15 +322,16 @@ export function useRefuelMonitor({
     }
   }, [isConnected, sendRawCommand]);
   
-  // CORREÇÃO 4: Ler Fuel Level com proteção de mutex
+  // MUTEX GLOBAL: Ler Fuel Level com proteção de mutex
   const readFuelLevel = useCallback(async (): Promise<number | null> => {
     if (!fuelLevelSupported) return null;
-    if (isReadingOBDRef.current) {
-      logger.debug('[Refuel] readFuelLevel ignorado - outra leitura em andamento');
+    
+    const acquired = await obdMutex.acquire(MUTEX_OWNER, 2, 3000);
+    if (!acquired) {
+      logger.debug('[Refuel] readFuelLevel ignorado - não conseguiu lock OBD');
       return null;
     }
     
-    isReadingOBDRef.current = true;
     try {
       const response = await sendRawCommand('012F', 2000);
       const match = response.match(/41\s*2F\s*([0-9A-Fa-f]{2})/i);
@@ -339,27 +342,23 @@ export function useRefuelMonitor({
     } catch (error) {
       logger.error('[Refuel] Error reading fuel level:', error);
     } finally {
-      isReadingOBDRef.current = false;
+      obdMutex.release(MUTEX_OWNER);
     }
     return null;
   }, [fuelLevelSupported, sendRawCommand]);
   
-  // CORREÇÃO v4: Ler STFT com RETRY e timeout maior
-  // Polling do dashboard é pausado durante monitoramento, então mutex é menos crítico
+  // MUTEX GLOBAL: Ler STFT com RETRY e timeout maior
   const readSTFT = useCallback(async (): Promise<number | null> => {
     if (stftSupported === false) {
       logger.debug('[Refuel] readSTFT bloqueado - PID não suportado');
       return null;
     }
     
-    // Permitir leitura mesmo com mutex ocupado (polling pausado)
-    // Apenas log de warning
-    if (isReadingOBDRef.current) {
-      logger.debug('[Refuel] readSTFT - aguardando mutex...');
-      await new Promise(r => setTimeout(r, 100));
+    const acquired = await obdMutex.acquire(MUTEX_OWNER, 2, 3000);
+    if (!acquired) {
+      logger.debug('[Refuel] readSTFT - não conseguiu lock OBD');
+      return null;
     }
-    
-    isReadingOBDRef.current = true;
     
     // RETRY: Tentar até 2 vezes com timeout maior
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -378,7 +377,7 @@ export function useRefuelMonitor({
           const a = parseInt(match[1], 16);
           const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
           logger.debug('[Refuel] STFT parsed:', value);
-          isReadingOBDRef.current = false;
+          obdMutex.release(MUTEX_OWNER);
           return value;
         } else if (!cleanResponse.includes('NODATA') && !cleanResponse.includes('ERROR')) {
           logger.warn(`[Refuel] STFT attempt ${attempt} - unexpected format:`, cleanResponse);
@@ -393,19 +392,17 @@ export function useRefuelMonitor({
       }
     }
     
-    isReadingOBDRef.current = false;
+    obdMutex.release(MUTEX_OWNER);
     return null;
   }, [stftSupported, sendRawCommand]);
   
-  // CORREÇÃO v4: Ler LTFT com RETRY e timeout maior
+  // MUTEX GLOBAL: Ler LTFT com RETRY e timeout maior
   const readLTFT = useCallback(async (): Promise<number | null> => {
-    // Aguardar se mutex ocupado
-    if (isReadingOBDRef.current) {
-      logger.debug('[Refuel] readLTFT - aguardando mutex...');
-      await new Promise(r => setTimeout(r, 100));
+    const acquired = await obdMutex.acquire(MUTEX_OWNER, 2, 3000);
+    if (!acquired) {
+      logger.debug('[Refuel] readLTFT - não conseguiu lock OBD');
+      return null;
     }
-    
-    isReadingOBDRef.current = true;
     
     // RETRY: Tentar até 2 vezes
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -422,7 +419,7 @@ export function useRefuelMonitor({
           const a = parseInt(match[1], 16);
           const value = Math.round(((a - 128) * 100 / 128) * 10) / 10;
           logger.debug('[Refuel] LTFT parsed:', value);
-          isReadingOBDRef.current = false;
+          obdMutex.release(MUTEX_OWNER);
           return value;
         } else if (!cleanResponse.includes('NODATA') && !cleanResponse.includes('ERROR')) {
           logger.warn(`[Refuel] LTFT attempt ${attempt} - unexpected format:`, cleanResponse);
@@ -436,18 +433,17 @@ export function useRefuelMonitor({
       }
     }
     
-    isReadingOBDRef.current = false;
+    obdMutex.release(MUTEX_OWNER);
     return null;
   }, [sendRawCommand]);
   
-  // CORREÇÃO: Ler velocidade diretamente do OBD (quando polling do dashboard está pausado)
+  // MUTEX GLOBAL: Ler velocidade diretamente do OBD (quando polling do dashboard está pausado)
   const readSpeed = useCallback(async (): Promise<number | null> => {
-    if (isReadingOBDRef.current) {
-      logger.debug('[Refuel] readSpeed - aguardando mutex...');
-      await new Promise(r => setTimeout(r, 50));
+    const acquired = await obdMutex.acquire(MUTEX_OWNER, 2, 2000);
+    if (!acquired) {
+      logger.debug('[Refuel] readSpeed - não conseguiu lock OBD');
+      return null;
     }
-    
-    isReadingOBDRef.current = true;
     
     try {
       const response = await sendRawCommand('010D', 2000);
@@ -459,7 +455,6 @@ export function useRefuelMonitor({
           cleanResponse.includes('TIMEOUT') ||
           cleanResponse.includes('UNABLE') ||
           cleanResponse.includes('STOPPED')) {
-        isReadingOBDRef.current = false;
         return null;
       }
       
@@ -467,25 +462,24 @@ export function useRefuelMonitor({
       if (match) {
         const speed = parseInt(match[1], 16); // km/h diretamente
         logger.debug('[Refuel] Speed parsed from OBD:', speed);
-        isReadingOBDRef.current = false;
         return speed;
       }
     } catch (error) {
       logger.error('[Refuel] Error reading speed:', error);
+    } finally {
+      obdMutex.release(MUTEX_OWNER);
     }
     
-    isReadingOBDRef.current = false;
     return null;
   }, [sendRawCommand]);
   
-  // Ler O2 Sensor (Sonda Lambda) - PID 0114 Bank 1 Sensor 1
+  // MUTEX GLOBAL: Ler O2 Sensor (Sonda Lambda) - PID 0114 Bank 1 Sensor 1
   const readO2Sensor = useCallback(async (): Promise<number | null> => {
-    if (isReadingOBDRef.current) {
-      logger.debug('[Refuel] readO2Sensor - aguardando mutex...');
-      await new Promise(r => setTimeout(r, 50));
+    const acquired = await obdMutex.acquire(MUTEX_OWNER, 2, 2000);
+    if (!acquired) {
+      logger.debug('[Refuel] readO2Sensor - não conseguiu lock OBD');
+      return null;
     }
-    
-    isReadingOBDRef.current = true;
     
     try {
       const response = await sendRawCommand('0114', 2000);
@@ -494,7 +488,6 @@ export function useRefuelMonitor({
       if (cleanResponse.includes('NODATA') || 
           cleanResponse.includes('ERROR') ||
           cleanResponse.includes('UNABLE')) {
-        isReadingOBDRef.current = false;
         return null;
       }
       
@@ -504,25 +497,24 @@ export function useRefuelMonitor({
         const a = parseInt(match[1], 16);
         const voltage = a / 200; // 0-1.275V
         logger.debug('[Refuel] O2 Sensor parsed:', voltage.toFixed(3), 'V');
-        isReadingOBDRef.current = false;
         return voltage;
       }
     } catch (error) {
       logger.error('[Refuel] Error reading O2 sensor:', error);
+    } finally {
+      obdMutex.release(MUTEX_OWNER);
     }
     
-    isReadingOBDRef.current = false;
     return null;
   }, [sendRawCommand]);
   
-  // Ler Fuel System Status (PID 03) - Detecta Open/Closed Loop
+  // MUTEX GLOBAL: Ler Fuel System Status (PID 03) - Detecta Open/Closed Loop
   const readFuelSystemStatus = useCallback(async (): Promise<number | null> => {
-    if (isReadingOBDRef.current) {
-      logger.debug('[Refuel] readFuelSystemStatus - aguardando mutex...');
-      await new Promise(r => setTimeout(r, 50));
+    const acquired = await obdMutex.acquire(MUTEX_OWNER, 2, 2000);
+    if (!acquired) {
+      logger.debug('[Refuel] readFuelSystemStatus - não conseguiu lock OBD');
+      return null;
     }
-    
-    isReadingOBDRef.current = true;
     
     try {
       const response = await sendRawCommand('0103', 2000);
@@ -531,7 +523,6 @@ export function useRefuelMonitor({
       if (cleanResponse.includes('NODATA') || 
           cleanResponse.includes('ERROR') ||
           cleanResponse.includes('UNABLE')) {
-        isReadingOBDRef.current = false;
         return null;
       }
       
@@ -540,14 +531,14 @@ export function useRefuelMonitor({
       if (match) {
         const statusValue = parseInt(match[1], 16);
         logger.debug('[Refuel] Fuel System Status raw:', statusValue);
-        isReadingOBDRef.current = false;
         return statusValue;
       }
     } catch (error) {
       logger.error('[Refuel] Error reading Fuel System Status:', error);
+    } finally {
+      obdMutex.release(MUTEX_OWNER);
     }
     
-    isReadingOBDRef.current = false;
     return null;
   }, [sendRawCommand]);
   
