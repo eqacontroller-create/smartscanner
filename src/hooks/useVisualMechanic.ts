@@ -8,6 +8,7 @@ import { VisionService } from '@/services/ai/VisionService';
 import { PROGRESS_MESSAGES, MULTI_IMAGE_PROGRESS_MESSAGES, MAX_IMAGES } from '@/types/visionTypes';
 import type { VisionAnalysisResult, AnalysisType, VehicleContextForVision } from '@/types/visionTypes';
 import { toast } from 'sonner';
+import { visionFeedback } from '@/lib/hapticFeedback';
 
 export interface UseVisualMechanicReturn {
   // Estado
@@ -172,6 +173,9 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
     setIsAnalyzing(true);
     setError(null);
     
+    // Haptic feedback: início da análise
+    visionFeedback('start');
+    
     try {
       let analysisResult: VisionAnalysisResult;
       
@@ -197,18 +201,21 @@ export function useVisualMechanic(): UseVisualMechanicReturn {
       
       setResult(analysisResult);
       
-      // Toast baseado no nível de risco
+      // Haptic feedback baseado no nível de risco
       if (analysisResult.riskLevel === 'danger') {
+        visionFeedback('danger');
         toast.error('⚠️ Problema grave detectado!', {
           description: 'Veja o diagnóstico completo abaixo.',
           duration: 5000,
         });
       } else if (analysisResult.riskLevel === 'attention') {
+        visionFeedback('attention');
         toast.warning('Atenção necessária', {
           description: 'Veja as recomendações abaixo.',
           duration: 4000,
         });
       } else {
+        visionFeedback('safe');
         toast.success('Tudo parece normal!', {
           description: 'Veja os detalhes abaixo.',
           duration: 3000,

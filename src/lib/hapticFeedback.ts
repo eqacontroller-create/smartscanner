@@ -22,6 +22,12 @@ export const VIBRATION_PATTERNS = {
   engineStart: [100, 50, 200],
   // Cranking detected - alert pattern
   crankingDetected: [50, 30, 50],
+  // DTC found - subtle alert
+  dtcFound: [50],
+  // Scan complete - double pulse
+  scanComplete: [100, 100],
+  // Verify confirm - triple short
+  verifyConfirm: [30, 50, 30],
 } as const;
 
 /**
@@ -156,6 +162,63 @@ export function hapticFeedback(
     case 'warning':
       vibrate('warning');
       playBeep(300, 200, 0.3, 'square');
+      break;
+  }
+}
+
+/**
+ * Scan-specific feedback for DTC Scanner
+ */
+export function scanFeedback(
+  type: 'dtcFound' | 'scanComplete' | 'noDtcs' | 'warning' | 'doubleCheck'
+): void {
+  switch (type) {
+    case 'dtcFound':
+      vibrate('dtcFound');
+      playBeep(400, 80, 0.2);
+      break;
+    case 'scanComplete':
+      vibrate('scanComplete');
+      playTestCompleteSound();
+      break;
+    case 'noDtcs':
+      vibrate('success');
+      playTestCompleteSound();
+      break;
+    case 'warning':
+      vibrate('warning');
+      playBeep(350, 200, 0.25, 'square');
+      break;
+    case 'doubleCheck':
+      vibrate('verifyConfirm');
+      playBeep(600, 60, 0.15);
+      setTimeout(() => playBeep(700, 60, 0.15), 80);
+      break;
+  }
+}
+
+/**
+ * Vision analysis feedback
+ */
+export function visionFeedback(
+  type: 'start' | 'danger' | 'attention' | 'safe'
+): void {
+  switch (type) {
+    case 'start':
+      vibrate('tap');
+      playBeep(500, 60, 0.15);
+      break;
+    case 'danger':
+      vibrate('warning');
+      playBeep(300, 250, 0.3, 'square');
+      break;
+    case 'attention':
+      vibrate('doubleTap');
+      playBeep(450, 100, 0.2);
+      break;
+    case 'safe':
+      vibrate('success');
+      playTestCompleteSound();
       break;
   }
 }
